@@ -103,3 +103,17 @@ kbd {
   .overlay { animation: none; }
   button, #fade { transition: none; }
 }
+
+/* ---- tutorial ---- */
+#tutorial {
+  position: fixed; left: clamp(12px, 3vw, 40px); top: 64px; z-index: 20; width: min(340px, calc(100vw - 24px));
+  padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(6px);
+  color: #e8f5ec; pointer-events: none;
+}
+#tutorial .t-head { display: flex; justify-content: space-between; font: 11px ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.12em; color: var(--green-dim); }
+#tutorial strong { display: block; margin: 6px 0 4px; font-size: 16px; color: var(--green); }
+#tutorial p { margin: 0; font-size: 13px; line-height: 1.6; color: rgba(232, 245, 236, 0.85); }
+#tutorial .t-bar { height: 3px; margin-top: 10px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
+#tutorial .t-bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width 0.1s linear; }
+#tutorial #tutorial-caution { margin-top: 8px; color: #ffc233; font-weight: 600; }
+body:not([data-mode="flying"]):not([data-mode="crashed"]) #tutorial { display: none; }

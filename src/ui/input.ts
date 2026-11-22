@@ -13,6 +13,8 @@ export class KeyboardControls {
   onPause: (() => void) | null = null;
   /** Enter / Space: confirm the primary action of whatever overlay is showing. */
   onConfirm: (() => void) | null = null;
+  /** N: skip the current tutorial step. */
+  onSkip: (() => void) | null = null;
   private readonly down = new Set<string>();
 
   constructor(startThrottle: number) {
@@ -21,6 +23,7 @@ export class KeyboardControls {
       if (GAME_KEYS.has(e.code)) e.preventDefault();
       if (!e.repeat) {
         if (e.code === 'KeyR') this.onReset?.();
+        else if (e.code === 'KeyN') this.onSkip?.();
         else if (e.code === 'Escape' || e.code === 'KeyP') this.onPause?.();
         else if (e.code === 'Enter' || e.code === 'Space') this.onConfirm?.();
       }

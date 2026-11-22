@@ -80,7 +80,7 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 - Rust 端用單一全域 `static mut` 模擬實例（一個 worker 擁有一個實例，單執行緒下安全）；多實例需要改成 handle。
 - `package.json` 沒有 lockfile，版本範圍為 `^`；請在本機 `npm install` 後 commit `package-lock.json`。
 - 尚無遮蔽剔除（Occlusion Culling）、LOD、glTF 載入、地形分區：場景只有 4000 個實例化方塊。
-- 沒有新手教學
+- 新手教學只偵測狀態（不會替你重置位置）；中途墜毀按 R 重來會從第 1 步開始。
 - 機體面板未搭建
 - 武器系統尚未搭建
 
@@ -102,6 +102,11 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 下一階段建議（本輪未做武器與機器人，見變更紀錄）：① 武器系統實作、地面地形破壞與機器人；② 地面接觸與起降；③ MFD 面板與離屏感測器攝影機（OffscreenCanvas）；④ glTF + Meshopt 載入與地形分區；⑤ 第二種機型驗證參數化設計
 
 ## 變更紀錄
+
+### 新手教學（2026-11-23）
+- 主頁新增「新手教學」：10 個步驟（俯仰 → 改平 → 滾轉 → 改正 → 油門 → 後燃器 → 收油門 → AOA 警告 → PULL UP 警告 → 改出），每步需維持條件一小段時間才算完成；`N` 略過目前步驟；低空或 PULL UP 時顯示提醒。
+- 邏輯在 `src/ui/tutorial.ts`（只讀快照，無物理狀態），測試在 `tests/tutorial.test.ts`。
+- 驗證：以最小 harness 執行 6 項測試（沙盒沒有 vitest）全過；推到 GitHub 後由 CI 的 vitest 再確認。瀏覽器實際畫面未看過。
 
 ### 物理模型升級與警告系統（2026-11-22，第二輪）
 

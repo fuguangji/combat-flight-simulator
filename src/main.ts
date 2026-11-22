@@ -11,6 +11,7 @@ import type { Backend } from './rendering/Renderer';
 import { activeWarnings } from './physics/warnings';
 import { attractCamera } from './ui/attract';
 import { WarningAudio } from './ui/audio';
+import { Tutorial } from './ui/tutorial';
 import { KeyboardControls } from './ui/input';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
@@ -39,6 +40,13 @@ const howtoBtn = $<HTMLButtonElement>('btn-howto');
 const howtoEl = $<HTMLElement>('howto');
 const crashStatsEl = $<HTMLDListElement>('crash-stats');
 const crashTitleEl = $<HTMLHeadingElement>('crash-title');
+const tutorialBtn = $<HTMLButtonElement>('btn-tutorial');
+const tutorialEl = $<HTMLElement>('tutorial');
+const tutorialStepEl = $<HTMLElement>('tutorial-step');
+const tutorialTitleEl = $<HTMLElement>('tutorial-title');
+const tutorialHintEl = $<HTMLElement>('tutorial-hint');
+const tutorialBarEl = $<HTMLElement>('tutorial-bar');
+const tutorialCautionEl = $<HTMLElement>('tutorial-caution');
 
 function fail(message: string): void {
   errorEl.hidden = false;
@@ -79,6 +87,8 @@ async function boot(): Promise<void> {
   const dynRes = new DynamicResolution();
   const rig = new CameraRig();
   const audio = new WarningAudio();
+  const tutorial = new Tutorial();
+  let tutorialOn = false;
   let lastSent: ControlInput = { ...input.state, throttle: -1 }; // force first send
 
   // ---- flight bookkeeping -------------------------------------------------------------------
@@ -111,6 +121,8 @@ async function boot(): Promise<void> {
     input.reset(aircraft.startThrottle);
     lastSent = { ...input.state, throttle: -1 };
     rig.reset();
+    tutorial.reset();
+    tutorialEl.hidden = !tutorialOn;
     lastSnap = null;
     frozenSnap = null;
     stats.maxKt = 0;
@@ -124,6 +136,13 @@ async function boot(): Promise<void> {
 
   const startFlight = (): void => {
     if (mode !== 'menu' && mode !== 'paused' && mode !== 'crashed') return;
+    if (mode === 'menu') tutorialOn = false; // restarts keep the current mode; the menu button picks it
+    void withFade(beginFlight);
+  };
+
+  const startTutorial = (): void => {
+    if (mode !== 'menu') return;
+    tutorialOn = true;
     void withFade(beginFlight);
   };
 
@@ -132,6 +151,8 @@ async function boot(): Promise<void> {
     void withFade(() => {
       physics.pause();
       audio.silence();
+      tutorialEl.hidden = true;
+      tutorialOn = false;
       frozenSnap = null;
       lastSnap = null;
       showOverlay('menu');
@@ -170,12 +191,16 @@ async function boot(): Promise<void> {
 
   // ---- wiring -------------------------------------------------------------------------------
   startBtn.addEventListener('click', startFlight);
+  tutorialBtn.addEventListener('click', startTutorial);
   $<HTMLButtonElement>('btn-resume').addEventListener('click', resumeFlight);
   $<HTMLButtonElement>('btn-restart-pause').addEventListener('click', startFlight);
   $<HTMLButtonElement>('btn-home-pause').addEventListener('click', goHome);
   $<HTMLButtonElement>('btn-restart-crash').addEventListener('click', startFlight);
   $<HTMLButtonElement>('btn-home-crash').addEventListener('click', goHome);
 
+  input.onSkip = () => {
+    if (tutorialOn && mode === 'flying') tutorial.skip();
+  };
   input.onReset = startFlight;
   input.onPause = () => {
     if (mode === 'flying') pauseFlight();
@@ -191,6 +216,7 @@ async function boot(): Promise<void> {
   });
 
   startBtn.disabled = false;
+  tutorialBtn.disabled = false;
   startBtn.textContent = '起飛';
   showOverlay('menu');
   setMode('menu');
@@ -257,6 +283,15 @@ async function boot(): Promise<void> {
         } else if (mode === 'flying') {
           setMode('crashed');
           crashedAtMs = now;
+        }
+        if (tutorialOn && mode === 'flying') {
+          const v = tutorial.update(snap);
+          tutorialStepEl.textContent = v.done ? '完成' : `${v.index + 1} / ${v.total}`;
+          tutorialTitleEl.textContent = v.title;
+          tutorialHintEl.textContent = v.hint;
+          tutorialBarEl.style.width = `${(v.progress * 100).toFixed(0)}%`;
+          tutorialCautionEl.hidden = v.caution === null;
+          if (v.caution) tutorialCautionEl.textContent = v.caution;
         }
         audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
         const cam = rig.update(snap, aircraft, now);
