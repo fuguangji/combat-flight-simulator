@@ -1,0 +1,18 @@
+[package]
+name = "physics-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Deterministic 6-DOF flight dynamics core for combat-flight-simulator (compiled to WebAssembly)"
+license = "MIT"
+
+[lib]
+# cdylib -> .wasm for the browser, rlib -> native `cargo test`
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

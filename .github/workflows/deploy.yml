@@ -1,0 +1,74 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Uses only the built-in GITHUB_TOKEN. No personal access token anywhere.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a running deployment half-way; queue instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install JS dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Add WebAssembly target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Rust unit tests (native)
+        run: cargo test --manifest-path wasm/physics-engine/Cargo.toml
+
+      - name: Build physics WASM
+        run: node scripts/build-wasm.mjs
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: TypeScript tests (includes WASM integration test)
+        run: npx vitest run
+
+      - name: Build site
+        run: npx vite build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: dist
+
+  # Runs only if every step above succeeded, so a failed build can never replace
+  # the last good deployment.
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

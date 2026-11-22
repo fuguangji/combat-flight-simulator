@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+# Rust
+wasm/physics-engine/target/
+# Built in CI / by `npm run build:wasm`
+public/wasm/*.wasm
