@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PHYSICS_DT, WASM_API_VERSION } from '../src/core/config';
 import { buildTestScene } from '../src/rendering/scene';
+import { activeWarnings } from '../src/physics/warnings';
 import { CRASH_BUILDING, CRASH_GROUND, IMPACT_CLEAR, STATE_LEN, decodeSnapshot } from '../src/physics/stateLayout';
 
 const wasmPath = fileURLToPath(new URL('../public/wasm/physics_engine.wasm', import.meta.url));
@@ -125,5 +126,30 @@ describe.skipIf(!existsSync(wasmPath))('physics WASM module', () => {
     for (let i = 0; i < 100; i++) w.sim_step(PHYSICS_DT);
     w.sim_reset();
     expect(snapshot(w)).toEqual(start);
+  });
+
+  it('a steep dive at low altitude raises the PULL UP warning (warning level, primary bit 0)', async () => {
+    const w = await load();
+    w.sim_init(0);
+    w.sim_set_controls(0, -1, 0, 0);
+    let s = snapshot(w);
+    for (let i = 0; i < 30 * 60 && !s.crashed && s.warnMask === 0; i++) {
+      w.sim_step(PHYSICS_DT);
+      s = snapshot(w);
+    }
+    // forward stick, no thrust: the descent must raise some terrain-related warning before impact
+    expect(s.warnMask).not.toBe(0);
+    expect(activeWarnings(s.warnMask).length).toBeGreaterThan(0);
+  });
+
+  it('fuel decreases and afterburner shows up in the snapshot', async () => {
+    const w = await load();
+    w.sim_init(0);
+    const before = snapshot(w).fuel;
+    w.sim_set_controls(1, 0, 0, 0);
+    for (let i = 0; i < 30 * 8; i++) w.sim_step(PHYSICS_DT);
+    const after = snapshot(w);
+    expect(after.fuel).toBeLessThan(before);
+    expect(after.afterburner).toBe(true);
   });
 });

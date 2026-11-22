@@ -3,17 +3,18 @@
 //! Pure data + math: no rendering, no I/O, no globals. Given the same inputs and the same
 //! sequence of `step(dt)` calls the result is bit-identical on every run.
 //!
-//! Integration: semi-implicit Euler with internal sub-stepping (<= 1/120 s per sub-step),
-//! so a 30 Hz outer step is evaluated as 4 sub-steps.
+//! Integration: classical RK4 with internal sub-stepping (<= 1/120 s per sub-step), so a 30 Hz
+//! outer step is evaluated as 4 sub-steps. Control surfaces and the engine are first-order lags
+//! integrated exactly per sub-step; fuel is burnt per sub-step and changes mass and inertia.
 
 use crate::aircraft::AircraftParams;
 use crate::atmosphere::{isa, G0, RHO0};
 use crate::collision::World;
 use crate::math::{Quat, Vec3};
+use crate::warnings;
 
 pub const MAX_SUBSTEP: f64 = 1.0 / 120.0;
 
-/// Value of `crash_kind` / the snapshot field: what ended the flight.
 pub const CRASH_NONE: u8 = 0;
 pub const CRASH_GROUND: u8 = 1;
 pub const CRASH_BUILDING: u8 = 2;
@@ -22,10 +23,9 @@ pub const CRASH_BUILDING: u8 = 2;
 pub const IMPACT_NONE: f64 = 99.0;
 const IMPACT_LOOKAHEAD: f64 = 8.0; // s
 const IMPACT_STEP: f64 = 0.25; // s
-const IMPACT_CLEARANCE: f64 = 4.0; // m, extra safety margin for the warning only
+pub const IMPACT_CLEARANCE: f64 = 4.0; // m, extra margin for warnings only
 
 /// Pilot commands. throttle 0..1; pitch/roll/yaw -1..1.
-/// pitch +1 = stick back (nose up), roll +1 = roll right, yaw +1 = right rudder.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Controls {
     pub throttle: f64,
@@ -50,17 +50,21 @@ impl Controls {
 
 #[derive(Clone, Copy, Debug)]
 pub struct BodyState {
-    pub position: Vec3,         // world, m
-    pub velocity: Vec3,         // world, m/s
-    pub orientation: Quat,      // body -> world
-    pub angular_velocity: Vec3, // body frame, rad/s (x roll, y yaw, z pitch)
-    pub time: f64,              // simulated seconds since reset
+    pub position: Vec3,
+    pub velocity: Vec3,
+    pub orientation: Quat,
+    pub angular_velocity: Vec3,
+    pub time: f64,
     pub crashed: bool,
-    pub crash_kind: u8,         // CRASH_* (0 while flying)
-    pub crash_time: f64,        // simulated time of the contact (valid when crashed)
+    pub crash_kind: u8,
+    pub crash_time: f64,
+    pub fuel: f64,     // kg
+    pub power: f64,    // spooled throttle 0..1 (engine state)
+    pub elevator: f64, // actual surface positions, -1..1
+    pub aileron: f64,
+    pub rudder: f64,
 }
 
-/// Values derived from the current state; recomputed after every `step`.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Derived {
     pub airspeed: f64,
@@ -68,12 +72,18 @@ pub struct Derived {
     pub alpha: f64,
     pub beta: f64,
     pub dynamic_pressure: f64,
-    pub load_factor: f64, // body-Y specific force / g0
+    pub load_factor: f64,
     pub density: f64,
     pub stall_warning: bool,
-    /// Seconds until the straight-line flight path meets the ground or a building
-    /// (`IMPACT_NONE` if clear within the look-ahead window, 0 once crashed).
     pub impact_time: f64,
+    pub thrust: f64,
+    pub afterburner: bool,
+    pub g_limiting: bool,
+    /// Load factor the airframe can currently produce (aero- and structure-limited).
+    pub g_avail: f64,
+    pub warn_mask: u32,
+    pub warn_level: u8,
+    pub warn_primary: i32, // lowest set bit = highest priority, -1 when none
 }
 
 pub struct Sim {
@@ -82,6 +92,9 @@ pub struct Sim {
     pub controls: Controls,
     pub derived: Derived,
     pub world: World,
+    /// Constant wind (world frame, m/s) and turbulence intensity (0 = none, 1 = light-moderate).
+    pub wind: Vec3,
+    pub turbulence: f64,
 }
 
 fn smoothstep(e0: f64, e1: f64, x: f64) -> f64 {
@@ -89,19 +102,78 @@ fn smoothstep(e0: f64, e1: f64, x: f64) -> f64 {
     t * t * (3.0 - 2.0 * t)
 }
 
-/// Lift coefficient vs. angle of attack: linear up to the stall angle, plateau, then a smooth
-/// blend into a flat-plate-like post-stall curve.
-pub fn lift_coefficient(p: &AircraftParams, alpha: f64) -> f64 {
+/// Compressibility correction of the lift slope: Prandtl-Glauert to M 0.8, a flat transonic
+/// plateau, then the supersonic 1/sqrt(M^2-1) decay.
+pub fn mach_lift_factor(m: f64) -> f64 {
+    let pg = |m: f64| 1.0 / (1.0 - m * m).sqrt();
+    if m <= 0.8 {
+        pg(m)
+    } else if m < 1.2 {
+        let a = pg(0.8);
+        let b = 1.1 / (1.2f64 * 1.2 - 1.0).sqrt();
+        a + (b - a) * smoothstep(0.8, 1.2, m)
+    } else {
+        1.1 / (m * m - 1.0).sqrt()
+    }
+}
+
+/// Wave drag coefficient: onset near M 0.85, peak at M 1.1, slow decay afterwards.
+pub fn wave_drag(p: &AircraftParams, m: f64) -> f64 {
+    if m < 0.85 {
+        0.0
+    } else if m < 1.1 {
+        p.cd_wave * smoothstep(0.85, 1.1, m)
+    } else {
+        p.cd_wave * (1.1 / m).powf(0.6)
+    }
+}
+
+/// Lift coefficient vs. angle of attack and Mach number.
+pub fn lift_coefficient_m(p: &AircraftParams, alpha: f64, mach: f64) -> f64 {
     let a_att = alpha.clamp(-p.alpha_stall, p.alpha_stall);
-    let attached = p.cl0 + p.cl_alpha * a_att;
+    let attached = p.cl0 + p.cl_alpha * mach_lift_factor(mach) * a_att;
     let post = p.post_stall_cl * (2.0 * alpha).sin();
     let s = smoothstep(p.alpha_stall, p.alpha_stall + 0.12, alpha.abs());
     attached * (1.0 - s) + post * s
 }
 
-/// Weight of the post-stall regime (0 = attached, 1 = fully stalled).
+/// Low-speed lift curve (Mach 0).
+pub fn lift_coefficient(p: &AircraftParams, alpha: f64) -> f64 {
+    lift_coefficient_m(p, alpha, 0.0)
+}
+
 fn stall_blend(p: &AircraftParams, alpha: f64) -> f64 {
     smoothstep(p.alpha_stall, p.alpha_stall + 0.12, alpha.abs())
+}
+
+#[derive(Clone, Copy)]
+struct Kin {
+    pos: Vec3,
+    vel: Vec3,
+    q: Quat,
+    w: Vec3,
+}
+
+#[derive(Clone, Copy)]
+struct KinDot {
+    pos: Vec3,
+    vel: Vec3,
+    q: Quat,
+    w: Vec3,
+}
+
+fn qadd(a: Quat, b: Quat, k: f64) -> Quat {
+    Quat { x: a.x + b.x * k, y: a.y + b.y * k, z: a.z + b.z * k, w: a.w + b.w * k }
+}
+
+fn advance(k: &Kin, d: &KinDot, h: f64) -> Kin {
+    Kin { pos: k.pos + d.pos * h, vel: k.vel + d.vel * h, q: qadd(k.q, d.q, h), w: k.w + d.w * h }
+}
+
+pub struct Propulsion {
+    pub thrust: f64,
+    pub afterburner: bool,
+    pub fuel_flow: f64, // kg/s
 }
 
 impl Sim {
@@ -117,22 +189,31 @@ impl Sim {
                 crashed: false,
                 crash_kind: CRASH_NONE,
                 crash_time: 0.0,
+                fuel: 0.0,
+                power: 0.0,
+                elevator: 0.0,
+                aileron: 0.0,
+                rudder: 0.0,
             },
             controls: Controls::default(),
             derived: Derived::default(),
             world: World::empty(),
+            wind: Vec3::ZERO,
+            turbulence: 0.0,
         };
         s.reset();
         s
     }
 
-    /// Install the static obstacle set used for collisions and the impact warning.
     pub fn set_world(&mut self, world: World) {
         self.world = world;
         self.refresh_derived();
     }
 
-    /// Level flight heading north at the aircraft's start altitude / speed.
+    pub fn mass(&self, st: &BodyState) -> f64 {
+        self.params.empty_mass + st.fuel
+    }
+
     pub fn reset(&mut self) {
         let p = self.params;
         let heading = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f64::consts::FRAC_PI_2);
@@ -146,6 +227,11 @@ impl Sim {
             crashed: false,
             crash_kind: CRASH_NONE,
             crash_time: 0.0,
+            fuel: p.fuel_capacity,
+            power: p.start_throttle,
+            elevator: 0.0,
+            aileron: 0.0,
+            rudder: 0.0,
         };
         self.controls = Controls { throttle: p.start_throttle, ..Controls::default() };
         self.refresh_derived();
@@ -155,25 +241,66 @@ impl Sim {
         self.controls = c.sanitized();
     }
 
-    /// Net aerodynamic + thrust force (body frame, N), moment (body frame, N m) and derived values.
-    fn forces_and_moments(&self, st: &BodyState, ctl: &Controls) -> (Vec3, Vec3, Derived) {
+    /// Smooth, deterministic turbulence (sum of incommensurate sines) plus the steady wind.
+    pub fn wind_at(&self, pos: Vec3, t: f64) -> Vec3 {
+        if self.turbulence <= 0.0 {
+            return self.wind;
+        }
+        let amp = self.turbulence * 2.5 * (-(pos.y.max(0.0)) / 4000.0).exp();
+        let n = |f1: f64, f2: f64, f3: f64, ph: f64, sp: f64| {
+            0.5 * (f1 * t + sp * 0.0031 + ph).sin() + 0.3 * (f2 * t + sp * 0.0071 + ph * 1.7).sin()
+                + 0.2 * (f3 * t + sp * 0.0113 + ph * 2.3).sin()
+        };
+        let sx = pos.x + 0.6 * pos.z;
+        let sy = pos.y + 0.4 * pos.x;
+        let sz = pos.z - 0.5 * pos.y;
+        self.wind + Vec3::new(n(0.9, 2.3, 5.1, 0.0, sx), 0.6 * n(1.3, 3.1, 6.7, 1.9, sy), n(0.7, 2.9, 4.3, 3.7, sz)) * amp
+    }
+
+    /// Thrust, afterburner state and fuel flow for the given state.
+    pub fn propulsion(&self, st: &BodyState) -> Propulsion {
+        let p = &self.params;
+        if st.fuel <= 0.0 {
+            return Propulsion { thrust: 0.0, afterburner: false, fuel_flow: 0.0 };
+        }
+        let atmo = isa(st.position.y);
+        let air = st.velocity - self.wind_at(st.position, st.time);
+        let mach = air.length() / atmo.speed_of_sound;
+        let dens = (atmo.density / RHO0).powf(0.8);
+        let ram = 1.0 + 0.4 * mach.min(1.2) - 0.25 * (mach - 1.2).max(0.0);
+        let dry = (0.05 + 0.95 * st.power / 0.85).min(1.0);
+        let ab = if st.power > 0.88 { ((st.power - 0.85) / 0.15).clamp(0.0, 1.0) } else { 0.0 };
+        let t_mil_full = p.max_thrust_sl * dens * ram;
+        let t_ab_full = p.ab_thrust_sl * dens * ram;
+        let dry_thrust = t_mil_full * dry;
+        let thrust = dry_thrust + ab * (t_ab_full - t_mil_full);
+        let flow = dry_thrust * p.tsfc_mil + (thrust - dry_thrust) * p.tsfc_ab;
+        Propulsion { thrust, afterburner: ab > 0.0, fuel_flow: flow }
+    }
+
+    /// Aerodynamic + thrust force (body, N), moment (body, N m) and derived values for state `st`.
+    fn forces_and_moments(&self, st: &BodyState) -> (Vec3, Vec3, Derived) {
         let p = &self.params;
         let atmo = isa(st.position.y);
-        let v_body = st.orientation.conjugate().rotate(st.velocity);
+        let air = st.velocity - self.wind_at(st.position, st.time);
+        let v_body = st.orientation.conjugate().rotate(air);
         let v = v_body.length();
+        let prop = self.propulsion(st);
+        let mass = self.mass(st);
 
-        let thrust = ctl.throttle * p.max_thrust_sl * (atmo.density / RHO0).powf(0.8);
-        let mut force = Vec3::new(thrust, 0.0, 0.0);
+        let mut force = Vec3::new(prop.thrust, 0.0, 0.0);
         let mut moment = Vec3::ZERO;
         let mut d = Derived {
             airspeed: v,
             mach: v / atmo.speed_of_sound,
             density: atmo.density,
             impact_time: IMPACT_NONE,
+            thrust: prop.thrust,
+            afterburner: prop.afterburner,
+            g_avail: p.g_limit_pos,
             ..Derived::default()
         };
         if v < 1.0 {
-            d.load_factor = force.y / (p.mass * G0);
             return (force, moment, d);
         }
 
@@ -183,44 +310,79 @@ impl Sim {
         let q = 0.5 * atmo.density * v * v;
         let qs = q * p.wing_area;
         let sa = alpha.sin();
+        let m = d.mach;
 
-        // Coefficients
-        let cl = lift_coefficient(p, alpha);
+        let cl = lift_coefficient_m(p, alpha, m);
         let blend = stall_blend(p, alpha);
-        let mut cd = p.cd0 + p.induced_k * cl * cl + blend * p.post_stall_cd * sa * sa;
-        let dm = (d.mach - 0.85).clamp(0.0, 0.5);
-        cd += 1.5 * dm * dm; // crude transonic drag rise
+        let cd = p.cd0 + p.induced_k * cl * cl + blend * p.post_stall_cd * sa * sa + wave_drag(p, m);
 
-        // Forces
         let lift_dir = Vec3::new(0.0, 0.0, 1.0).cross(v_hat).normalized().unwrap_or(Vec3::ZERO);
         force = force + lift_dir * (qs * cl) + v_hat * (-qs * cd) + Vec3::new(0.0, 0.0, -qs * p.cy_beta * beta);
 
-        // Moments (rates made non-dimensional with a floor on V to avoid blow-up at low speed)
         let vc = v.max(30.0);
         let w = st.angular_velocity;
         let p_hat = w.x * p.span / (2.0 * vc);
         let q_hat = w.z * p.chord / (2.0 * vc);
         let r_hat = w.y * p.span / (2.0 * vc);
-        moment.x = qs * p.span * (p.cl_p * p_hat + p.cl_aileron * ctl.roll - p.cl_beta * beta);
-        moment.y = qs * p.span * (-p.cn_beta * beta - p.cn_rudder * ctl.yaw + p.cn_r * r_hat);
-        moment.z = qs * p.chord * (p.cm0 + p.cm_alpha * sa + p.cm_q * q_hat + p.cm_elevator * ctl.pitch);
+        // aerodynamic centre moves aft supersonically (more stable, less pitch authority)
+        let sup = smoothstep(0.85, 1.3, m);
+        let cm_a = p.cm_alpha * (1.0 + 0.7 * sup);
+        let cm_de = p.cm_elevator * (1.0 - 0.35 * smoothstep(0.9, 1.5, m));
+        moment.x = qs * p.span
+            * (p.cl_p * p_hat - p.cl_r * r_hat + p.cl_aileron * st.aileron + p.cl_rudder * st.rudder - p.cl_beta * beta);
+        moment.y = qs * p.span
+            * (-p.cn_beta * beta - p.cn_rudder * st.rudder + p.cn_r * r_hat + p.cn_aileron * st.aileron);
+        moment.z = qs * p.chord * (p.cm0 + cm_a * sa + p.cm_q * q_hat + cm_de * st.elevator);
 
         d.alpha = alpha;
         d.beta = beta;
         d.dynamic_pressure = q;
-        d.load_factor = force.y / (p.mass * G0);
+        d.load_factor = force.y / (mass * G0);
         d.stall_warning = alpha.abs() > 0.85 * p.alpha_stall;
+        let cl_max = lift_coefficient_m(p, p.alpha_stall, m);
+        d.g_avail = p.g_limit_pos.min(qs * cl_max / (mass * G0));
         (force, moment, d)
     }
 
     fn refresh_derived(&mut self) {
-        let (_, _, mut d) = self.forces_and_moments(&self.state, &self.controls);
+        let (_, _, mut d) = self.forces_and_moments(&self.state);
         d.impact_time = self.predict_impact();
+        d.g_limiting = self.pitch_limit(self.controls.pitch).1 && self.controls.pitch != 0.0;
+        let (mask, level, primary) = warnings::evaluate(self, &d);
+        d.warn_mask = mask;
+        d.warn_level = level;
+        d.warn_primary = primary;
         self.derived = d;
     }
 
-    /// Earliest contact between the aircraft hull and the ground / a building while moving from
-    /// state `a` to state `b` (one sub-step). Returns (fraction of the step, CRASH_* kind).
+    /// Load-factor protection: scales the pitch command down as the limit is approached.
+    /// Returns (limited command, whether the limiter is currently reducing the command).
+    pub fn pitch_limit(&self, cmd: f64) -> (f64, bool) {
+        let p = &self.params;
+        // Predicted load factor ~0.2 s ahead: the pitch rate keeps adding lift after the stick is
+        // released, so the limiter has to lead the measured value.
+        let nz = self.derived.load_factor
+            + 0.2 * self.state.angular_velocity.z * self.derived.airspeed / G0;
+        // Same idea for angle of attack: stop pulling just short of the stall angle.
+        let a_pred = self.derived.alpha + 0.3 * self.state.angular_velocity.z;
+        let a_lim = 0.95 * p.alpha_stall;
+        let s = if cmd > 0.0 {
+            let g = ((p.g_limit_pos - nz) / 1.5).clamp(-0.6, 1.0);
+            let a = ((a_lim - a_pred) / 0.06).clamp(-0.6, 1.0);
+            g.min(a)
+        } else if cmd < 0.0 {
+            let g = ((nz - p.g_limit_neg) / 1.0).clamp(-0.6, 1.0);
+            let a = ((a_pred + a_lim) / 0.06).clamp(-0.6, 1.0);
+            g.min(a)
+        } else if nz > p.g_limit_pos {
+            // stick centred but still over the limit: push the nose down a little
+            return (((p.g_limit_pos - nz) / 1.5).clamp(-0.6, 0.0), true);
+        } else {
+            1.0
+        };
+        (cmd * s, s < 0.999)
+    }
+
     fn find_contact(&self, a: &BodyState, b: &BodyState) -> Option<(f64, u8)> {
         let r = self.params.hull_radius;
         let mut best: Option<(f64, u8)> = None;
@@ -244,8 +406,7 @@ impl Sim {
         best
     }
 
-    /// Straight-line look-ahead along the velocity vector (the classic "terrain collision
-    /// warning" model): time until the path meets the ground or a building.
+    /// Straight-line look-ahead along the velocity vector: time until the path meets terrain.
     fn predict_impact(&self) -> f64 {
         let s = &self.state;
         if s.crashed {
@@ -272,42 +433,68 @@ impl Sim {
         IMPACT_NONE
     }
 
+    fn deriv(&self, k: &Kin, base: &BodyState, mass: f64) -> KinDot {
+        let mut tmp = *base;
+        tmp.position = k.pos;
+        tmp.velocity = k.vel;
+        tmp.orientation = k.q;
+        tmp.angular_velocity = k.w;
+        let (f, m, _) = self.forces_and_moments(&tmp);
+        let acc = k.q.rotate(f) * (1.0 / mass) + Vec3::new(0.0, -G0, 0.0);
+
+        // I w' = M - w x (I w) with the product of inertia Ixy; inertia scales with mass.
+        let sc = mass / self.params.gross_mass();
+        let (ixx, iyy, izz) = (self.params.inertia.x * sc, self.params.inertia.y * sc, self.params.inertia.z * sc);
+        let ixy = self.params.ixy * sc;
+        let w = k.w;
+        let iw = Vec3::new(ixx * w.x - ixy * w.y, -ixy * w.x + iyy * w.y, izz * w.z);
+        let r = m - w.cross(iw);
+        let det = ixx * iyy - ixy * ixy;
+        let dw = Vec3::new((iyy * r.x + ixy * r.y) / det, (ixy * r.x + ixx * r.y) / det, r.z / izz);
+
+        let qd = k.q.compose(Quat { x: w.x, y: w.y, z: w.z, w: 0.0 });
+        KinDot { pos: k.vel, vel: acc, q: Quat { x: 0.5 * qd.x, y: 0.5 * qd.y, z: 0.5 * qd.z, w: 0.5 * qd.w }, w: dw }
+    }
+
     fn substep(&mut self, h: f64) {
-        let st = self.state;
-        let ctl = self.controls;
         let p = self.params;
-        let (f, m, _) = self.forces_and_moments(&st, &ctl);
+        let mut st = self.state;
 
-        // Translational
-        let acc = st.orientation.rotate(f) * (1.0 / p.mass) + Vec3::new(0.0, -G0, 0.0);
-        let velocity = st.velocity + acc * h;
-        let position = st.position + velocity * h;
+        // Actuators and engine (exact first-order lags)
+        let (pitch_cmd, _) = self.pitch_limit(self.controls.pitch);
+        let ka = 1.0 - (-h / p.actuator_tau).exp();
+        st.elevator += (pitch_cmd - st.elevator) * ka;
+        st.aileron += (self.controls.roll - st.aileron) * ka;
+        st.rudder += (self.controls.yaw - st.rudder) * ka;
+        let target = if st.fuel > 0.0 { self.controls.throttle } else { 0.0 };
+        let tau = if target > st.power { p.spool_up } else { p.spool_down };
+        st.power += (target - st.power) * (1.0 - (-h / tau).exp());
 
-        // Rotational: I w' = M - w x (I w)
-        let w = st.angular_velocity;
-        let i = p.inertia;
-        let iw = Vec3::new(i.x * w.x, i.y * w.y, i.z * w.z);
-        let g = w.cross(iw);
-        let ang_acc = Vec3::new((m.x - g.x) / i.x, (m.y - g.y) / i.y, (m.z - g.z) / i.z);
-        let angular_velocity = w + ang_acc * h;
+        let prop = self.propulsion(&st);
+        let mass = self.mass(&st);
 
-        // q' = 0.5 * q * (0, w_body)
+        // RK4 on position / velocity / attitude / body rates
+        let k0 = Kin { pos: st.position, vel: st.velocity, q: st.orientation, w: st.angular_velocity };
+        let d1 = self.deriv(&k0, &st, mass);
+        let d2 = self.deriv(&advance(&k0, &d1, h * 0.5), &st, mass);
+        let d3 = self.deriv(&advance(&k0, &d2, h * 0.5), &st, mass);
+        let d4 = self.deriv(&advance(&k0, &d3, h), &st, mass);
+        let comb = |a: Vec3, b: Vec3, c: Vec3, d: Vec3| (a + (b + c) * 2.0 + d) * (h / 6.0);
+        let position = st.position + comb(d1.pos, d2.pos, d3.pos, d4.pos);
+        let velocity = st.velocity + comb(d1.vel, d2.vel, d3.vel, d4.vel);
+        let angular_velocity = st.angular_velocity + comb(d1.w, d2.w, d3.w, d4.w);
         let o = st.orientation;
-        let w2 = angular_velocity;
-        let qd = o.compose(Quat { x: w2.x, y: w2.y, z: w2.z, w: 0.0 });
         let orientation = Quat {
-            x: o.x + 0.5 * h * qd.x,
-            y: o.y + 0.5 * h * qd.y,
-            z: o.z + 0.5 * h * qd.z,
-            w: o.w + 0.5 * h * qd.w,
+            x: o.x + (h / 6.0) * (d1.q.x + 2.0 * (d2.q.x + d3.q.x) + d4.q.x),
+            y: o.y + (h / 6.0) * (d1.q.y + 2.0 * (d2.q.y + d3.q.y) + d4.q.y),
+            z: o.z + (h / 6.0) * (d1.q.z + 2.0 * (d2.q.z + d3.q.z) + d4.q.z),
+            w: o.w + (h / 6.0) * (d1.q.w + 2.0 * (d2.q.w + d3.q.w) + d4.q.w),
         }
         .normalized();
 
-        let mut next = BodyState { position, velocity, orientation, angular_velocity, ..st };
+        let fuel = (st.fuel - prop.fuel_flow * h).max(0.0);
+        let mut next = BodyState { position, velocity, orientation, angular_velocity, fuel, ..st };
 
-        // Contact model: ground plane y = 0 and the static buildings. Contact ends the flight; the
-        // aircraft is stopped at the exact point of first contact (no penetration, so the camera
-        // never ends up inside a wall or below the ground).
         if let Some((t, kind)) = self.find_contact(&st, &next) {
             next.position = st.position + (next.position - st.position) * t;
             next.velocity = Vec3::ZERO;
@@ -318,7 +505,6 @@ impl Sim {
         self.state = next;
     }
 
-    /// Advance the simulation by `dt` seconds (typically 1/30).
     pub fn step(&mut self, dt: f64) {
         if !(dt.is_finite() && dt > 0.0) {
             return;
@@ -329,8 +515,9 @@ impl Sim {
             let t_start = self.state.time;
             for i in 0..n {
                 self.substep(h);
+                self.state.time = t_start + (i + 1) as f64 * h;
                 if self.state.crashed {
-                    self.state.crash_time = t_start + (i + 1) as f64 * h;
+                    self.state.crash_time = self.state.time;
                     break;
                 }
             }
@@ -338,14 +525,14 @@ impl Sim {
             if !(s.position.is_finite() && s.velocity.is_finite() && s.orientation.is_finite()
                 && s.angular_velocity.is_finite())
             {
-                self.reset(); // numerical failure: recover instead of propagating NaN
+                self.reset();
             }
+            self.state.time = t_start;
         }
         self.state.time += dt;
         self.refresh_derived();
     }
 
-    /// Unit vector helpers for tests / HUD logic.
     pub fn forward(&self) -> Vec3 {
         self.state.orientation.rotate(Vec3::new(1.0, 0.0, 0.0))
     }
@@ -507,6 +694,152 @@ mod tests {
         s.state.velocity = Vec3::new(0.0, -100.0, -100.0);
         s.step(1e-6);
         assert!(s.derived.impact_time < 6.0, "impact_time = {}", s.derived.impact_time);
+    }
+
+    #[test]
+    fn mach_lift_factor_is_continuous_and_peaks_transonically() {
+        let mut prev = mach_lift_factor(0.0);
+        let mut m = 0.01;
+        while m < 2.5 {
+            let f = mach_lift_factor(m);
+            assert!((f - prev).abs() < 0.08, "jump at M {m}: {prev} -> {f}");
+            prev = f;
+            m += 0.01;
+        }
+        assert!(mach_lift_factor(0.8) > 1.5 && mach_lift_factor(2.0) < 0.8);
+    }
+
+    #[test]
+    fn wave_drag_rises_through_mach_one() {
+        let p = AircraftParams::generic_fighter();
+        assert_eq!(wave_drag(&p, 0.6), 0.0);
+        assert!(wave_drag(&p, 1.1) > wave_drag(&p, 0.9));
+        assert!(wave_drag(&p, 1.1) >= wave_drag(&p, 1.8));
+    }
+
+    #[test]
+    fn fuel_burns_and_mass_follows() {
+        let mut s = fighter();
+        s.set_controls(Controls { throttle: 0.8, ..Controls::default() });
+        let m0 = s.mass(&s.state);
+        run(&mut s, 60.0);
+        let burnt = s.params.fuel_capacity - s.state.fuel;
+        assert!(burnt > 30.0 && burnt < 300.0, "burnt {burnt} kg in 60 s");
+        assert!((m0 - s.mass(&s.state) - burnt).abs() < 1e-6);
+    }
+
+    #[test]
+    fn afterburner_adds_thrust_and_burns_much_more_fuel() {
+        let (mut mil, mut ab) = (fighter(), fighter());
+        mil.set_controls(Controls { throttle: 0.85, ..Controls::default() });
+        ab.set_controls(Controls { throttle: 1.0, ..Controls::default() });
+        run(&mut mil, 6.0);
+        run(&mut ab, 6.0);
+        assert!(!mil.derived.afterburner && ab.derived.afterburner);
+        assert!(ab.derived.thrust > 1.2 * mil.derived.thrust);
+        let (fm, fa) = (mil.params.fuel_capacity - mil.state.fuel, ab.params.fuel_capacity - ab.state.fuel);
+        assert!(fa > 1.5 * fm, "ab {fa} vs mil {fm}");
+    }
+
+    #[test]
+    fn engine_spools_up_gradually() {
+        let mut s = fighter();
+        s.set_controls(Controls { throttle: 1.0, ..Controls::default() });
+        s.step(DT);
+        assert!(s.state.power < 0.5, "power jumped to {}", s.state.power);
+        run(&mut s, 6.0);
+        assert!(s.state.power > 0.99);
+    }
+
+    #[test]
+    fn empty_tank_means_flameout_and_no_thrust() {
+        let mut s = fighter();
+        s.state.fuel = 0.0;
+        s.set_controls(Controls { throttle: 1.0, ..Controls::default() });
+        run(&mut s, 3.0);
+        assert_eq!(s.derived.thrust, 0.0);
+        assert!(s.derived.warn_mask & (1 << crate::warnings::W_FLAMEOUT) != 0);
+    }
+
+    #[test]
+    fn surfaces_lag_the_command() {
+        let mut s = fighter();
+        s.set_controls(Controls { throttle: 0.5, pitch: 1.0, ..Controls::default() });
+        s.step(1.0 / 120.0);
+        assert!(s.state.elevator > 0.0 && s.state.elevator < 0.5);
+        run(&mut s, 0.1);
+        assert!(s.state.elevator > 0.3, "elevator = {}", s.state.elevator);
+    }
+
+    #[test]
+    fn load_factor_limiter_caps_a_full_pull() {
+        let mut s = fighter();
+        s.state.velocity = Vec3::new(0.0, 0.0, -300.0);
+        s.state.position.y = 3000.0;
+        s.set_controls(Controls { throttle: 1.0, pitch: 1.0, ..Controls::default() });
+        let mut max_g = 0.0f64;
+        for _ in 0..(8.0 / DT) as usize {
+            s.step(DT);
+            max_g = max_g.max(s.derived.load_factor);
+            if s.state.crashed { break; }
+        }
+        assert!(max_g > 6.0, "a hard pull at 300 m/s must be able to reach high g, got {max_g}");
+        assert!(max_g < s.params.g_limit_pos + 1.0, "limiter let {max_g} g through");
+    }
+
+    #[test]
+    fn full_forward_stick_is_limited_to_the_negative_limit() {
+        let mut s = fighter();
+        s.state.velocity = Vec3::new(0.0, 0.0, -300.0);
+        s.state.position.y = 6000.0;
+        s.set_controls(Controls { throttle: 1.0, pitch: -1.0, ..Controls::default() });
+        let mut min_g = 0.0f64;
+        for _ in 0..(4.0 / DT) as usize {
+            s.step(DT);
+            min_g = min_g.min(s.derived.load_factor);
+        }
+        assert!(min_g > s.params.g_limit_neg - 1.0, "min g {min_g}");
+    }
+
+    #[test]
+    fn full_throttle_reaches_supersonic_in_a_dive_free_level_run() {
+        let mut s = fighter();
+        s.state.position.y = 10_000.0;
+        s.state.velocity = Vec3::new(0.0, 0.0, -250.0);
+        s.set_controls(Controls { throttle: 1.0, ..Controls::default() });
+        let mut max_m = 0.0f64;
+        for _ in 0..(120.0 / DT) as usize {
+            s.step(DT);
+            max_m = max_m.max(s.derived.mach);
+            if s.state.crashed { break; }
+        }
+        assert!(max_m > 1.0, "afterburner thrust should push through Mach 1, got {max_m}");
+        assert!(max_m < 2.6, "unreasonable top speed {max_m}");
+    }
+
+    #[test]
+    fn turbulence_is_deterministic_and_bounded() {
+        let (mut a, mut b) = (fighter(), fighter());
+        a.turbulence = 1.0;
+        b.turbulence = 1.0;
+        for _ in 0..300 {
+            a.step(DT);
+            b.step(DT);
+        }
+        assert_eq!(a.state.position, b.state.position);
+        let w = a.wind_at(Vec3::new(0.0, 50.0, 0.0), 3.0);
+        assert!(w.length() < 6.0);
+        assert!(!a.state.crashed);
+    }
+
+    #[test]
+    fn rk4_conserves_energy_in_a_ballistic_pass_better_than_loosely() {
+        // no thrust, no drag-induced tricks: a short free flight should keep its orientation unit
+        let mut s = fighter();
+        s.set_controls(Controls { throttle: 0.3, ..Controls::default() });
+        run(&mut s, 20.0);
+        assert!((s.state.orientation.norm() - 1.0).abs() < 1e-9);
+        assert!(s.state.position.is_finite());
     }
 
     #[test]

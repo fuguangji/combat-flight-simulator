@@ -8,7 +8,9 @@ import { CRASH_BUILDING, type AircraftSnapshot } from './physics/stateLayout';
 import { DynamicResolution } from './rendering/dynamicResolution';
 import { createRenderer } from './rendering/createRenderer';
 import type { Backend } from './rendering/Renderer';
+import { activeWarnings } from './physics/warnings';
 import { attractCamera } from './ui/attract';
+import { WarningAudio } from './ui/audio';
 import { KeyboardControls } from './ui/input';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
@@ -76,6 +78,7 @@ async function boot(): Promise<void> {
   const input = new KeyboardControls(aircraft.startThrottle);
   const dynRes = new DynamicResolution();
   const rig = new CameraRig();
+  const audio = new WarningAudio();
   let lastSent: ControlInput = { ...input.state, throttle: -1 }; // force first send
 
   // ---- flight bookkeeping -------------------------------------------------------------------
@@ -128,6 +131,7 @@ async function boot(): Promise<void> {
     if (mode === 'menu' || mode === 'loading') return;
     void withFade(() => {
       physics.pause();
+      audio.silence();
       frozenSnap = null;
       lastSnap = null;
       showOverlay('menu');
@@ -138,6 +142,7 @@ async function boot(): Promise<void> {
   const pauseFlight = (): void => {
     if (mode !== 'flying') return;
     physics.pause();
+    audio.silence();
     frozenSnap = lastSnap;
     showOverlay('pause');
     setMode('paused');
@@ -217,6 +222,7 @@ async function boot(): Promise<void> {
     let snap: AircraftSnapshot | null = null;
 
     if (mode === 'menu' || mode === 'loading') {
+      audio.silence();
       renderer.render(attractCamera(now));
       hud.draw(null, aircraft, now);
     } else if (mode === 'paused') {
@@ -252,6 +258,7 @@ async function boot(): Promise<void> {
           setMode('crashed');
           crashedAtMs = now;
         }
+        audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
         const cam = rig.update(snap, aircraft, now);
         renderer.render(cam);
         hud.draw(snap, aircraft, now, cam.fovY);

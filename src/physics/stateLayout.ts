@@ -1,7 +1,7 @@
 import { lerp, lerpVec3, quatIntegrate, quatSlerp, type Quat, type Vec3 } from '../core/math';
 
 /** Must match the table in wasm/physics-engine/src/lib.rs. */
-export const STATE_LEN = 32;
+export const STATE_LEN = 40;
 
 export const S = {
   POS: 0, // x y z
@@ -22,6 +22,16 @@ export const S = {
   CRASH_KIND: 24, // 0 none, 1 ground, 2 building
   IMPACT_TIME: 25, // s until the straight-line flight path meets terrain (99 = clear)
   CRASH_TIME: 26, // simulated time of the crash
+  WARN_MASK: 27, // bit mask, see physics/warnings.ts
+  WARN_LEVEL: 28, // 0 none, 1 advisory, 2 caution, 3 warning
+  WARN_PRIMARY: 29, // lowest set bit (highest priority), -1 = none
+  FUEL: 30, // kg
+  POWER: 31, // spooled throttle 0..1
+  AFTERBURNER: 32,
+  G_LIMITING: 33, // flight-control limiter is reducing the pitch command
+  THRUST: 34, // N
+  G_AVAIL: 35, // load factor the airframe can currently produce
+  ELEVATOR: 36, // surface position -1..1
 } as const;
 
 export const CRASH_NONE = 0;
@@ -49,6 +59,16 @@ export interface AircraftSnapshot {
   crashKind: number; // CRASH_*
   crashTime: number; // simulated seconds; meaningful only when crashed
   impactTime: number; // seconds to predicted impact, IMPACT_CLEAR when none
+  warnMask: number;
+  warnLevel: number; // 0..3
+  warnPrimary: number; // bit index or -1
+  fuel: number; // kg
+  power: number; // 0..1
+  afterburner: boolean;
+  gLimiting: boolean;
+  thrust: number; // N
+  gAvailable: number; // g
+  elevator: number; // -1..1
 }
 
 export function decodeSnapshot(b: ArrayLike<number>): AircraftSnapshot {
@@ -71,6 +91,16 @@ export function decodeSnapshot(b: ArrayLike<number>): AircraftSnapshot {
     crashKind: b[S.CRASH_KIND],
     crashTime: b[S.CRASH_TIME],
     impactTime: b[S.IMPACT_TIME],
+    warnMask: b[S.WARN_MASK],
+    warnLevel: b[S.WARN_LEVEL],
+    warnPrimary: b[S.WARN_PRIMARY],
+    fuel: b[S.FUEL],
+    power: b[S.POWER],
+    afterburner: b[S.AFTERBURNER] > 0.5,
+    gLimiting: b[S.G_LIMITING] > 0.5,
+    thrust: b[S.THRUST],
+    gAvailable: b[S.G_AVAIL],
+    elevator: b[S.ELEVATOR],
   };
 }
 
@@ -118,6 +148,17 @@ export function interpolateSnapshots(a: AircraftSnapshot, b: AircraftSnapshot, t
     crashKind: b.crashKind,
     crashTime: b.crashTime,
     impactTime: lerp(a.impactTime, b.impactTime, t),
+    // discrete / slowly varying values follow the nearer snapshot; the mask is never blended
+    warnMask: pick.warnMask,
+    warnLevel: pick.warnLevel,
+    warnPrimary: pick.warnPrimary,
+    fuel: lerp(a.fuel, b.fuel, t),
+    power: lerp(a.power, b.power, t),
+    afterburner: pick.afterburner,
+    gLimiting: pick.gLimiting,
+    thrust: lerp(a.thrust, b.thrust, t),
+    gAvailable: lerp(a.gAvailable, b.gAvailable, t),
+    elevator: lerp(a.elevator, b.elevator, t),
   };
 }
 

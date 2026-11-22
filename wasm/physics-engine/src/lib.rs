@@ -25,7 +25,17 @@
 //! | 24    | crash kind (0 none, 1 ground, 2 building) |
 //! | 25    | predicted time to impact (s, 99 = clear)  |
 //! | 26    | simulated time of the crash (s)           |
-//! | 27..31| reserved                                  |
+//! | 27    | warning bit mask (see warnings.rs)        |
+//! | 28    | highest warning level (0..3)              |
+//! | 29    | primary warning bit (-1 none)             |
+//! | 30    | fuel (kg)                                 |
+//! | 31    | engine power state 0..1 (spooled throttle)|
+//! | 32    | afterburner lit (0/1)                     |
+//! | 33    | G limiter reducing the pitch command (0/1)|
+//! | 34    | thrust (N)                                |
+//! | 35    | load factor currently available (g)      |
+//! | 36    | elevator position -1..1                   |
+//! | 37..39| reserved                                  |
 //!
 //! Scene upload (API v2): the host calls `sim_scene_alloc(4 * n)`, writes `n` instances
 //! (x, z, width, height as f32) at the returned address, then `sim_scene_commit(n)`.
@@ -35,13 +45,14 @@ pub mod atmosphere;
 pub mod collision;
 pub mod flight;
 pub mod math;
+pub mod warnings;
 
 use aircraft::AircraftParams;
 use collision::World;
 use flight::{Controls, Sim};
 
-pub const STATE_LEN: usize = 32;
-pub const API_VERSION: u32 = 2;
+pub const STATE_LEN: usize = 40;
+pub const API_VERSION: u32 = 3;
 
 static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
@@ -86,6 +97,16 @@ pub fn write_snapshot(sim: &Sim, out: &mut [f64; STATE_LEN]) {
     out[24] = s.crash_kind as f64;
     out[25] = d.impact_time;
     out[26] = s.crash_time;
+    out[27] = d.warn_mask as f64;
+    out[28] = d.warn_level as f64;
+    out[29] = d.warn_primary as f64;
+    out[30] = s.fuel;
+    out[31] = s.power;
+    out[32] = if d.afterburner { 1.0 } else { 0.0 };
+    out[33] = if d.g_limiting { 1.0 } else { 0.0 };
+    out[34] = d.thrust;
+    out[35] = d.g_avail;
+    out[36] = s.elevator;
 }
 
 #[no_mangle]

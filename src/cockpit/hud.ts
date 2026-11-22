@@ -1,10 +1,13 @@
 import type { AircraftDefinition } from '../aircraft/registry';
 import { quatRotate, radToDeg, type Quat } from '../core/math';
 import { CRASH_BUILDING, type AircraftSnapshot } from '../physics/stateLayout';
+import { activeWarnings } from '../physics/warnings';
 import { attitudeFromQuat } from './camera';
 
 const GREEN = '#7dff9a';
 const WARN = '#ff5a4d';
+const CAUTION = '#ffc233';
+const FUEL_CAPACITY_KG = 3000; // matches wasm aircraft.rs (generic-fighter)
 const MS_TO_KT = 1.943844;
 const M_TO_FT = 3.28084;
 
@@ -160,26 +163,50 @@ export class Hud {
     // --- Lower-left status
     ctx.textAlign = 'left';
     const bx = 0.04 * w;
-    const by = h - 110 * u;
-    ctx.fillText(`THR ${(s.throttle * 100).toFixed(0)}%`, bx, by);
-    ctx.fillText(`G   ${s.loadFactor.toFixed(1)}`, bx, by + 20 * u);
+    const by = h - 130 * u;
+    ctx.fillText(`THR ${(s.throttle * 100).toFixed(0)}%${s.afterburner ? '  AB' : ''}`, bx, by);
+    ctx.fillText(`G   ${s.loadFactor.toFixed(1)}${s.gLimiting ? '  LIM' : ''}`, bx, by + 20 * u);
     ctx.fillText(`AOA ${radToDeg(s.alpha).toFixed(1)}°`, bx, by + 40 * u);
+    const fuelPct = (s.fuel / FUEL_CAPACITY_KG) * 100;
+    ctx.fillStyle = fuelPct < 10 ? WARN : fuelPct < 25 ? CAUTION : GREEN;
+    ctx.fillText(`FUEL ${s.fuel.toFixed(0)} kg (${fuelPct.toFixed(0)}%)`, bx, by + 60 * u);
+    ctx.fillStyle = GREEN;
 
-    // --- Warnings
+    // --- Warnings: master banner (highest priority) + stacked list of the rest
     const blink = Math.floor(nowMs / 250) % 2 === 0;
+    const list = s.crashed ? [] : activeWarnings(s.warnMask);
     ctx.textAlign = 'center';
-    ctx.font = `bold ${26 * u}px system-ui, sans-serif`;
-    ctx.fillStyle = WARN;
-    const impact = s.impactTime < 6;
     if (s.crashed) {
+      ctx.font = `bold ${26 * u}px system-ui, sans-serif`;
+      ctx.fillStyle = WARN;
       ctx.fillText(s.crashKind === CRASH_BUILDING ? 'COLLISION' : 'CRASHED', cx, cy + 0.28 * h);
-    } else if (impact) {
-      if (blink) ctx.fillText('PULL UP', cx, cy + 0.28 * h);
-      ctx.font = `${16 * u}px ui-monospace, Menlo, Consolas, monospace`;
-      ctx.fillText(`IMPACT ${s.impactTime.toFixed(1)} s`, cx, cy + 0.28 * h + 30 * u);
-    } else if (s.stallWarning && blink) {
-      ctx.fillText('STALL', cx, cy + 0.28 * h);
+    } else if (list.length > 0) {
+      const top = list[0];
+      const colour = top.level === 3 ? WARN : top.level === 2 ? CAUTION : GREEN;
+      ctx.fillStyle = colour;
+      ctx.font = `bold ${26 * u}px system-ui, sans-serif`;
+      if (top.level < 3 || blink) ctx.fillText(top.text, cx, cy + 0.28 * h);
+      let line = cy + 0.28 * h + 28 * u;
+      ctx.font = `${15 * u}px ui-monospace, Menlo, Consolas, monospace`;
+      if (s.impactTime < 8 && (s.warnMask & ((1 << 0) | (1 << 5))) !== 0) {
+        ctx.fillText(`IMPACT ${s.impactTime.toFixed(1)} s`, cx, line);
+        line += 20 * u;
+      }
+      for (const wdef of list.slice(1, 4)) {
+        ctx.fillStyle = wdef.level === 3 ? WARN : wdef.level === 2 ? CAUTION : GREEN;
+        ctx.fillText(wdef.text, cx, line);
+        line += 20 * u;
+      }
+      if (top.level === 3) {
+        // master warning frame
+        ctx.strokeStyle = WARN;
+        ctx.lineWidth = 4 * u;
+        if (blink) ctx.strokeRect(2 * u, 2 * u, w - 4 * u, h - 4 * u);
+        ctx.strokeStyle = GREEN;
+        ctx.lineWidth = 1.5 * u;
+      }
     }
+    ctx.fillStyle = GREEN;
   }
 
   /** Bright flash at the moment of impact, then a darkening vignette. */
