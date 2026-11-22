@@ -14,7 +14,8 @@ npm install          # 第一次請把產生的 package-lock.json 一併 commit
 npm run dev          # 先編譯 WASM，再啟動 Vite
 ```
 
-操作：`↑/↓` 俯仰（↓ = 拉桿抬頭）、`←/→` 滾轉、`A/D` 方向舵、`W/S` 油門、`R` 重置。
+開啟後先看到**主頁**（背景是緩慢環繞城市的攝影機），按「起飛」或 `Enter` / 空白鍵開始。
+操作：`↑/↓` 俯仰（↓ = 拉桿抬頭）、`←/→` 滾轉、`A/D` 方向舵、`W/S` 油門、`Esc`/`P` 暫停、`R` 重新開始。墜毀後會顯示結算卡（原因、飛行時間、撞擊速度、最大過載）。
 網址加 `?backend=webgl2` 可強制使用 WebGL 2（用來比較兩個後端）。
 
 其他指令：`npm test`（TS 測試，含 WASM 整合測試）、`npm run test:rust`（Rust 單元測試）、`npm run typecheck`、`npm run build`。
@@ -36,7 +37,7 @@ npm run dev          # 先編譯 WASM，再啟動 Vite
 requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 Hz)
  ├ 鍵盤 → 控制軸 ──── controls ──────────▶  sim_set_controls()
  ├ SnapshotBuffer.sample(now)  ◀─ snapshot ─  sim_step(1/30) → sim_snapshot() (Float64Array, transfer)
- │   線性插值位置 / Slerp 姿態                  └ Rust/WASM：6-DOF 剛體 + ISA 大氣 + 氣動模型
+ │   Hermite 插值位置 / Slerp 姿態              └ Rust/WASM：6-DOF 剛體 + ISA 大氣 + 氣動模型 + 碰撞
  ├ 攝影機 = 駕駛員眼點（機體座標）
  ├ Renderer（WebGPU 或 WebGL 2）
  └ HUD（Canvas 2D，0 個 3D draw call）
@@ -80,7 +81,8 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 
 ## 已知問題與限制
 
-- 沒有起降：`y ≤ 0` 即判定墜毀（按 R 重置）。起始在 2000 m、180 m/s。
+- 沒有起降：機身任一碰撞點碰到地面（`y = 0`）或建築即判定墜毀。起始在 2000 m、180 m/s。碰撞是剛性判定（無損傷、無彈跳、無殘骸動畫）；機身以 7 個點的外殼近似，不是網格碰撞。
+- 預警（`PULL UP`）只沿速度向量直線外推 8 秒，不考慮拉桿能力。
 - 氣動係數是手調的「通用輕型戰鬥機」，**不是任何真實機型的資料**；沒有燃油、後燃器、地面效應、起落架。
 - 30 Hz 插值讓畫面比物理狀態晚約 42 ms（`INTERP_DELAY_MS`）。對駕駛艙手感有影響，之後可讓視角輸入繞過插值。
 - GPU 裝置遺失（WebGPU）與 WebGL context lost 目前只提示或停止繪製，沒有自動恢復。
@@ -102,3 +104,26 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 | 7 多人介面 | 僅協定草案與 `NetworkClient` 介面 |
 
 下一階段建議：① 先讓 CI 全綠並在實機量 FPS；② 地面接觸與起降；③ MFD 面板與離屏感測器攝影機（OffscreenCanvas）；④ glTF + Meshopt 載入與地形分區；⑤ 第二種機型驗證參數化設計。
+
+## 變更紀錄
+
+### 主頁、動畫、碰撞（2026-11-22）
+
+**主頁與流程**（`index.html`、`src/ui/style.css`、`src/ui/attract.ts`、`src/main.ts`）
+- 啟動後停在主頁：高空緩慢環繞的攝影機、機型 / 起始條件 / 渲染後端、可展開的操作說明。物理在主頁與暫停時完全停止。
+- 狀態機 `loading → menu → flying ⇄ paused`、`flying → crashed → (restart | menu)`；切換時黑幕淡入淡出。
+- `Esc`/`P` 暫停（分頁隱藏時自動暫停）；墜毀 1.5 秒後出現結算卡。
+
+**動畫**
+- 位置改用三次 Hermite 插值（以快照速度為切線），30 Hz 快照交界處不再有折角；快照延遲時最多外插 100 ms（`MAX_EXTRAPOLATION_MS`）。碰撞那一步仍用線性插值（速度在該步突變為 0）。
+- `CameraRig`：速度相關的視野（最多 +9 %）、G 力頭部下沉、引擎振動、穿音速與失速抖動、撞擊後衰減的震動與傾斜。
+- HUD：飛行路徑標記（FPM）、撞擊倒數、撞擊瞬間閃光與暗角。
+- 眼點被限制在地面以上，攝影機不會穿到地底。
+
+**碰撞**（`wasm/physics-engine/src/collision.rs`、`flight.rs`）
+- 畫面上的每棟建築現在都是實心的：worker 把渲染用的同一份實例陣列（`buildTestScene()`）上傳到 WASM（`sim_scene_alloc` / `sim_scene_commit`，**API 版本 1 → 2**），所以看得到的就是撞得到的。
+- 7 點機身外殼（機頭、尾錐、兩翼尖、垂尾、機腹、座艙），每個子步以「線段 vs 膨脹 AABB」（slab 法）檢查，快速移動也不會穿牆；廣域用 1 km 均勻格網。
+- 墜毀時停在第一次接觸的位置（不會嵌進牆裡）；快照新增墜毀原因（地面 / 建築）、墜毀時刻、預測撞擊時間（欄位 24–26）。
+- 側傾時翼尖會比機身中心先擦地。
+
+**驗證狀況（這一輪）**：沙盒沒有 Rust 工具鏈與 vitest。已驗證：TypeScript 型別（排除缺少的 `vite/client`、`@webgpu/types`、`@types/node`、`vitest` 型別宣告），以及插值 / 外插 / 攝影機基底 / 主頁攝影機高度的邏輯（編譯成 JS 後用 node 斷言檢查）。**未驗證**：`cargo test`（含新的碰撞測試）、`vitest`（含新的 WASM 整合測試）、瀏覽器實際畫面與手感。

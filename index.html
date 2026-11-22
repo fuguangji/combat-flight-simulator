@@ -5,13 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Combat Flight Simulator</title>
   </head>
-  <body>
+  <body data-mode="loading">
     <div id="stage"></div>
     <canvas id="hud"></canvas>
     <pre id="status"></pre>
     <div id="help">
-      ↑/↓ 俯仰（↓ 拉桿抬頭） · ←/→ 滾轉 · A/D 方向舵 · W/S 油門 · R 重置
+      ↑/↓ 俯仰（↓ 拉桿抬頭） · ←/→ 滾轉 · A/D 方向舵 · W/S 油門 · Esc 暫停 · R 重新開始
     </div>
+
+    <!-- 主頁 -->
+    <main id="menu" class="overlay" aria-label="主頁">
+      <div class="panel">
+        <p class="eyebrow">BROWSER FLIGHT SIMULATOR</p>
+        <h1>Combat<br />Flight Simulator</h1>
+        <p class="tagline">
+          第一人稱戰鬥機模擬。Rust / WebAssembly 6 自由度物理、30 Hz 固定步長、60 FPS 以上插值渲染，WebGPU 為主、WebGL 2 後備。
+        </p>
+        <div class="actions">
+          <button id="btn-start" class="primary" disabled>載入中…</button>
+          <button id="btn-howto" class="ghost" aria-expanded="false" aria-controls="howto">操作說明</button>
+        </div>
+        <section id="howto" hidden>
+          <table>
+            <tr><th>↑ / ↓</th><td>俯仰（↓ = 拉桿，機頭抬起）</td></tr>
+            <tr><th>← / →</th><td>滾轉</td></tr>
+            <tr><th>A / D</th><td>方向舵（左 / 右）</td></tr>
+            <tr><th>W / S</th><td>油門增加 / 減少</td></tr>
+            <tr><th>Esc / P</th><td>暫停</td></tr>
+            <tr><th>R</th><td>重新開始</td></tr>
+          </table>
+          <p class="note">
+            所有畫面上看得到的方塊建築都是實心的：機頭、尾部、翼尖、機腹與垂尾任何一點碰到建築或地面都會墜毀。
+            HUD 的 <b>PULL UP</b> 會在預測 6 秒內撞擊時閃爍並顯示倒數。
+          </p>
+        </section>
+        <dl class="spec">
+          <div><dt>機型</dt><dd id="spec-aircraft">—</dd></div>
+          <div><dt>起始</dt><dd>2,000 m · 350 KT · 北向</dd></div>
+          <div><dt>渲染</dt><dd id="spec-backend">—</dd></div>
+        </dl>
+      </div>
+      <p class="foot">按 <kbd>Enter</kbd> 或 <kbd>空白鍵</kbd> 起飛</p>
+    </main>
+
+    <!-- 暫停 -->
+    <div id="pause" class="overlay center" hidden role="dialog" aria-label="暫停">
+      <div class="card">
+        <h2>暫停</h2>
+        <div class="actions vertical">
+          <button id="btn-resume" class="primary">繼續</button>
+          <button id="btn-restart-pause" class="ghost">重新開始</button>
+          <button id="btn-home-pause" class="ghost">回主頁</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 墜毀 -->
+    <div id="crash" class="overlay center" hidden role="dialog" aria-label="墜毀">
+      <div class="card">
+        <h2 id="crash-title">墜毀</h2>
+        <dl id="crash-stats" class="stats"></dl>
+        <div class="actions vertical">
+          <button id="btn-restart-crash" class="primary">再飛一次 <kbd>R</kbd></button>
+          <button id="btn-home-crash" class="ghost">回主頁</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fade"></div>
     <div id="error" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -53,6 +53,12 @@ pub struct AircraftParams {
     pub start_speed: f64,    // m/s
     pub start_alpha: f64,    // rad
     pub start_throttle: f64, // 0..1
+
+    // Collision hull: points on the airframe extremities, body frame [x forward, y up, z right], m.
+    // A contact is any of these points touching the ground or entering a building inflated by
+    // `hull_radius` (a little thickness so thin features such as wing tips are not skipped).
+    pub hull: &'static [[f64; 3]],
+    pub hull_radius: f64, // m
 }
 
 impl AircraftParams {
@@ -87,6 +93,16 @@ impl AircraftParams {
             start_speed: 180.0,
             start_alpha: 0.05,
             start_throttle: 0.3,
+            hull: &[
+                [7.5, 0.0, 0.0],   // nose
+                [-7.0, 0.0, 0.0],  // tail cone
+                [-1.0, 0.0, -4.55], // left wing tip
+                [-1.0, 0.0, 4.55], // right wing tip
+                [-6.5, 2.6, 0.0],  // fin tip
+                [0.0, -1.0, 0.0],  // belly
+                [1.0, 1.2, 0.0],   // canopy
+            ],
+            hull_radius: 1.0,
         }
     }
 

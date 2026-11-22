@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { quatRotate, quatSlerp, type Quat } from '../src/core/math';
-import { attitudeFromQuat } from '../src/cockpit/camera';
+import { quatIntegrate, quatRotate, quatSlerp, vecCross, type Quat, type Vec3 } from '../src/core/math';
+import { attitudeFromQuat, perturbBasis } from '../src/cockpit/camera';
+import { attractCamera } from '../src/ui/attract';
 import { multiply, perspective, viewRotation } from '../src/rendering/mat4';
 
 const s = Math.SQRT1_2;
@@ -85,5 +86,40 @@ describe('mat4', () => {
     const zAt = (d: number) => (p[10] * -d + p[14]) / (p[11] * -d);
     expect(zAt(1)).toBeCloseTo(0);
     expect(zAt(100)).toBeCloseTo(1);
+  });
+});
+
+describe('quatIntegrate', () => {
+  it('rotating about body X by w*dt matches the closed form', () => {
+    const q = quatIntegrate([0, 0, 0, 1], [2, 0, 0], 0.25); // 0.5 rad about X
+    expect(q[0]).toBeCloseTo(Math.sin(0.25));
+    expect(q[3]).toBeCloseTo(Math.cos(0.25));
+  });
+});
+
+describe('camera effects', () => {
+  const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const base = {
+    position: [0, 100, 0] as Vec3, right: [1, 0, 0] as Vec3, up: [0, 1, 0] as Vec3, forward: [0, 0, -1] as Vec3, fovY: 1,
+  };
+
+  it('perturbBasis keeps an orthonormal right-handed basis', () => {
+    const c = perturbBasis(base, 0.05, -0.03, 0.08);
+    for (const v of [c.right, c.up, c.forward]) expect(Math.hypot(...v)).toBeCloseTo(1);
+    expect(dot(c.right, c.up)).toBeCloseTo(0);
+    expect(dot(c.right, c.forward)).toBeCloseTo(0);
+    expect(dot(c.up, c.forward)).toBeCloseTo(0);
+    const r = vecCross(c.forward, c.up);
+    expect(dot(r, c.right)).toBeCloseTo(1);
+  });
+
+  it('positive pitch looks up, positive yaw looks right, positive roll tilts right side down', () => {
+    expect(perturbBasis(base, 0.1, 0, 0).forward[1]).toBeGreaterThan(0);
+    expect(perturbBasis(base, 0, 0.1, 0).forward[0]).toBeGreaterThan(0);
+    expect(perturbBasis(base, 0, 0, 0.1).right[1]).toBeLessThan(0);
+  });
+
+  it('home-screen camera stays above the tallest building (1.55 km) at any time', () => {
+    for (let t = 0; t < 600_000; t += 7_919) expect(attractCamera(t).position[1]).toBeGreaterThan(1600);
   });
 });

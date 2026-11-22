@@ -10,13 +10,20 @@ const GAME_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'K
 export class KeyboardControls {
   readonly state: ControlInput;
   onReset: (() => void) | null = null;
+  onPause: (() => void) | null = null;
+  /** Enter / Space: confirm the primary action of whatever overlay is showing. */
+  onConfirm: (() => void) | null = null;
   private readonly down = new Set<string>();
 
   constructor(startThrottle: number) {
     this.state = { throttle: startThrottle, pitch: 0, roll: 0, yaw: 0 };
     window.addEventListener('keydown', (e) => {
       if (GAME_KEYS.has(e.code)) e.preventDefault();
-      if (e.code === 'KeyR' && !e.repeat) this.onReset?.();
+      if (!e.repeat) {
+        if (e.code === 'KeyR') this.onReset?.();
+        else if (e.code === 'Escape' || e.code === 'KeyP') this.onPause?.();
+        else if (e.code === 'Enter' || e.code === 'Space') this.onConfirm?.();
+      }
       this.down.add(e.code);
     });
     window.addEventListener('keyup', (e) => this.down.delete(e.code));

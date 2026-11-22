@@ -2,6 +2,7 @@
 /// Posts one snapshot (Float64Array buffer, transferred) per physics step.
 import { MAX_STEPS_PER_TICK, MAX_TICK_SECONDS, PHYSICS_DT, WASM_API_VERSION } from '../src/core/config';
 import { FixedStepper } from '../src/core/fixedStep';
+import { buildTestScene } from '../src/rendering/scene';
 import type { WorkerIn, WorkerOut } from '../src/physics/PhysicsClient';
 
 interface PhysicsExports {
@@ -13,6 +14,8 @@ interface PhysicsExports {
   sim_step(dt: number): void;
   sim_snapshot(): number;
   sim_snapshot_len(): number;
+  sim_scene_alloc(floats: number): number;
+  sim_scene_commit(count: number): number;
 }
 
 const ctx = self as unknown as {
@@ -24,6 +27,19 @@ let wasm: PhysicsExports | null = null;
 let paused = false;
 let lastTick = 0;
 const stepper = new FixedStepper(PHYSICS_DT, MAX_STEPS_PER_TICK, MAX_TICK_SECONDS);
+
+/**
+ * Upload the same obstacle field the renderers draw (buildTestScene is deterministic), so every
+ * visible building is solid. Must run after sim_init and before the first snapshot.
+ */
+function uploadScene(exports: PhysicsExports): void {
+  const scene = buildTestScene();
+  const ptr = exports.sim_scene_alloc(scene.instances.length);
+  // Re-create the view after the call: the allocation may have grown linear memory.
+  new Float32Array(exports.memory.buffer, ptr, scene.instances.length).set(scene.instances);
+  const accepted = exports.sim_scene_commit(scene.instanceCount);
+  if (accepted !== scene.instanceCount) throw new Error(`Collision world accepted ${accepted} of ${scene.instanceCount} buildings`);
+}
 
 function postSnapshot(): void {
   if (!wasm) return;
@@ -54,6 +70,7 @@ async function init(wasmUrl: string, aircraftId: number): Promise<void> {
     throw new Error(`WASM API version ${exports.sim_api_version()} != expected ${WASM_API_VERSION}`);
   }
   if (exports.sim_init(aircraftId) !== 1) throw new Error(`Unknown aircraft id ${aircraftId}`);
+  uploadScene(exports);
   wasm = exports;
   lastTick = performance.now();
   postSnapshot();

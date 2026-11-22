@@ -1,4 +1,13 @@
-import { interpolateSnapshots, type AircraftSnapshot } from './stateLayout';
+import { extrapolateSnapshot, interpolateSnapshots, type AircraftSnapshot } from './stateLayout';
+
+export interface SnapshotBufferOptions {
+  /** Number of snapshots kept. */
+  capacity?: number;
+  /** Interpolate positions with a cubic Hermite curve (uses the snapshot velocities). */
+  smooth?: boolean;
+  /** If the renderer runs ahead of the newest snapshot, dead-reckon at most this many ms (0 = hold). */
+  maxExtrapolationMs?: number;
+}
 
 /**
  * Receives physics snapshots (30 Hz, stamped with simulated time) and lets the renderer sample a
@@ -12,11 +21,18 @@ import { interpolateSnapshots, type AircraftSnapshot } from './stateLayout';
 export class SnapshotBuffer {
   private snaps: AircraftSnapshot[] = [];
   private offsetMs = Number.NaN;
+  private readonly capacity: number;
+  private readonly smooth: boolean;
+  private readonly maxExtrapolationS: number;
 
   constructor(
     private readonly delayMs: number,
-    private readonly capacity = 16,
-  ) {}
+    options: SnapshotBufferOptions = {},
+  ) {
+    this.capacity = options.capacity ?? 16;
+    this.smooth = options.smooth ?? false;
+    this.maxExtrapolationS = (options.maxExtrapolationMs ?? 0) / 1000;
+  }
 
   get length(): number {
     return this.snaps.length;
@@ -41,7 +57,10 @@ export class SnapshotBuffer {
     this.offsetMs = Number.NaN;
   }
 
-  /** State to render at wall-clock `nowMs` (same clock as `arrivalMs`). Holds the last state if starved. */
+  /**
+   * State to render at wall-clock `nowMs` (same clock as `arrivalMs`). When starved it holds the
+   * newest state, or dead-reckons it for a short while if `maxExtrapolationMs` is set.
+   */
   sample(nowMs: number): AircraftSnapshot | null {
     const n = this.snaps.length;
     if (n === 0) return null;
@@ -49,13 +68,17 @@ export class SnapshotBuffer {
     const first = this.snaps[0];
     const last = this.snaps[n - 1];
     if (rt <= first.time) return first;
-    if (rt >= last.time) return last;
+    if (rt >= last.time) {
+      return this.maxExtrapolationS > 0
+        ? extrapolateSnapshot(last, Math.min(rt - last.time, this.maxExtrapolationS))
+        : last;
+    }
     for (let i = n - 2; i >= 0; i--) {
       const a = this.snaps[i];
       if (a.time <= rt) {
         const b = this.snaps[i + 1];
         const span = b.time - a.time;
-        return interpolateSnapshots(a, b, span > 0 ? (rt - a.time) / span : 1);
+        return interpolateSnapshots(a, b, span > 0 ? (rt - a.time) / span : 1, this.smooth);
       }
     }
     return first;

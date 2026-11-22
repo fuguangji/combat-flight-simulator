@@ -8,9 +8,21 @@
 
 use crate::aircraft::AircraftParams;
 use crate::atmosphere::{isa, G0, RHO0};
+use crate::collision::World;
 use crate::math::{Quat, Vec3};
 
 pub const MAX_SUBSTEP: f64 = 1.0 / 120.0;
+
+/// Value of `crash_kind` / the snapshot field: what ended the flight.
+pub const CRASH_NONE: u8 = 0;
+pub const CRASH_GROUND: u8 = 1;
+pub const CRASH_BUILDING: u8 = 2;
+
+/// `Derived::impact_time` when the flight path is clear for the whole look-ahead window.
+pub const IMPACT_NONE: f64 = 99.0;
+const IMPACT_LOOKAHEAD: f64 = 8.0; // s
+const IMPACT_STEP: f64 = 0.25; // s
+const IMPACT_CLEARANCE: f64 = 4.0; // m, extra safety margin for the warning only
 
 /// Pilot commands. throttle 0..1; pitch/roll/yaw -1..1.
 /// pitch +1 = stick back (nose up), roll +1 = roll right, yaw +1 = right rudder.
@@ -44,6 +56,8 @@ pub struct BodyState {
     pub angular_velocity: Vec3, // body frame, rad/s (x roll, y yaw, z pitch)
     pub time: f64,              // simulated seconds since reset
     pub crashed: bool,
+    pub crash_kind: u8,         // CRASH_* (0 while flying)
+    pub crash_time: f64,        // simulated time of the contact (valid when crashed)
 }
 
 /// Values derived from the current state; recomputed after every `step`.
@@ -57,6 +71,9 @@ pub struct Derived {
     pub load_factor: f64, // body-Y specific force / g0
     pub density: f64,
     pub stall_warning: bool,
+    /// Seconds until the straight-line flight path meets the ground or a building
+    /// (`IMPACT_NONE` if clear within the look-ahead window, 0 once crashed).
+    pub impact_time: f64,
 }
 
 pub struct Sim {
@@ -64,6 +81,7 @@ pub struct Sim {
     pub state: BodyState,
     pub controls: Controls,
     pub derived: Derived,
+    pub world: World,
 }
 
 fn smoothstep(e0: f64, e1: f64, x: f64) -> f64 {
@@ -97,12 +115,21 @@ impl Sim {
                 angular_velocity: Vec3::ZERO,
                 time: 0.0,
                 crashed: false,
+                crash_kind: CRASH_NONE,
+                crash_time: 0.0,
             },
             controls: Controls::default(),
             derived: Derived::default(),
+            world: World::empty(),
         };
         s.reset();
         s
+    }
+
+    /// Install the static obstacle set used for collisions and the impact warning.
+    pub fn set_world(&mut self, world: World) {
+        self.world = world;
+        self.refresh_derived();
     }
 
     /// Level flight heading north at the aircraft's start altitude / speed.
@@ -117,6 +144,8 @@ impl Sim {
             angular_velocity: Vec3::ZERO,
             time: 0.0,
             crashed: false,
+            crash_kind: CRASH_NONE,
+            crash_time: 0.0,
         };
         self.controls = Controls { throttle: p.start_throttle, ..Controls::default() };
         self.refresh_derived();
@@ -140,6 +169,7 @@ impl Sim {
             airspeed: v,
             mach: v / atmo.speed_of_sound,
             density: atmo.density,
+            impact_time: IMPACT_NONE,
             ..Derived::default()
         };
         if v < 1.0 {
@@ -184,8 +214,62 @@ impl Sim {
     }
 
     fn refresh_derived(&mut self) {
-        let (_, _, d) = self.forces_and_moments(&self.state, &self.controls);
+        let (_, _, mut d) = self.forces_and_moments(&self.state, &self.controls);
+        d.impact_time = self.predict_impact();
         self.derived = d;
+    }
+
+    /// Earliest contact between the aircraft hull and the ground / a building while moving from
+    /// state `a` to state `b` (one sub-step). Returns (fraction of the step, CRASH_* kind).
+    fn find_contact(&self, a: &BodyState, b: &BodyState) -> Option<(f64, u8)> {
+        let r = self.params.hull_radius;
+        let mut best: Option<(f64, u8)> = None;
+        let mut consider = |t: f64, kind: u8| {
+            if best.map_or(true, |(bt, _)| t < bt) {
+                best = Some((t, kind));
+            }
+        };
+        for pt in self.params.hull {
+            let local = Vec3::new(pt[0], pt[1], pt[2]);
+            let pa = a.position + a.orientation.rotate(local);
+            let pb = b.position + b.orientation.rotate(local);
+            if pb.y <= r {
+                let t = if pa.y <= r { 0.0 } else { ((pa.y - r) / (pa.y - pb.y)).clamp(0.0, 1.0) };
+                consider(t, CRASH_GROUND);
+            }
+            if let Some(t) = self.world.segment_hit(pa, pb, r) {
+                consider(t, CRASH_BUILDING);
+            }
+        }
+        best
+    }
+
+    /// Straight-line look-ahead along the velocity vector (the classic "terrain collision
+    /// warning" model): time until the path meets the ground or a building.
+    fn predict_impact(&self) -> f64 {
+        let s = &self.state;
+        if s.crashed {
+            return 0.0;
+        }
+        if s.velocity.length() < 5.0 {
+            return IMPACT_NONE;
+        }
+        let m = self.params.hull_radius + IMPACT_CLEARANCE;
+        let mut prev = s.position;
+        let mut t = 0.0;
+        while t < IMPACT_LOOKAHEAD {
+            let next = s.position + s.velocity * (t + IMPACT_STEP);
+            if next.y <= m {
+                let f = if prev.y <= m { 0.0 } else { (prev.y - m) / (prev.y - next.y) };
+                return t + f * IMPACT_STEP;
+            }
+            if let Some(f) = self.world.segment_hit(prev, next, m) {
+                return t + f * IMPACT_STEP;
+            }
+            prev = next;
+            t += IMPACT_STEP;
+        }
+        IMPACT_NONE
     }
 
     fn substep(&mut self, h: f64) {
@@ -197,7 +281,7 @@ impl Sim {
         // Translational
         let acc = st.orientation.rotate(f) * (1.0 / p.mass) + Vec3::new(0.0, -G0, 0.0);
         let velocity = st.velocity + acc * h;
-        let mut position = st.position + velocity * h;
+        let position = st.position + velocity * h;
 
         // Rotational: I w' = M - w x (I w)
         let w = st.angular_velocity;
@@ -221,13 +305,15 @@ impl Sim {
 
         let mut next = BodyState { position, velocity, orientation, angular_velocity, ..st };
 
-        // Phase-1 ground model: terrain is the plane y = 0; contact ends the flight.
-        if position.y <= 0.0 {
-            position.y = 0.0;
-            next.position = position;
+        // Contact model: ground plane y = 0 and the static buildings. Contact ends the flight; the
+        // aircraft is stopped at the exact point of first contact (no penetration, so the camera
+        // never ends up inside a wall or below the ground).
+        if let Some((t, kind)) = self.find_contact(&st, &next) {
+            next.position = st.position + (next.position - st.position) * t;
             next.velocity = Vec3::ZERO;
             next.angular_velocity = Vec3::ZERO;
             next.crashed = true;
+            next.crash_kind = kind;
         }
         self.state = next;
     }
@@ -240,9 +326,11 @@ impl Sim {
         if !self.state.crashed {
             let n = (dt / MAX_SUBSTEP).ceil().max(1.0) as usize;
             let h = dt / n as f64;
-            for _ in 0..n {
+            let t_start = self.state.time;
+            for i in 0..n {
                 self.substep(h);
                 if self.state.crashed {
+                    self.state.crash_time = t_start + (i + 1) as f64 * h;
                     break;
                 }
             }
@@ -367,7 +455,58 @@ mod tests {
         s.set_controls(Controls::default());
         run(&mut s, 2.0);
         assert!(s.state.crashed);
-        assert_eq!(s.state.position.y, 0.0);
+        assert_eq!(s.state.crash_kind, CRASH_GROUND);
+        // stopped where the lowest hull point touched the ground, never below it
+        assert!(s.state.position.y >= 0.0 && s.state.position.y < 10.0, "y = {}", s.state.position.y);
+        assert!(s.state.crash_time > 0.0 && s.state.crash_time <= s.state.time);
+    }
+
+    #[test]
+    fn flying_into_a_building_crashes_without_penetration() {
+        let mut s = fighter();
+        // 400 m wide, 3 km tall wall 800 m north of the start (aircraft flies north = -Z at 2 km)
+        s.set_world(World::from_instances(&[0.0, -1000.0, 400.0, 3000.0]));
+        run(&mut s, 15.0);
+        assert!(s.state.crashed);
+        assert_eq!(s.state.crash_kind, CRASH_BUILDING);
+        // the nose stopped at (or just before) the south face z = -800
+        assert!(s.state.position.z < 0.0 && s.state.position.z > -800.0, "z = {}", s.state.position.z);
+        assert_eq!(s.state.velocity, Vec3::ZERO);
+    }
+
+    #[test]
+    fn a_tilted_wing_tip_scrapes_the_ground_before_the_centre_does() {
+        let mut s = fighter();
+        s.state.position = Vec3::new(0.0, 4.0, 0.0);
+        s.state.velocity = Vec3::new(0.0, 0.0, -100.0);
+        // 60 deg of roll: right wing tip (z = +4.55) swings to 4.55 * sin(60 deg) = 3.9 m below the centre
+        let heading = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f64::consts::FRAC_PI_2);
+        let roll = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), 60.0_f64.to_radians());
+        s.state.orientation = heading.compose(roll).normalized();
+        s.step(DT);
+        assert!(s.state.crashed, "tip at ~0.1 m minus hull radius must already be in contact");
+        assert_eq!(s.state.crash_kind, CRASH_GROUND);
+    }
+
+    #[test]
+    fn impact_warning_counts_down_towards_a_wall_and_is_clear_otherwise() {
+        let mut s = fighter();
+        assert_eq!(s.derived.impact_time, IMPACT_NONE);
+        // wall whose near face is 800 m ahead at 180 m/s -> roughly 4.4 s
+        s.set_world(World::from_instances(&[0.0, -1000.0, 400.0, 3000.0]));
+        let t = s.derived.impact_time;
+        assert!(t > 3.8 && t < 5.0, "impact_time = {t}");
+        s.set_world(World::empty());
+        assert_eq!(s.derived.impact_time, IMPACT_NONE);
+    }
+
+    #[test]
+    fn impact_warning_sees_the_ground_in_a_dive() {
+        let mut s = fighter();
+        s.state.position.y = 500.0;
+        s.state.velocity = Vec3::new(0.0, -100.0, -100.0);
+        s.step(1e-6);
+        assert!(s.derived.impact_time < 6.0, "impact_time = {}", s.derived.impact_time);
     }
 
     #[test]

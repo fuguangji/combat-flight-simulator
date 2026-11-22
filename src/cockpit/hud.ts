@@ -1,6 +1,6 @@
 import type { AircraftDefinition } from '../aircraft/registry';
-import { radToDeg } from '../core/math';
-import type { AircraftSnapshot } from '../physics/stateLayout';
+import { quatRotate, radToDeg, type Quat } from '../core/math';
+import { CRASH_BUILDING, type AircraftSnapshot } from '../physics/stateLayout';
 import { attitudeFromQuat } from './camera';
 
 const GREEN = '#7dff9a';
@@ -34,18 +34,21 @@ export class Hud {
     }
   }
 
-  draw(s: AircraftSnapshot | null, def: AircraftDefinition, nowMs: number): void {
+  /** `fovY` is the field of view actually used by the 3D camera (it varies with speed). */
+  draw(s: AircraftSnapshot | null, def: AircraftDefinition, nowMs: number, fovY = def.fovY): void {
     this.fit();
     const { ctx, w, h } = this;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     if (!s) return;
 
+    if (s.crashed) this.drawCrashOverlay(s);
+
     const u = Math.max(0.7, h / 800); // UI scale
     const cx = w / 2;
     const cy = h / 2;
     const att = attitudeFromQuat(s.orientation);
-    const pxPerUnit = h / 2 / Math.tan(def.fovY / 2); // pixels per tan(angle)
+    const pxPerUnit = h / 2 / Math.tan(fovY / 2); // pixels per tan(angle)
 
     ctx.strokeStyle = GREEN;
     ctx.fillStyle = GREEN;
@@ -83,6 +86,25 @@ export class Hud {
       }
     }
     ctx.restore();
+
+    // --- Flight path marker: where the aircraft is actually going (differs from the nose by AoA / sideslip)
+    const conj: Quat = [-s.orientation[0], -s.orientation[1], -s.orientation[2], s.orientation[3]];
+    const vb = quatRotate(conj, s.velocity);
+    if (!s.crashed && vb[0] > 5) {
+      const fx = cx + (vb[2] / vb[0]) * pxPerUnit;
+      const fy = cy - (vb[1] / vb[0]) * pxPerUnit;
+      if (Math.abs(fx - cx) < w && Math.abs(fy - cy) < h) {
+        ctx.beginPath();
+        ctx.arc(fx, fy, 7 * u, 0, Math.PI * 2);
+        ctx.moveTo(fx - 17 * u, fy);
+        ctx.lineTo(fx - 7 * u, fy);
+        ctx.moveTo(fx + 7 * u, fy);
+        ctx.lineTo(fx + 17 * u, fy);
+        ctx.moveTo(fx, fy - 7 * u);
+        ctx.lineTo(fx, fy - 15 * u);
+        ctx.stroke();
+      }
+    }
 
     // --- Boresight
     ctx.beginPath();
@@ -148,12 +170,35 @@ export class Hud {
     ctx.textAlign = 'center';
     ctx.font = `bold ${26 * u}px system-ui, sans-serif`;
     ctx.fillStyle = WARN;
+    const impact = s.impactTime < 6;
     if (s.crashed) {
-      ctx.fillText('CRASHED — 按 R 重置', cx, cy + 0.28 * h);
-    } else if (s.altitude < 400 && s.velocity[1] < -5 && blink) {
-      ctx.fillText('PULL UP', cx, cy + 0.28 * h);
+      ctx.fillText(s.crashKind === CRASH_BUILDING ? 'COLLISION' : 'CRASHED', cx, cy + 0.28 * h);
+    } else if (impact) {
+      if (blink) ctx.fillText('PULL UP', cx, cy + 0.28 * h);
+      ctx.font = `${16 * u}px ui-monospace, Menlo, Consolas, monospace`;
+      ctx.fillText(`IMPACT ${s.impactTime.toFixed(1)} s`, cx, cy + 0.28 * h + 30 * u);
     } else if (s.stallWarning && blink) {
       ctx.fillText('STALL', cx, cy + 0.28 * h);
     }
+  }
+
+  /** Bright flash at the moment of impact, then a darkening vignette. */
+  private drawCrashOverlay(s: AircraftSnapshot): void {
+    const { ctx, w, h } = this;
+    const since = Math.max(0, s.time - s.crashTime);
+    const flash = Math.max(0, 1 - since * 3.2);
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, ${Math.round(210 - 120 * (1 - flash))}, ${Math.round(150 * flash)}, ${(flash * 0.85).toFixed(3)})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+    const dark = Math.min(0.75, since * 0.55);
+    if (dark > 0) {
+      const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.15, w / 2, h / 2, Math.max(w, h) * 0.75);
+      g.addColorStop(0, `rgba(30, 0, 0, ${(dark * 0.25).toFixed(3)})`);
+      g.addColorStop(1, `rgba(0, 0, 0, ${dark.toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+    ctx.fillStyle = GREEN;
   }
 }

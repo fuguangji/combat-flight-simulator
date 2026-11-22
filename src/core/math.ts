@@ -48,3 +48,43 @@ export function quatRotate(q: Quat, v: Vec3): Vec3 {
 
 export const radToDeg = (r: number): number => (r * 180) / Math.PI;
 export const degToRad = (d: number): number => (d * Math.PI) / 180;
+
+export function quatMultiply(a: Quat, b: Quat): Quat {
+  const [ax, ay, az, aw] = a;
+  const [bx, by, bz, bw] = b;
+  return [
+    aw * bx + ax * bw + ay * bz - az * by,
+    aw * by - ax * bz + ay * bw + az * bx,
+    aw * bz + ax * by - ay * bx + az * bw,
+    aw * bw - ax * bx - ay * by - az * bz,
+  ];
+}
+
+/** Rotation by an angular velocity `w` (body frame, rad/s) applied for `dt` seconds: q * exp(w dt / 2). */
+export function quatIntegrate(q: Quat, w: Vec3, dt: number): Quat {
+  const mag = Math.hypot(w[0], w[1], w[2]);
+  const half = (mag * dt) / 2;
+  if (half < 1e-9) return q;
+  const k = Math.sin(half) / mag;
+  return quatNormalize(quatMultiply(q, [w[0] * k, w[1] * k, w[2] * k, Math.cos(half)]));
+}
+
+export const vecAdd = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+export const vecScale = (a: Vec3, s: number): Vec3 => [a[0] * s, a[1] * s, a[2] * s];
+export const vecCross = (a: Vec3, b: Vec3): Vec3 => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0],
+];
+export function vecNormalize(a: Vec3): Vec3 {
+  const n = Math.hypot(a[0], a[1], a[2]);
+  return n > 1e-12 ? [a[0] / n, a[1] / n, a[2] / n] : [0, 0, 0];
+}
+
+export const smoothstep = (e0: number, e1: number, x: number): number => {
+  const t = clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/** Exponential smoothing factor that is independent of frame rate. */
+export const damp = (rate: number, dt: number): number => 1 - Math.exp(-rate * dt);

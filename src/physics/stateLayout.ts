@@ -1,4 +1,4 @@
-import { lerp, lerpVec3, quatSlerp, type Quat, type Vec3 } from '../core/math';
+import { lerp, lerpVec3, quatIntegrate, quatSlerp, type Quat, type Vec3 } from '../core/math';
 
 /** Must match the table in wasm/physics-engine/src/lib.rs. */
 export const STATE_LEN = 32;
@@ -19,7 +19,15 @@ export const S = {
   THROTTLE: 21,
   QBAR: 22,
   STALL_WARN: 23,
+  CRASH_KIND: 24, // 0 none, 1 ground, 2 building
+  IMPACT_TIME: 25, // s until the straight-line flight path meets terrain (99 = clear)
+  CRASH_TIME: 26, // simulated time of the crash
 } as const;
+
+export const CRASH_NONE = 0;
+export const CRASH_GROUND = 1;
+export const CRASH_BUILDING = 2;
+export const IMPACT_CLEAR = 99;
 
 export interface AircraftSnapshot {
   /** Simulated seconds since reset. */
@@ -38,6 +46,9 @@ export interface AircraftSnapshot {
   throttle: number;
   dynamicPressure: number;
   stallWarning: boolean;
+  crashKind: number; // CRASH_*
+  crashTime: number; // simulated seconds; meaningful only when crashed
+  impactTime: number; // seconds to predicted impact, IMPACT_CLEAR when none
 }
 
 export function decodeSnapshot(b: ArrayLike<number>): AircraftSnapshot {
@@ -57,19 +68,44 @@ export function decodeSnapshot(b: ArrayLike<number>): AircraftSnapshot {
     throttle: b[S.THROTTLE],
     dynamicPressure: b[S.QBAR],
     stallWarning: b[S.STALL_WARN] > 0.5,
+    crashKind: b[S.CRASH_KIND],
+    crashTime: b[S.CRASH_TIME],
+    impactTime: b[S.IMPACT_TIME],
   };
 }
 
-/** Linear interpolation of positions/scalars, slerp of orientation. */
-export function interpolateSnapshots(a: AircraftSnapshot, b: AircraftSnapshot, t: number): AircraftSnapshot {
+/** Cubic Hermite position between two snapshots using the velocities as tangents (C1-continuous). */
+function hermite(a: AircraftSnapshot, b: AircraftSnapshot, t: number): Vec3 {
+  const h = b.time - a.time;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1;
+  const h10 = t3 - 2 * t2 + t;
+  const h01 = -2 * t3 + 3 * t2;
+  const h11 = t3 - t2;
+  const out: Vec3 = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    out[i] = h00 * a.position[i] + h10 * h * a.velocity[i] + h01 * b.position[i] + h11 * h * b.velocity[i];
+  }
+  return out;
+}
+
+/**
+ * Interpolation of positions/scalars, slerp of orientation.
+ * With `smooth` the position follows a cubic Hermite curve through both velocities instead of a
+ * straight segment, which removes the visible "corners" at the 30 Hz snapshot boundaries.
+ * The crash step is always interpolated linearly because the velocity jumps to zero there.
+ */
+export function interpolateSnapshots(a: AircraftSnapshot, b: AircraftSnapshot, t: number, smooth = false): AircraftSnapshot {
   const pick = t < 0.5 ? a : b;
+  const useHermite = smooth && !b.crashed && b.time > a.time;
   return {
     time: lerp(a.time, b.time, t),
-    position: lerpVec3(a.position, b.position, t),
+    position: useHermite ? hermite(a, b, t) : lerpVec3(a.position, b.position, t),
     orientation: quatSlerp(a.orientation, b.orientation, t),
     velocity: lerpVec3(a.velocity, b.velocity, t),
     angularVelocity: lerpVec3(a.angularVelocity, b.angularVelocity, t),
-    crashed: b.crashed,
+    crashed: t >= 1 ? b.crashed : a.crashed,
     airspeed: lerp(a.airspeed, b.airspeed, t),
     altitude: lerp(a.altitude, b.altitude, t),
     mach: lerp(a.mach, b.mach, t),
@@ -79,5 +115,23 @@ export function interpolateSnapshots(a: AircraftSnapshot, b: AircraftSnapshot, t
     throttle: lerp(a.throttle, b.throttle, t),
     dynamicPressure: lerp(a.dynamicPressure, b.dynamicPressure, t),
     stallWarning: pick.stallWarning,
+    crashKind: b.crashKind,
+    crashTime: b.crashTime,
+    impactTime: lerp(a.impactTime, b.impactTime, t),
+  };
+}
+
+/** Dead-reckon the newest snapshot forward by `dt` seconds (used when a snapshot is late). */
+export function extrapolateSnapshot(s: AircraftSnapshot, dt: number): AircraftSnapshot {
+  if (s.crashed || dt <= 0) return s;
+  return {
+    ...s,
+    time: s.time + dt,
+    position: [
+      s.position[0] + s.velocity[0] * dt,
+      s.position[1] + s.velocity[1] * dt,
+      s.position[2] + s.velocity[2] * dt,
+    ],
+    orientation: quatIntegrate(s.orientation, s.angularVelocity, dt),
   };
 }

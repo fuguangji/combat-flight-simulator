@@ -1,4 +1,4 @@
-import { INTERP_DELAY_MS } from '../core/config';
+import { INTERP_DELAY_MS, MAX_EXTRAPOLATION_MS } from '../core/config';
 import { SnapshotBuffer } from './snapshotBuffer';
 import { decodeSnapshot, type AircraftSnapshot } from './stateLayout';
 
@@ -24,7 +24,7 @@ export type WorkerOut =
 /** Main-thread handle to the physics worker. Owns the interpolation buffer. */
 export class PhysicsClient {
   private readonly worker: Worker;
-  private readonly buffer = new SnapshotBuffer(INTERP_DELAY_MS);
+  private readonly buffer = new SnapshotBuffer(INTERP_DELAY_MS, { smooth: true, maxExtrapolationMs: MAX_EXTRAPOLATION_MS });
   private rateWindowStart = performance.now();
   private rateCount = 0;
   /** Snapshots per second actually received (should read ~30). */

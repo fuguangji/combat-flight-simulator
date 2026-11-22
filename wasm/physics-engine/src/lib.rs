@@ -22,21 +22,30 @@
 //! | 21    | throttle 0..1                             |
 //! | 22    | dynamic pressure (Pa)                     |
 //! | 23    | stall warning (0/1)                       |
-//! | 24..31| reserved                                  |
+//! | 24    | crash kind (0 none, 1 ground, 2 building) |
+//! | 25    | predicted time to impact (s, 99 = clear)  |
+//! | 26    | simulated time of the crash (s)           |
+//! | 27..31| reserved                                  |
+//!
+//! Scene upload (API v2): the host calls `sim_scene_alloc(4 * n)`, writes `n` instances
+//! (x, z, width, height as f32) at the returned address, then `sim_scene_commit(n)`.
 
 pub mod aircraft;
 pub mod atmosphere;
+pub mod collision;
 pub mod flight;
 pub mod math;
 
 use aircraft::AircraftParams;
+use collision::World;
 use flight::{Controls, Sim};
 
 pub const STATE_LEN: usize = 32;
-pub const API_VERSION: u32 = 1;
+pub const API_VERSION: u32 = 2;
 
 static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
+static mut SCENE: Vec<f32> = Vec::new();
 
 /// WebAssembly is single-threaded here (one worker owns the instance), so this global is safe.
 fn sim() -> &'static mut Sim {
@@ -74,6 +83,9 @@ pub fn write_snapshot(sim: &Sim, out: &mut [f64; STATE_LEN]) {
     out[21] = sim.controls.throttle;
     out[22] = d.dynamic_pressure;
     out[23] = if d.stall_warning { 1.0 } else { 0.0 };
+    out[24] = s.crash_kind as f64;
+    out[25] = d.impact_time;
+    out[26] = s.crash_time;
 }
 
 #[no_mangle]
@@ -87,12 +99,43 @@ pub extern "C" fn sim_init(aircraft_id: u32) -> u32 {
     match AircraftParams::by_id(aircraft_id) {
         Some(params) => {
             unsafe {
-                *core::ptr::addr_of_mut!(SIM) = Some(Sim::new(params));
+                let slot = &mut *core::ptr::addr_of_mut!(SIM);
+                // keep the uploaded scene when the aircraft model is (re)selected
+                let world = slot.take().map(|old| old.world).unwrap_or_default();
+                let mut fresh = Sim::new(params);
+                fresh.set_world(world);
+                *slot = Some(fresh);
             }
             1
         }
         None => 0,
     }
+}
+
+/// Reserve room for `floats` f32 values of scene data and return its address in linear memory.
+/// The host must re-read `memory.buffer` after this call (the allocation may grow memory).
+#[no_mangle]
+pub extern "C" fn sim_scene_alloc(floats: u32) -> *mut f32 {
+    unsafe {
+        let buf = &mut *core::ptr::addr_of_mut!(SCENE);
+        buf.clear();
+        buf.resize(floats as usize, 0.0);
+        buf.as_mut_ptr()
+    }
+}
+
+/// Build the collision world from the first `count` instances written into the scene buffer.
+/// Returns how many buildings were accepted.
+#[no_mangle]
+pub extern "C" fn sim_scene_commit(count: u32) -> u32 {
+    let world = unsafe {
+        let buf = &*core::ptr::addr_of!(SCENE);
+        let n = (count as usize).min(buf.len() / 4);
+        World::from_instances(&buf[..n * 4])
+    };
+    let accepted = world.building_count() as u32;
+    sim().set_world(world);
+    accepted
 }
 
 #[no_mangle]
@@ -139,6 +182,8 @@ mod tests {
         assert_eq!(out[16], sim.state.position.y);
         assert!((out[13] - 1.0 / 30.0).abs() < 1e-12);
         assert!(out[15] > 100.0);
+        assert_eq!(out[24], 0.0);
+        assert_eq!(out[25], flight::IMPACT_NONE);
         let q = (out[3] * out[3] + out[4] * out[4] + out[5] * out[5] + out[6] * out[6]).sqrt();
         assert!((q - 1.0).abs() < 1e-9);
     }
