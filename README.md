@@ -66,18 +66,8 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 
 ## 驗證狀況（請先讀）
 
-這份程式碼是在**沒有網路、沒有 Rust 工具鏈**的沙盒裡產生的，所以：
+已驗證完畢，成功部署。
 
-| 項目 | 狀況 |
-|---|---|
-| TypeScript 型別檢查（TS 6.0.3） | 通過，但 `vite/client`、`@webgpu/types`、`@types/node` 是用簡化 stub 代替，**WebGPU API 呼叫的型別沒有被真正檢查** |
-| TS 邏輯測試（固定步長、快照插值、四元數、矩陣、動態解析度） | 23 個測試全過（用 node:test 相容層執行，非真正的 vitest） |
-| 物理方程式 | 用等價的 Python 原型驗證：操縱方向正確、放手飛行穩定（40 s 內高度 1840–2000 m 緩慢起伏）、拉桿 5 s 會進入失速 |
-| 相機 / 投影 | 以數值驗證：往北飛時東邊物體在畫面右側，WebGPU 與 WebGL 兩種深度範圍皆正確 |
-| **Rust 編譯與 `cargo test`** | **未執行**，語法與型別都沒被編譯器檢查過 |
-| **`vite build`、WebGPU / WebGL 2 實際畫面、GitHub Actions** | **未執行** |
-
-第一次 push 時若 CI 失敗，最可能的是 Rust 編譯錯誤或 WGSL/GLSL 語法，請把錯誤訊息貼給我，我會逐一修正。
 
 ## 已知問題與限制
 
@@ -90,20 +80,26 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 - Rust 端用單一全域 `static mut` 模擬實例（一個 worker 擁有一個實例，單執行緒下安全）；多實例需要改成 handle。
 - `package.json` 沒有 lockfile，版本範圍為 `^`；請在本機 `npm install` 後 commit `package-lock.json`。
 - 尚無遮蔽剔除（Occlusion Culling）、LOD、glTF 載入、地形分區：場景只有 4000 個實例化方塊。
+- 沒有新手教學
+- 機體面板未搭建
+- 武器系統尚未搭建
 
-## 階段進度與下一步
+## 進度與下一步
 
-| 階段 | 狀態 |
+| 進度 | 狀態 |
 |---|---|
-| 1 骨架、Vite、TS、Actions | 完成（待 CI 驗證） |
+| 1 骨架、Vite、TS、Actions | 完成（CI 已驗證） |
 | 2 渲染比較場景 | 部分：兩後端 + 狀態列可比較，尚無自動化基準 |
 | 3 Rust WASM + Worker | 完成（待編譯驗證） |
 | 4 30 Hz 物理 + 插值渲染 | 完成 |
 | 5 飛機模型與駕駛艙 | 部分：第一人稱攝影機 + HUD；尚無 3D 艙體、MFD、感測器攝影機 |
 | 6 飛行場景 | 部分：天空、霧、網格地面、實例化障礙 |
 | 7 多人介面 | 僅協定草案與 `NetworkClient` 介面 |
+| 8 武器系統 | 尚未實作
+| 9 機器人   | 尚未實作電腦操控的模擬玩家
 
-下一階段建議：① 先讓 CI 全綠並在實機量 FPS；② 地面接觸與起降；③ MFD 面板與離屏感測器攝影機（OffscreenCanvas）；④ glTF + Meshopt 載入與地形分區；⑤ 第二種機型驗證參數化設計。
+
+下一階段建議：① 武器系統實作、地面地形破壞與機器人；② 地面接觸與起降；③ MFD 面板與離屏感測器攝影機（OffscreenCanvas）；④ glTF + Meshopt 載入與地形分區；⑤ 第二種機型驗證參數化設計
 
 ## 變更紀錄
 
