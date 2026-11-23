@@ -2,7 +2,10 @@
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#000000" />
     <title>Combat Flight Simulator</title>
   </head>
   <body data-mode="loading">
@@ -35,6 +38,7 @@
             <tr><th>滑鼠</th><td>環顧四周（點擊畫面鎖定滑鼠；若瀏覽器不允許則按住左鍵拖曳，放開自動回正）。只轉動視角，飛機仍以機首為準</td></tr>
             <tr><th>C / 滑鼠中鍵</th><td>視角回正</td></tr>
             <tr><th>Esc / P</th><td>暫停</td></tr>
+            <tr><th>觸控</th><td>左下搖桿＝俯仰 / 滾轉（往下拉＝抬頭）、右側滑桿＝油門（頂端＝後燃器）、◀ ▶＝方向舵、拖曳畫面＝環顧（放開回正）、右上 ❚❚＝暫停</td></tr>
             <tr><th>N</th><td>（教學模式）略過目前步驟</td></tr>
             <tr><th>R</th><td>重新開始</td></tr>
           </table>
@@ -44,17 +48,18 @@
           </p>
         </section>
         <dl class="spec">
-          <div><dt>機型</dt><dd id="spec-aircraft">—</dd></div>
-          <div><dt>起始</dt><dd>2,000 m · 350 KT · 北向</dd></div>
+          <div><dt>機型</dt><dd><select id="aircraft-select" aria-label="選擇機型"></select></dd></div>
+          <div><dt>起始</dt><dd id="spec-start">—</dd></div>
           <div><dt>渲染</dt><dd id="spec-backend">—</dd></div>
         </dl>
+        <p id="aircraft-desc" class="aircraft-desc"></p>
       </div>
-      <p class="foot">按 <kbd>Enter</kbd> 或 <kbd>空白鍵</kbd> 起飛</p>
+      <p class="foot">按 <kbd>Enter</kbd> 或 <kbd>空白鍵</kbd> 起飛<span class="touch-only">　·　手機：點「起飛」，橫向握持</span></p>
     </main>
 
     <!-- 新手教學 -->
     <aside id="tutorial" hidden aria-live="polite">
-      <div class="t-head"><span id="tutorial-step">1 / 10</span><span class="t-skip">按 <kbd>N</kbd> 略過此步</span></div>
+      <div class="t-head"><span id="tutorial-step">1 / 10</span><span class="t-skip" id="tutorial-skip">按 <kbd>N</kbd> 略過此步</span></div>
       <strong id="tutorial-title"></strong>
       <p id="tutorial-hint"></p>
       <div class="t-bar"><i id="tutorial-bar"></i></div>
@@ -85,6 +90,7 @@
       </div>
     </div>
 
+    <div id="rotate" aria-hidden="true"><p>請將裝置轉為橫向</p></div>
     <div id="fade"></div>
     <div id="error" hidden></div>
     <script type="module" src="/src/main.ts"></script>

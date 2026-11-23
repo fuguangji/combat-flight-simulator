@@ -51,7 +51,7 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 | `src/physics` | 快照格式、插值緩衝區、worker 用戶端 |
 | `src/rendering` | `Renderer` 介面、WebGPU / WebGL 2 後端、測試場景、動態解析度 |
 | `src/cockpit` | 駕駛艙攝影機、姿態計算、HUD |
-| `src/aircraft` | 機型定義（眼點、FOV；氣動參數在 Rust 端，以 `id` 對應） |
+| `src/aircraft` | 機型：`data/*.json`（駕駛艙＋物理參數）、`AircraftDefinition` / `AircraftRegistry`（驗證與註冊） |
 | `src/networking` | 多人協定草案與 `NetworkClient` 介面（第一版為離線實作） |
 | `docs/PHYSICS.md` | 座標系、方程式、參數單位與假設 |
 
@@ -70,6 +70,7 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 
 ## 已知問題與限制
 
+- 手機版：觸控介面依 `(pointer: coarse)` 偵測（`?touch=1` / `?touch=0` 可強制）；iOS Safari 不支援全螢幕與方向鎖定，只會顯示「請轉橫向」提示。
 - 沒有起降：機身任一碰撞點碰到地面（`y = 0`）或建築即判定墜毀。起始在 2000 m、180 m/s。碰撞是剛性判定（無損傷、無彈跳、無殘骸動畫）；機身以 7 個點的外殼近似，不是網格碰撞。
 - `PULL UP` 已會模擬「改平＋以當下可用過載拉起」的逃脫軌跡，但仍是質點近似（不含阻力與推力變化、只考慮向上拉起，不考慮側向閃避）。
 - 氣動係數是手調的「通用輕型戰鬥機」，**不是任何真實機型的資料**；已有燃油、後燃器、馬赫相依氣動與舵面作動器，但沒有地面效應、起落架、襟翼 / 減速板、風切。
@@ -103,6 +104,20 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 下一階段建議（以下均為遊戲內原創、虛構的互動機制）：① 建立裝備互動玩法：可操作的發射流程、獨立飛行投射物、遊戲內目標關聯狀態、碰撞與命中判定；② 建立 AI 航空器及空中對抗狀態；③ 建立雷達、目標選取 / 資訊追蹤介面與 MFD，必要時加入離屏感測器攝影機（OffscreenCanvas）；④ 建立任務框架、任務目標、勝負條件及結算；⑤ 完成 3D 駕駛艙、glTF + Meshopt 載入與地形分區；⑥ 加入第二種原創機型，驗證機型參數化設計；⑦ 地面接觸與起降；⑧ 再評估多人同步及地形互動。
 
 ## 變更紀錄
+
+### 機型資料化與手機版（2026-11-23）
+**機型（JSON ＋ 物件導向）**
+- 機型改為 `src/aircraft/data/*.json`，由 `AircraftDefinition`（驗證、衍生屬性、`toPhysicsArray()`）與 `AircraftRegistry`（註冊、查詢、重複檢查）管理；新增機型只需放一份 JSON。錯誤的資料會一次列出所有問題（`AircraftDataError`）。
+- 物理參數改由 JS 上傳（WASM **API 3 → 4**：`sim_param_alloc` / `sim_aircraft_commit`；`sim_init(0)` 仍保留）。Rust 端 `AircraftParams::from_slice` 負責範圍檢查。
+- 新增兩種機型：**Light Trainer**（無後燃器、易飛）與 **Heavy Interceptor**（高速、遲緩）；主頁可選機（記住上次選擇，`?aircraft=<key>` 可指定）；教學會依機型略過後燃器步驟；HUD 燃油百分比改用機型油量。
+- 測試：`wasm/physics-engine/tests/aircraft_data.rs`（JSON 與內建參數一致、拒絕壞資料、每機型可飛與操縱方向、性能排序）、`tests/aircraft.test.ts`、`tests/wasm.test.ts`（逐一上傳 JSON）。
+
+**手機版**（`src/ui/touch.ts`、`style.css`、`index.html`）
+- 觸控介面：左下虛擬搖桿（俯仰 / 滾轉，含死區與柔和曲線）、右側油門滑桿（頂端 15% 為後燃器區）、◀ ▶ 方向舵、右上暫停與視角回正；單指拖曳畫面環顧、放開回正。與鍵盤並存（軸相加）。
+- 版面：窄 / 矮螢幕縮小主頁、HUD 狀態區移到左上、教學面板縮小（點一下略過）、直向時顯示「請轉橫向」、解析度上限降為 1.5×、支援 safe-area；開始飛行時嘗試全螢幕並鎖定橫向。
+- 驗證：觸控的純函式（`stickCurve`、`stickVector`、`sliderValue`）有單元測試。**未驗證**：真機操作手感、各機型的實機飛行感受、版面在各種手機尺寸的表現。
+
+**未做：虛擬導彈與地形破壞**——這項我不實作（武器系統的實作先前已被安全分類器擋下），README 仍列為待辦。
 
 ### 自由視角（2026-11-23）
 - 滑鼠可環顧駕駛艙：點擊畫面鎖定滑鼠（Esc 解除並暫停）；瀏覽器拒絕鎖定時改為按住左鍵拖曳、放開自動回正。 `C` 或中鍵回正。範圍：左右 ±150°、上 85° / 下 60°。

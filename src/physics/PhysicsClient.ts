@@ -10,7 +10,8 @@ export interface ControlInput {
 }
 
 export type WorkerIn =
-  | { type: 'init'; wasmUrl: string; aircraftId: number }
+  | { type: 'init'; wasmUrl: string; params: number[] }
+  | { type: 'aircraft'; params: number[] }
   | { type: 'controls'; c: [number, number, number, number] }
   | { type: 'reset' }
   | { type: 'pause' }
@@ -35,7 +36,7 @@ export class PhysicsClient {
     this.worker = new Worker(new URL('../../workers/physics.worker.ts', import.meta.url), { type: 'module' });
   }
 
-  start(wasmUrl: string, aircraftId = 0, timeoutMs = 10_000): Promise<void> {
+  start(wasmUrl: string, params: ArrayLike<number>, timeoutMs = 10_000): Promise<void> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Physics worker timed out during startup')), timeoutMs);
       this.worker.onerror = (e) => {
@@ -55,7 +56,7 @@ export class PhysicsClient {
           this.onMessage(m); // initial snapshot is posted just before 'ready'
         }
       };
-      this.post({ type: 'init', wasmUrl, aircraftId });
+      this.post({ type: 'init', wasmUrl, params: Array.from(params) });
     });
   }
 
@@ -76,6 +77,12 @@ export class PhysicsClient {
 
   private post(m: WorkerIn): void {
     this.worker.postMessage(m);
+  }
+
+  /** Switch to another aircraft (flat parameter array); the simulation restarts from its start state. */
+  setAircraft(params: ArrayLike<number>): void {
+    this.buffer.clear();
+    this.post({ type: 'aircraft', params: Array.from(params) });
   }
 
   setControls(c: ControlInput): void {

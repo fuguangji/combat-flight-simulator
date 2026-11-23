@@ -7,7 +7,6 @@ import { attitudeFromQuat, bodyDirToView } from './camera';
 const GREEN = '#7dff9a';
 const WARN = '#ff5a4d';
 const CAUTION = '#ffc233';
-const FUEL_CAPACITY_KG = 3000; // matches wasm aircraft.rs (generic-fighter)
 const MS_TO_KT = 1.943844;
 const M_TO_FT = 3.28084;
 
@@ -17,6 +16,8 @@ export class Hud {
   private w = 0;
   private h = 0;
   private dpr = 1;
+  /** Touch layout: status block moves to the top-left so the on-screen controls stay clear. */
+  compact = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -47,7 +48,7 @@ export class Hud {
 
     if (s.crashed) this.drawCrashOverlay(s);
 
-    const u = Math.max(0.7, h / 800); // UI scale
+    const u = Math.max(this.compact ? 0.85 : 0.7, h / 800); // UI scale
     const cx = w / 2;
     const cy = h / 2;
     const att = attitudeFromQuat(s.orientation);
@@ -135,7 +136,7 @@ export class Hud {
     }
     if (lookAway) {
       ctx.textAlign = 'center';
-      ctx.fillText(`LOOK ${radToDeg(look.yaw).toFixed(0)}° / ${radToDeg(look.pitch).toFixed(0)}°  (C = 回正)`, cx, h - 24 * u);
+      ctx.fillText(`LOOK ${radToDeg(look.yaw).toFixed(0)}° / ${radToDeg(look.pitch).toFixed(0)}°  ${this.compact ? '(放開回正)' : '(C = 回正)'}`, cx, h - 24 * u);
     }
 
     // --- Heading tape
@@ -180,12 +181,12 @@ export class Hud {
 
     // --- Lower-left status
     ctx.textAlign = 'left';
-    const bx = 0.04 * w;
-    const by = h - 130 * u;
+    const bx = (this.compact ? 0.02 : 0.04) * w;
+    const by = this.compact ? 0.3 * h : h - 130 * u;
     ctx.fillText(`THR ${(s.throttle * 100).toFixed(0)}%${s.afterburner ? '  AB' : ''}`, bx, by);
     ctx.fillText(`G   ${s.loadFactor.toFixed(1)}${s.gLimiting ? '  LIM' : ''}`, bx, by + 20 * u);
     ctx.fillText(`AOA ${radToDeg(s.alpha).toFixed(1)}°`, bx, by + 40 * u);
-    const fuelPct = (s.fuel / FUEL_CAPACITY_KG) * 100;
+    const fuelPct = (s.fuel / def.fuelCapacity) * 100;
     ctx.fillStyle = fuelPct < 10 ? WARN : fuelPct < 25 ? CAUTION : GREEN;
     ctx.fillText(`FUEL ${s.fuel.toFixed(0)} kg (${fuelPct.toFixed(0)}%)`, bx, by + 60 * u);
     ctx.fillStyle = GREEN;

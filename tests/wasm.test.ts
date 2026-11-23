@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PHYSICS_DT, WASM_API_VERSION } from '../src/core/config';
 import { buildTestScene } from '../src/rendering/scene';
+import { AircraftDefinition } from '../src/aircraft/registry';
 import { activeWarnings } from '../src/physics/warnings';
 import { CRASH_BUILDING, CRASH_GROUND, IMPACT_CLEAR, STATE_LEN, decodeSnapshot } from '../src/physics/stateLayout';
 
@@ -12,6 +13,8 @@ interface Exports {
   memory: WebAssembly.Memory;
   sim_api_version(): number;
   sim_init(id: number): number;
+  sim_param_alloc(len: number): number;
+  sim_aircraft_commit(len: number): number;
   sim_reset(): void;
   sim_set_controls(t: number, p: number, r: number, y: number): void;
   sim_step(dt: number): void;
@@ -151,5 +154,37 @@ describe.skipIf(!existsSync(wasmPath))('physics WASM module', () => {
     const after = snapshot(w);
     expect(after.fuel).toBeLessThan(before);
     expect(after.afterburner).toBe(true);
+  });
+
+  it('loads every aircraft JSON through the parameter upload and starts in its start state', async () => {
+    const { readdirSync } = await import('node:fs');
+    const dir = fileURLToPath(new URL('../src/aircraft/data/', import.meta.url));
+    const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+    expect(files.length).toBeGreaterThanOrEqual(3);
+    for (const f of files) {
+      const def = AircraftDefinition.fromJson(JSON.parse(readFileSync(dir + f, 'utf8')), f);
+      const w = await load();
+      const params = def.toPhysicsArray();
+      const ptr = w.sim_param_alloc(params.length);
+      new Float64Array(w.memory.buffer, ptr, params.length).set(params);
+      expect(w.sim_aircraft_commit(params.length), f).toBe(1);
+      const s = snapshot(w);
+      expect(s.altitude, f).toBeCloseTo(def.startAltitude, 6);
+      expect(s.fuel, f).toBeCloseTo(def.fuelCapacity, 6);
+      expect(s.throttle, f).toBeCloseTo(def.startThrottle, 6);
+      for (let i = 0; i < 90; i++) w.sim_step(PHYSICS_DT);
+      expect(snapshot(w).crashed, f).toBe(false);
+    }
+  });
+
+  it('rejects broken aircraft parameters and keeps the previous aircraft', async () => {
+    const w = await load();
+    w.sim_init(0);
+    const before = snapshot(w);
+    const bad = new Float64Array(5);
+    const ptr = w.sim_param_alloc(bad.length);
+    new Float64Array(w.memory.buffer, ptr, bad.length).set(bad);
+    expect(w.sim_aircraft_commit(bad.length)).toBe(0);
+    expect(snapshot(w)).toEqual(before);
   });
 });

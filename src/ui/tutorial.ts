@@ -23,14 +23,14 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'pitch',
     title: '俯仰',
-    hint: '按 ↓ 拉桿，讓機頭抬高到地平線上方約 10°（俯仰梯上的 10）。',
+    hint: '按 ↓ 拉桿（觸控：搖桿往下拉），讓機頭抬高到地平線上方約 10°（俯仰梯上的 10）。',
     test: (s) => attitude(s).pitch > 10,
     hold: 0.3,
   },
   {
     id: 'level',
     title: '改平',
-    hint: '按 ↑ 推回，讓機頭回到地平線附近（±4°），機翼保持水平。',
+    hint: '按 ↑ 推回（觸控：搖桿往上），讓機頭回到地平線附近（±4°），機翼保持水平。',
     test: (s) => {
       const a = attitude(s);
       return Math.abs(a.pitch) < 4 && Math.abs(a.roll) < 6;
@@ -40,21 +40,21 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'roll',
     title: '滾轉',
-    hint: '按 → 向右滾轉，直到飛機傾斜 45° 以上。',
+    hint: '按 →（觸控：搖桿往右）向右滾轉，直到飛機傾斜 45° 以上。',
     test: (s) => Math.abs(attitude(s).roll) > 45,
     hold: 0.3,
   },
   {
     id: 'unroll',
     title: '改正傾斜',
-    hint: '按 ← 把機翼改回水平（傾斜小於 6°）。',
+    hint: '按 ←（觸控：搖桿往左）把機翼改回水平（傾斜小於 6°）。',
     test: (s) => Math.abs(attitude(s).roll) < 6,
     hold: 1.0,
   },
   {
     id: 'throttle',
     title: '油門',
-    hint: '按住 W 把油門推到 80% 以上，觀察左下角 THR 與速度。',
+    hint: '按住 W（觸控：右側滑桿往上）把油門推到 80% 以上，觀察 THR 與速度。',
     test: (s) => s.throttle >= 0.8,
     hold: 0.5,
   },
@@ -68,7 +68,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     id: 'idle',
     title: '收油門',
-    hint: '按住 S 把油門收到 40% 以下。',
+    hint: '按住 S（觸控：滑桿往下）把油門收到 40% 以下。',
     test: (s) => s.throttle <= 0.4,
     hold: 0.5,
   },

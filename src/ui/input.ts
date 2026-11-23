@@ -18,6 +18,9 @@ export class KeyboardControls {
   /** N: skip the current tutorial step. */
   onSkip: (() => void) | null = null;
   private readonly down = new Set<string>();
+  /** Added to the keyboard axes (virtual stick / rudder on touch devices). */
+  touch: { pitch: number; roll: number; yaw: number } | null = null;
+  private readonly kb = { pitch: 0, roll: 0, yaw: 0 };
 
   constructor(startThrottle: number) {
     this.state = { throttle: startThrottle, pitch: 0, roll: 0, yaw: 0 };
@@ -36,9 +39,15 @@ export class KeyboardControls {
     window.addEventListener('blur', () => this.down.clear());
   }
 
+  /** Set the throttle directly (touch slider). */
+  setThrottle(v: number): void {
+    this.state.throttle = clamp(v, 0, 1);
+  }
+
   /** Back to neutral; used after a simulation reset. */
   reset(startThrottle: number): void {
     Object.assign(this.state, { throttle: startThrottle, pitch: 0, roll: 0, yaw: 0 });
+    Object.assign(this.kb, { pitch: 0, roll: 0, yaw: 0 });
   }
 
   private axis(current: number, neg: boolean, pos: boolean, dt: number, rate = 4, centre = 6): number {
@@ -54,9 +63,14 @@ export class KeyboardControls {
     const k = this.down;
     const s = this.state;
     // ArrowDown = stick back = nose up (+1)
-    s.pitch = this.axis(s.pitch, k.has('ArrowUp'), k.has('ArrowDown'), dt);
-    s.roll = this.axis(s.roll, k.has('ArrowLeft'), k.has('ArrowRight'), dt);
-    s.yaw = this.axis(s.yaw, k.has('KeyA'), k.has('KeyD'), dt);
+    const kb = this.kb;
+    kb.pitch = this.axis(kb.pitch, k.has('ArrowUp'), k.has('ArrowDown'), dt);
+    kb.roll = this.axis(kb.roll, k.has('ArrowLeft'), k.has('ArrowRight'), dt);
+    kb.yaw = this.axis(kb.yaw, k.has('KeyA'), k.has('KeyD'), dt);
+    const t = this.touch;
+    s.pitch = clamp(kb.pitch + (t?.pitch ?? 0), -1, 1);
+    s.roll = clamp(kb.roll + (t?.roll ?? 0), -1, 1);
+    s.yaw = clamp(kb.yaw + (t?.yaw ?? 0), -1, 1);
     if (k.has('KeyW')) s.throttle = clamp(s.throttle + 0.4 * dt, 0, 1);
     if (k.has('KeyS')) s.throttle = clamp(s.throttle - 0.4 * dt, 0, 1);
   }

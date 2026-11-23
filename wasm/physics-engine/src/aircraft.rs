@@ -6,6 +6,61 @@
 
 use crate::math::Vec3;
 
+/// Order of the scalar parameters in the flat array accepted by `AircraftParams::from_slice`;
+/// the collision hull points (x, y, z each) follow them. Mirrored in src/aircraft/physics-keys.json.
+pub const PARAM_NAMES: [&str; 47] = [
+    "empty_mass",
+    "fuel_capacity",
+    "inertia_x",
+    "inertia_y",
+    "inertia_z",
+    "ixy",
+    "wing_area",
+    "span",
+    "chord",
+    "max_thrust_sl",
+    "ab_thrust_sl",
+    "tsfc_mil",
+    "tsfc_ab",
+    "spool_up",
+    "spool_down",
+    "cl0",
+    "cl_alpha",
+    "alpha_stall",
+    "post_stall_cl",
+    "post_stall_cd",
+    "cd0",
+    "induced_k",
+    "cd_wave",
+    "cy_beta",
+    "cm0",
+    "cm_alpha",
+    "cl_beta",
+    "cn_beta",
+    "cl_p",
+    "cm_q",
+    "cn_r",
+    "cl_r",
+    "cn_aileron",
+    "cl_rudder",
+    "cm_elevator",
+    "cl_aileron",
+    "cn_rudder",
+    "actuator_tau",
+    "g_limit_pos",
+    "g_limit_neg",
+    "max_q",
+    "max_mach",
+    "start_altitude",
+    "start_speed",
+    "start_alpha",
+    "start_throttle",
+    "hull_radius",
+];
+
+/// Most hull points a custom aircraft may define.
+pub const MAX_HULL_POINTS: usize = 32;
+
 #[derive(Clone, Copy, Debug)]
 pub struct AircraftParams {
     pub name: &'static str,
@@ -141,6 +196,92 @@ impl AircraftParams {
             ],
             hull_radius: 1.0,
         }
+    }
+
+    /// Build parameters from the flat layout `[PARAM_NAMES values..., hull x y z ...]`.
+    /// Rejects non-finite or physically meaningless values instead of simulating garbage.
+    pub fn from_slice(v: &[f64]) -> Result<AircraftParams, &'static str> {
+        const N: usize = PARAM_NAMES.len();
+        if v.len() < N + 3 || (v.len() - N) % 3 != 0 {
+            return Err("parameter array has the wrong length");
+        }
+        let points = (v.len() - N) / 3;
+        if points > MAX_HULL_POINTS {
+            return Err("too many hull points");
+        }
+        if v.iter().any(|x| !x.is_finite()) {
+            return Err("parameters must be finite numbers");
+        }
+        let idx = |name: &str| PARAM_NAMES.iter().position(|n| *n == name).unwrap();
+        let g = |name: &str| v[idx(name)];
+        let positive = [
+            "empty_mass", "fuel_capacity", "inertia_x", "inertia_y", "inertia_z", "wing_area", "span", "chord",
+            "max_thrust_sl", "ab_thrust_sl", "spool_up", "spool_down", "cl_alpha", "alpha_stall", "actuator_tau",
+            "g_limit_pos", "max_q", "max_mach", "start_speed", "hull_radius",
+        ];
+        if positive.iter().any(|n| g(n) <= 0.0) {
+            return Err("a parameter that must be positive is not");
+        }
+        if g("alpha_stall") > 1.0 || g("g_limit_neg") >= 0.0 || g("ab_thrust_sl") < g("max_thrust_sl") {
+            return Err("parameter out of range (alpha_stall <= 1, g_limit_neg < 0, ab >= military thrust)");
+        }
+        if g("inertia_x") * g("inertia_y") <= g("ixy") * g("ixy") {
+            return Err("inertia tensor is not positive definite");
+        }
+        if !(0.0..=1.0).contains(&g("start_throttle")) {
+            return Err("start_throttle must be within 0..1");
+        }
+        let hull: Vec<[f64; 3]> = (0..points).map(|i| [v[N + 3 * i], v[N + 3 * i + 1], v[N + 3 * i + 2]]).collect();
+        Ok(AircraftParams {
+            name: "custom",
+            empty_mass: g("empty_mass"),
+            fuel_capacity: g("fuel_capacity"),
+            inertia: Vec3::new(g("inertia_x"), g("inertia_y"), g("inertia_z")),
+            ixy: g("ixy"),
+            wing_area: g("wing_area"),
+            span: g("span"),
+            chord: g("chord"),
+            max_thrust_sl: g("max_thrust_sl"),
+            ab_thrust_sl: g("ab_thrust_sl"),
+            tsfc_mil: g("tsfc_mil"),
+            tsfc_ab: g("tsfc_ab"),
+            spool_up: g("spool_up"),
+            spool_down: g("spool_down"),
+            cl0: g("cl0"),
+            cl_alpha: g("cl_alpha"),
+            alpha_stall: g("alpha_stall"),
+            post_stall_cl: g("post_stall_cl"),
+            post_stall_cd: g("post_stall_cd"),
+            cd0: g("cd0"),
+            induced_k: g("induced_k"),
+            cd_wave: g("cd_wave"),
+            cy_beta: g("cy_beta"),
+            cm0: g("cm0"),
+            cm_alpha: g("cm_alpha"),
+            cl_beta: g("cl_beta"),
+            cn_beta: g("cn_beta"),
+            cl_p: g("cl_p"),
+            cm_q: g("cm_q"),
+            cn_r: g("cn_r"),
+            cl_r: g("cl_r"),
+            cn_aileron: g("cn_aileron"),
+            cl_rudder: g("cl_rudder"),
+            cm_elevator: g("cm_elevator"),
+            cl_aileron: g("cl_aileron"),
+            cn_rudder: g("cn_rudder"),
+            actuator_tau: g("actuator_tau"),
+            g_limit_pos: g("g_limit_pos"),
+            g_limit_neg: g("g_limit_neg"),
+            max_q: g("max_q"),
+            max_mach: g("max_mach"),
+            start_altitude: g("start_altitude"),
+            start_speed: g("start_speed"),
+            start_alpha: g("start_alpha"),
+            start_throttle: g("start_throttle"),
+            // leaked on purpose: the hull lives as long as the sim and aircraft changes are rare
+            hull: Box::leak(hull.into_boxed_slice()),
+            hull_radius: g("hull_radius"),
+        })
     }
 
     /// Gross (full-fuel) mass.

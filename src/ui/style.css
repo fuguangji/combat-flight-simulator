@@ -117,3 +117,67 @@ kbd {
 #tutorial .t-bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width 0.1s linear; }
 #tutorial #tutorial-caution { margin-top: 8px; color: #ffc233; font-weight: 600; }
 body:not([data-mode="flying"]):not([data-mode="crashed"]) #tutorial { display: none; }
+
+/* ---- aircraft picker ---- */
+#aircraft-select {
+  font: 14px var(--font); color: #e8f5ec; background: rgba(6, 12, 10, 0.8); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px; cursor: pointer;
+}
+#aircraft-select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.aircraft-desc { margin: 14px 0 0; max-width: 520px; font-size: 13px; line-height: 1.65; color: rgba(232, 245, 236, 0.7); }
+
+/* ---------- touch / phone layout ---------- */
+html, body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+#stage canvas { touch-action: none; }
+.touch-only { display: none; }
+body.touch .touch-only { display: inline; }
+body.touch #help, body.touch #status { display: none; }
+body.touch .foot { display: none; }
+
+#touch { position: fixed; inset: 0; z-index: 15; pointer-events: none; display: none; }
+body.touch[data-mode="flying"] #touch, body.touch[data-mode="crashed"] #touch { display: block; }
+#touch > * { pointer-events: auto; touch-action: none; }
+.t-stick {
+  position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom));
+  width: clamp(120px, 26vh, 170px); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, rgba(125, 255, 154, 0.10), rgba(125, 255, 154, 0.04) 70%); border: 2px solid var(--line);
+}
+.t-knob {
+  position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; margin: -21% 0 0 -21%; border-radius: 50%;
+  background: rgba(125, 255, 154, 0.35); border: 2px solid var(--green); pointer-events: none;
+}
+.t-throttle {
+  position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom));
+  width: 54px; height: clamp(130px, 40vh, 220px); border-radius: 27px; border: 2px solid var(--line);
+  background: rgba(6, 12, 10, 0.35); overflow: visible;
+}
+.t-throttle .t-ab { position: absolute; left: 0; right: 0; top: 0; height: 15%; border-radius: 27px 27px 0 0; background: rgba(255, 122, 90, 0.28); pointer-events: none; }
+.t-throttle .t-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; border-radius: 0 0 25px 25px; background: rgba(125, 255, 154, 0.32); pointer-events: none; }
+.t-throttle .t-handle { position: absolute; left: -4px; right: -4px; bottom: calc(30% - 14px); height: 28px; border-radius: 14px; background: var(--green); opacity: 0.85; pointer-events: none; }
+.t-rudder { position: absolute; right: calc(max(18px, env(safe-area-inset-right)) + 80px); bottom: max(18px, env(safe-area-inset-bottom)); display: flex; gap: 12px; }
+.t-btn {
+  width: 64px; height: 64px; padding: 0; border-radius: 50%; font-size: 22px; color: #e8f5ec;
+  background: rgba(6, 12, 10, 0.45); border: 2px solid var(--line);
+}
+.t-btn:active { background: rgba(125, 255, 154, 0.3); border-color: var(--green); transform: none; }
+.t-btn.small { width: 44px; height: 44px; font-size: 16px; }
+.t-top { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); display: flex; gap: 10px; }
+
+/* tutorial panel on touch: compact, top right, tap to skip */
+body.touch #tutorial { left: auto; right: 12px; top: 64px; width: min(300px, 40vw); padding: 8px 10px; }
+body.touch #tutorial p { font-size: 12px; line-height: 1.45; }
+
+/* portrait hint (flying only) */
+#rotate { display: none; position: fixed; inset: 0; z-index: 60; place-items: center; background: rgba(0, 0, 0, 0.88); color: #e8f5ec; font: 600 18px var(--font); text-align: center; }
+@media (orientation: portrait) { body.touch[data-mode="flying"] #rotate, body.touch[data-mode="crashed"] #rotate, body.touch[data-mode="paused"] #rotate { display: grid; } }
+
+/* small screens: menu and cards */
+@media (max-width: 720px), (max-height: 520px) {
+  .overlay { padding: 16px; overflow-y: auto; justify-content: flex-start; }
+  #menu { background: rgba(0, 6, 4, 0.78); }
+  h1 { font-size: 30px; margin-bottom: 8px; }
+  .tagline { display: none; }
+  .actions { margin-bottom: 12px; }
+  button { padding: 12px 18px; }
+  .card { max-width: calc(100vw - 32px); }
+}

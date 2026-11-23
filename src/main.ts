@@ -1,5 +1,5 @@
 import './ui/style.css';
-import { getAircraft } from './aircraft/registry';
+import { aircraftRegistry, type AircraftDefinition } from './aircraft/registry';
 import { detectCapabilities } from './core/capabilities';
 import { CameraRig } from './cockpit/camera';
 import { Hud } from './cockpit/hud';
@@ -11,8 +11,9 @@ import type { Backend } from './rendering/Renderer';
 import { activeWarnings } from './physics/warnings';
 import { attractCamera } from './ui/attract';
 import { WarningAudio } from './ui/audio';
-import { Tutorial } from './ui/tutorial';
+import { TUTORIAL_STEPS, Tutorial } from './ui/tutorial';
 import { FreeLook } from './ui/look';
+import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
@@ -59,7 +60,15 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 async function boot(): Promise<void> {
   const params = new URLSearchParams(location.search);
   const forced: Backend | undefined = params.get('backend') === 'webgl2' ? 'webgl2' : undefined;
-  const aircraft = getAircraft(0);
+  const lastKey = ((): string | null => {
+    try {
+      return localStorage.getItem('cfs.aircraft');
+    } catch {
+      return null;
+    }
+  })();
+  let aircraft: AircraftDefinition =
+    aircraftRegistry.find(params.get('aircraft') ?? lastKey ?? '') ?? aircraftRegistry.default;
   const caps = detectCapabilities();
   if (!caps.workers) throw new Error('此瀏覽器不支援 Web Worker，無法執行物理模擬。');
 
@@ -69,7 +78,16 @@ async function boot(): Promise<void> {
     document.body.dataset.mode = m;
   };
   setMode('loading');
-  $<HTMLElement>('spec-aircraft').textContent = aircraft.displayName;
+  const aircraftSelect = $<HTMLSelectElement>('aircraft-select');
+  const specStart = $<HTMLElement>('spec-start');
+  const specDesc = $<HTMLElement>('aircraft-desc');
+  for (const a of aircraftRegistry.list()) aircraftSelect.add(new Option(a.displayName, a.key, false, a.key === aircraft.key));
+  const showAircraft = (): void => {
+    specStart.textContent = `${aircraft.startAltitude.toLocaleString('en-US')} m · ${Math.round(aircraft.startSpeed * MS_TO_KT)} KT · 北向`;
+    specDesc.textContent =
+      `${aircraft.description}（${aircraft.hasAfterburner ? '有後燃器' : '無後燃器'} · 過載上限 ${aircraft.gLimit} g · 最大 M ${aircraft.maxMach}）`;
+  };
+  showAircraft();
   howtoBtn.addEventListener('click', () => {
     howtoEl.hidden = !howtoEl.hidden;
     howtoBtn.setAttribute('aria-expanded', String(!howtoEl.hidden));
@@ -77,7 +95,7 @@ async function boot(): Promise<void> {
 
   const physics = new PhysicsClient();
   const wasmUrl = new URL(`${import.meta.env.BASE_URL}wasm/physics_engine.wasm`, location.href).href;
-  const [handle] = await Promise.all([createRenderer(stage, forced), physics.start(wasmUrl, aircraft.id)]);
+  const [handle] = await Promise.all([createRenderer(stage, forced), physics.start(wasmUrl, aircraft.toPhysicsArray())]);
   const { renderer, fallbackLog } = handle;
   physics.pause(); // the sim only runs while a flight is in progress
 
@@ -89,7 +107,35 @@ async function boot(): Promise<void> {
   const rig = new CameraRig();
   const audio = new WarningAudio();
   const look = new FreeLook();
-  const tutorial = new Tutorial();
+  const touchMode = isTouchDevice();
+  document.body.classList.toggle('touch', touchMode);
+  const touch = new TouchControls(document.body);
+  touch.show(true); // visibility is driven by body[data-mode] in CSS
+  hud.compact = touchMode;
+  if (touchMode) {
+    input.touch = touch.axes;
+    touch.onThrottle = (v) => input.setThrottle(v);
+    touch.onRecenter = () => look.recenter();
+    touch.onPause = () => pauseFlight();
+    tutorialEl.style.pointerEvents = 'auto';
+    $<HTMLElement>('tutorial-skip').textContent = '點此略過';
+    tutorialEl.addEventListener('click', () => {
+      if (tutorialOn && mode === 'flying') tutorial.skip();
+    });
+  }
+  /** Fullscreen + landscape lock where the browser allows it (must run inside the tap handler). */
+  const enterImmersive = (): void => {
+    if (!touchMode) return;
+    try {
+      void document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).then(
+        () => (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.('landscape').catch(() => undefined),
+        () => undefined,
+      );
+    } catch {
+      /* unsupported (iOS Safari): the rotate hint still covers portrait */
+    }
+  };
+  let tutorial = new Tutorial();
   let tutorialOn = false;
   let lastSent: ControlInput = { ...input.state, throttle: -1 }; // force first send
 
@@ -124,7 +170,8 @@ async function boot(): Promise<void> {
     lastSent = { ...input.state, throttle: -1 };
     rig.reset();
     look.reset();
-    tutorial.reset();
+    touch.reset();
+    tutorial = new Tutorial(aircraft.hasAfterburner ? TUTORIAL_STEPS : TUTORIAL_STEPS.filter((st) => st.id !== 'afterburner'));
     tutorialEl.hidden = !tutorialOn;
     lastSnap = null;
     frozenSnap = null;
@@ -169,6 +216,7 @@ async function boot(): Promise<void> {
     physics.pause();
     audio.silence();
     if (document.pointerLockElement) document.exitPointerLock();
+    touch.reset();
     frozenSnap = lastSnap;
     showOverlay('pause');
     setMode('paused');
@@ -194,9 +242,30 @@ async function boot(): Promise<void> {
     showOverlay('crash');
   };
 
+  aircraftSelect.addEventListener('change', () => {
+    const next = aircraftRegistry.find(aircraftSelect.value);
+    if (!next || next === aircraft || mode !== 'menu') return;
+    aircraft = next;
+    physics.setAircraft(aircraft.toPhysicsArray());
+    physics.pause();
+    input.reset(aircraft.startThrottle);
+    showAircraft();
+    try {
+      localStorage.setItem('cfs.aircraft', aircraft.key);
+    } catch {
+      /* private mode: the choice just is not remembered */
+    }
+  });
+
   // ---- wiring -------------------------------------------------------------------------------
-  startBtn.addEventListener('click', startFlight);
-  tutorialBtn.addEventListener('click', startTutorial);
+  startBtn.addEventListener('click', () => {
+    enterImmersive();
+    startFlight();
+  });
+  tutorialBtn.addEventListener('click', () => {
+    enterImmersive();
+    startTutorial();
+  });
   $<HTMLButtonElement>('btn-resume').addEventListener('click', resumeFlight);
   $<HTMLButtonElement>('btn-restart-pause').addEventListener('click', startFlight);
   $<HTMLButtonElement>('btn-home-pause').addEventListener('click', goHome);
@@ -207,7 +276,7 @@ async function boot(): Promise<void> {
   let dragging = false;
   const canLook = (): boolean => mode === 'flying' || mode === 'crashed';
   stage.addEventListener('click', () => {
-    if (mode === 'flying' && !document.pointerLockElement) {
+    if (mode === 'flying' && !touchMode && !document.pointerLockElement) {
       // Pointer lock hides the cursor and gives unlimited movement; if the browser refuses, dragging still works.
       void Promise.resolve(stage.requestPointerLock()).catch(() => undefined);
     }
@@ -220,6 +289,30 @@ async function boot(): Promise<void> {
       dragging = true;
     }
   });
+  // touch: one finger on the scene turns the head; lifting it looks ahead again
+  let lookFinger = -1;
+  let lookX = 0;
+  let lookY = 0;
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' || !canLook() || lookFinger !== -1) return;
+    lookFinger = e.pointerId;
+    lookX = e.clientX;
+    lookY = e.clientY;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== lookFinger) return;
+    look.move(e.clientX - lookX, e.clientY - lookY, 0.004);
+    lookX = e.clientX;
+    lookY = e.clientY;
+  });
+  const endLook = (e: PointerEvent): void => {
+    if (e.pointerId !== lookFinger) return;
+    lookFinger = -1;
+    look.recenter();
+  };
+  stage.addEventListener('pointerup', endLook);
+  stage.addEventListener('pointercancel', endLook);
   window.addEventListener('mouseup', () => {
     if (dragging) look.recenter(); // drag mode behaves like a hat switch: release = look ahead again
     dragging = false;
@@ -259,6 +352,7 @@ async function boot(): Promise<void> {
   startBtn.focus({ preventScroll: true });
 
   // ---- main loop ----------------------------------------------------------------------------
+  let shownThrottle = -1;
   let lastFrame = performance.now();
   let statFrames = 0;
   let statStart = lastFrame;
@@ -272,7 +366,7 @@ async function boot(): Promise<void> {
     lastFrame = now;
 
     const scale = dynRes.update(frameMs);
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, touchMode ? 1.5 : 2);
     const w = Math.max(1, Math.round(stage.clientWidth * dpr * scale));
     const h = Math.max(1, Math.round(stage.clientHeight * dpr * scale));
     if (w !== bufW || h !== bufH) {
@@ -296,6 +390,10 @@ async function boot(): Promise<void> {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
       input.update(Math.min(frameMs / 1000, 0.1));
       const c = input.state;
+      if (touchMode && Math.abs(c.throttle - shownThrottle) > 1e-3) {
+        shownThrottle = c.throttle;
+        touch.setThrottle(c.throttle);
+      }
       if (
         mode === 'flying' &&
         (Math.abs(c.throttle - lastSent.throttle) > 1e-3 ||

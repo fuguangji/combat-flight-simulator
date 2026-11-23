@@ -275,7 +275,7 @@ impl Sim {
         let dry_thrust = t_mil_full * dry;
         let thrust = dry_thrust + ab * (t_ab_full - t_mil_full);
         let flow = dry_thrust * p.tsfc_mil + (thrust - dry_thrust) * p.tsfc_ab;
-        Propulsion { thrust, afterburner: ab > 0.0, fuel_flow: flow }
+        Propulsion { thrust, afterburner: ab > 0.0 && p.ab_thrust_sl > p.max_thrust_sl * 1.001, fuel_flow: flow }
     }
 
     /// Aerodynamic + thrust force (body, N), moment (body, N m) and derived values for state `st`.

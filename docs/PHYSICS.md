@@ -63,8 +63,17 @@ T     = throttle · Tmax · (ρ/ρ0)^0.8    （機頭方向）
 3. 預設無風與紊流；無襟翼 / 減速板 / 起落架；馬赫與迎角相依僅為簡化解析式（無資料表）。
 4. 以 Python 等價原型檢查過的行為（起始條件下）：放手飛行約 2.9° 迎角配平並出現緩慢長週期起伏；拉桿 0.5 s 後 ωz>0；右滾 0.5 s 後 ωx>0 且右翼低於地平線；右舵 0.5 s 後 ωy<0 且機頭偏東；持續全拉桿 5 s 後迎角達 26°、速度降到約 124 m/s（失速）。
 
-## 新增機型
+## 機型資料與新增機型
 
-1. 在 `aircraft.rs` 新增 `AircraftParams` 建構函式，並在 `by_id` 登記新 `id`。
-2. 在 `src/aircraft/registry.ts` 加入同一 `id` 的 `AircraftDefinition`（眼點、FOV、`startThrottle` 要與 Rust 一致）。
-3. 為新參數補上操縱方向與穩定性測試。
+每個機型是 `src/aircraft/data/<key>.json`（`id`、`key`、`displayName`、`description`、`cockpit`、`physics`）。物理參數不再寫死在 Rust：瀏覽器端的 `AircraftDefinition.fromJson` 驗證後，以扁平陣列（`physics-keys.json` 的鍵順序，再接機身碰撞點 x y z…）經 `sim_param_alloc` / `sim_aircraft_commit`（API v4）送進 WASM，`AircraftParams::from_slice` 再做一次範圍檢查（拒絕 NaN、負質量、非正定慣量張量等，被拒時保留原機型）。
+
+內建機型：
+
+| key | 特色 |
+|---|---|
+| `generic-fighter` | 預設；與 Rust 內建的 `generic_fighter()` 數值完全相同（有測試比對） |
+| `light-trainer` | 5.7 t、24 kN、無後燃器、最大 M 0.95、過載 7 g、起始 1500 m / 110 m/s |
+| `heavy-interceptor` | 19 t、110 / 195 kN、最大 M 2.3、過載 7.5 g、油門回應慢 |
+
+新增機型：複製一份 JSON、改 `id`（唯一）與 `key`（kebab-case）、調整數值，不需要改程式碼——`registry.ts` 以 `import.meta.glob` 自動收錄，主頁選單會列出。`cargo test` 的 `tests/aircraft_data.rs` 會自動載入 `data/` 下已登記的檔案（測試裡的 `FILES` 清單要補一行，漏補會有測試提醒）檢查：能飛（放手 30 s 不墜毀、四個操縱方向正確）、G 限制、性能排序；`tests/aircraft.test.ts` 檢查驗證與註冊表。
+注意：氣動係數是無因次量，換機型時主要改幾何、質量、慣量、推力；慣量可用 `Ixx ≈ 0.013 m b²`、`Iyy ≈ 0.032 m L²`、`Izz ≈ 0.028 m L²` 估。

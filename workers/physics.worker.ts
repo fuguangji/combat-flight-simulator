@@ -8,7 +8,8 @@ import type { WorkerIn, WorkerOut } from '../src/physics/PhysicsClient';
 interface PhysicsExports {
   memory: WebAssembly.Memory;
   sim_api_version(): number;
-  sim_init(aircraftId: number): number;
+  sim_param_alloc(len: number): number;
+  sim_aircraft_commit(len: number): number;
   sim_reset(): void;
   sim_set_controls(throttle: number, pitch: number, roll: number, yaw: number): void;
   sim_step(dt: number): void;
@@ -30,7 +31,7 @@ const stepper = new FixedStepper(PHYSICS_DT, MAX_STEPS_PER_TICK, MAX_TICK_SECOND
 
 /**
  * Upload the same obstacle field the renderers draw (buildTestScene is deterministic), so every
- * visible building is solid. Must run after sim_init and before the first snapshot.
+ * visible building is solid. Must run before the first snapshot.
  */
 function uploadScene(exports: PhysicsExports): void {
   const scene = buildTestScene();
@@ -39,6 +40,14 @@ function uploadScene(exports: PhysicsExports): void {
   new Float32Array(exports.memory.buffer, ptr, scene.instances.length).set(scene.instances);
   const accepted = exports.sim_scene_commit(scene.instanceCount);
   if (accepted !== scene.instanceCount) throw new Error(`Collision world accepted ${accepted} of ${scene.instanceCount} buildings`);
+}
+
+/** Install an aircraft from its flat parameter array; the collision scene is kept. */
+function defineAircraft(exports: PhysicsExports, params: ArrayLike<number>): void {
+  const ptr = exports.sim_param_alloc(params.length);
+  // Re-create the view after the call: the allocation may have grown linear memory.
+  new Float64Array(exports.memory.buffer, ptr, params.length).set(params);
+  if (exports.sim_aircraft_commit(params.length) !== 1) throw new Error('The physics engine rejected the aircraft parameters');
 }
 
 function postSnapshot(): void {
@@ -61,7 +70,7 @@ function tick(): void {
   });
 }
 
-async function init(wasmUrl: string, aircraftId: number): Promise<void> {
+async function init(wasmUrl: string, params: ArrayLike<number>): Promise<void> {
   const response = await fetch(wasmUrl);
   if (!response.ok) throw new Error(`Could not load ${wasmUrl} (HTTP ${response.status})`);
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), {});
@@ -69,8 +78,8 @@ async function init(wasmUrl: string, aircraftId: number): Promise<void> {
   if (exports.sim_api_version() !== WASM_API_VERSION) {
     throw new Error(`WASM API version ${exports.sim_api_version()} != expected ${WASM_API_VERSION}`);
   }
-  if (exports.sim_init(aircraftId) !== 1) throw new Error(`Unknown aircraft id ${aircraftId}`);
-  uploadScene(exports);
+  uploadScene(exports); // the scene first: defining the aircraft keeps it
+  defineAircraft(exports, params);
   wasm = exports;
   lastTick = performance.now();
   postSnapshot();
@@ -83,9 +92,20 @@ ctx.onmessage = (e) => {
   const m = e.data;
   switch (m.type) {
     case 'init':
-      init(m.wasmUrl, m.aircraftId).catch((err: unknown) =>
+      init(m.wasmUrl, m.params).catch((err: unknown) =>
         ctx.postMessage({ type: 'error', message: err instanceof Error ? err.message : String(err) }),
       );
+      break;
+    case 'aircraft':
+      if (wasm) {
+        try {
+          defineAircraft(wasm, m.params);
+          stepper.reset();
+          postSnapshot();
+        } catch (err) {
+          ctx.postMessage({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+        }
+      }
       break;
     case 'controls':
       wasm?.sim_set_controls(m.c[0], m.c[1], m.c[2], m.c[3]);

@@ -52,11 +52,12 @@ use collision::World;
 use flight::{Controls, Sim};
 
 pub const STATE_LEN: usize = 40;
-pub const API_VERSION: u32 = 3;
+pub const API_VERSION: u32 = 4;
 
 static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
 static mut SCENE: Vec<f32> = Vec::new();
+static mut PARAMS: Vec<f64> = Vec::new();
 
 /// WebAssembly is single-threaded here (one worker owns the instance), so this global is safe.
 fn sim() -> &'static mut Sim {
@@ -119,17 +120,52 @@ pub extern "C" fn sim_api_version() -> u32 {
 pub extern "C" fn sim_init(aircraft_id: u32) -> u32 {
     match AircraftParams::by_id(aircraft_id) {
         Some(params) => {
-            unsafe {
-                let slot = &mut *core::ptr::addr_of_mut!(SIM);
-                // keep the uploaded scene when the aircraft model is (re)selected
-                let world = slot.take().map(|old| old.world).unwrap_or_default();
-                let mut fresh = Sim::new(params);
-                fresh.set_world(world);
-                *slot = Some(fresh);
-            }
+            install(params);
             1
         }
         None => 0,
+    }
+}
+
+/// Reserve room for `len` f64 aircraft parameters (layout: `aircraft::PARAM_NAMES`, then hull points)
+/// and return their address. Re-read `memory.buffer` after this call.
+#[no_mangle]
+pub extern "C" fn sim_param_alloc(len: u32) -> *mut f64 {
+    unsafe {
+        let buf = &mut *core::ptr::addr_of_mut!(PARAMS);
+        buf.clear();
+        buf.resize(len as usize, 0.0);
+        buf.as_mut_ptr()
+    }
+}
+
+/// Install the aircraft described by the first `len` values of the parameter buffer and reset.
+/// The uploaded scene is kept. Returns 1 on success, 0 if the parameters were rejected (the
+/// previous aircraft stays in place).
+#[no_mangle]
+pub extern "C" fn sim_aircraft_commit(len: u32) -> u32 {
+    let params = unsafe {
+        let buf = &*core::ptr::addr_of!(PARAMS);
+        let n = (len as usize).min(buf.len());
+        AircraftParams::from_slice(&buf[..n])
+    };
+    match params {
+        Ok(p) => {
+            install(p);
+            1
+        }
+        Err(_) => 0,
+    }
+}
+
+fn install(params: AircraftParams) {
+    unsafe {
+        let slot = &mut *core::ptr::addr_of_mut!(SIM);
+        // keep the uploaded scene when the aircraft model changes
+        let world = slot.take().map(|old| old.world).unwrap_or_default();
+        let mut fresh = Sim::new(params);
+        fresh.set_world(world);
+        *slot = Some(fresh);
     }
 }
 
