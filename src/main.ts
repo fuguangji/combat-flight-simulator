@@ -1,5 +1,6 @@
 import './ui/style.css';
 import { aircraftRegistry, type AircraftDefinition } from './aircraft/registry';
+import weaponCatalog from './combat/weapons.json';
 import { detectCapabilities } from './core/capabilities';
 import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { mountCockpitShell } from './cockpit/cockpitShell';
@@ -96,15 +97,14 @@ async function boot(): Promise<void> {
   const hangarGrid = $<HTMLDivElement>('hangar-grid');
   const equipmentGrid = $<HTMLDivElement>('equipment-grid');
   const menuPanel = menuEl.querySelector('.panel') as HTMLDivElement;
-  const equipmentOptions = [
-    { id: 'pulse', name: 'PULSE 脈衝彈', desc: '短促、明亮的直線光效。', note: '快速視覺回饋 · 8 次展示額度' },
-    { id: 'arc', name: 'ARC 電弧彈', desc: '帶有分岔電弧的特殊效果。', note: '電弧視覺 · 5 次展示額度' },
-    { id: 'prism', name: 'PRISM 稜鏡彈', desc: '幾何稜鏡形狀與折射光感。', note: '稜鏡視覺 · 3 次展示額度' },
-    { id: 'nova', name: 'NOVA 星爆彈', desc: '較大的環形脈衝與短暫光暈。', note: '環形視覺 · 4 次展示額度' },
-    { id: 'lumen', name: 'LUMEN 光幕彈', desc: '柔和的多層光幕與粒子拖尾。', note: '光幕視覺 · 6 次展示額度' },
-  ] as const;
+  const equipmentOptions = weaponCatalog.map((weapon) => ({
+    id: weapon.id,
+    name: weapon.name,
+    desc: `${weapon.category} · ${weapon.role}。 ${weapon.description}`,
+    note: `${weapon.effect} · ${weapon.capacity} 次遊戲額度 · 冷卻 ${weapon.cooldown.toFixed(1)} s`,
+  }));
   let selectedEquipment = (() => {
-    try { return localStorage.getItem('cfs.equipment') ?? 'pulse'; } catch { return 'pulse'; }
+    try { return localStorage.getItem('cfs.equipment') ?? 'nova17'; } catch { return 'pulse'; }
   })();
   const openSubpage = (page: HTMLElement): void => {
     hangarPage.hidden = page !== hangarPage;
