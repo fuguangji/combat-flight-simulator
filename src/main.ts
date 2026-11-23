@@ -239,6 +239,13 @@ async function boot(): Promise<void> {
   const publishAutopilotState = (): void => {
     window.dispatchEvent(new CustomEvent('cfs:autopilot-state', { detail: { enabled: autopilot.enabled } }));
   };
+  const disengageAutopilot = (): void => {
+    if (!autopilot.enabled) return;
+    autopilot.enabled = false;
+    publishAutopilotState();
+  };
+  input.onManualInput = disengageAutopilot;
+  touch.onManualInput = disengageAutopilot;
   window.addEventListener('cfs:autopilot-toggle', () => {
     if (!lastSnap || mode !== 'flying') return;
     autopilot.enabled = !autopilot.enabled;
