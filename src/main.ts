@@ -19,6 +19,7 @@ import { FreeLook } from './ui/look';
 import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
 import { EncyclopediaViewer } from './encyclopedia/modelViewer';
+import { AircraftSceneOverlay } from './rendering/aircraftOverlay';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
 
@@ -130,10 +131,12 @@ async function boot(): Promise<void> {
     encyclopedia.setActive(false);
     menuPanel.classList.remove('subpage-open');
   };
+  let aircraftOverlay: AircraftSceneOverlay | null = null;
   const applyAircraftChoice = (key: string): void => {
     const next = aircraftRegistry.find(key);
     if (!next || next === aircraft) return;
     aircraft = next;
+    aircraftOverlay?.setAircraft(aircraft);
     aircraftSelect.value = aircraft.key;
     physics.setAircraft(aircraft.toPhysicsArray());
     physics.pause();
@@ -204,6 +207,10 @@ async function boot(): Promise<void> {
   const wasmUrl = new URL(`${import.meta.env.BASE_URL}wasm/physics_engine.wasm`, location.href).href;
   const [handle] = await Promise.all([createRenderer(stage, forced), physics.start(wasmUrl, aircraft.toPhysicsArray())]);
   const { renderer, fallbackLog } = handle;
+  aircraftOverlay = new AircraftSceneOverlay(stage, aircraft);
+  handle.canvas.style.position = 'absolute';
+  handle.canvas.style.inset = '0';
+  handle.canvas.style.zIndex = '0';
   physics.pause(); // the sim only runs while a flight is in progress
 
   $<HTMLElement>('spec-backend').textContent = renderer.backend === 'webgpu' ? 'WebGPU' : 'WebGL 2';
@@ -495,11 +502,13 @@ async function boot(): Promise<void> {
     if (mode === 'menu' || mode === 'loading') {
       audio.silence();
       renderer.render(attractCamera(now));
+      aircraftOverlay?.setVisible(false);
       hud.draw(null, aircraft, now);
     } else if (mode === 'paused') {
       // frozen picture: same snapshot, same camera as the moment of pausing
       snap = frozenSnap;
       if (rig.last) renderer.render(rig.last);
+      if (rig.last && snap) { aircraftOverlay?.setVisible(true); aircraftOverlay?.render(rig.last, snap); }
       hud.draw(snap, aircraft, now, rig.last?.fovY, look);
     } else {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
@@ -565,6 +574,8 @@ async function boot(): Promise<void> {
         window.dispatchEvent(new CustomEvent('cfs:flight-snapshot', { detail: { x: snap.position[0], y: snap.altitude, z: snap.position[2], heading: attitude.heading, speed: snap.airspeed } }));
         const cam = rig.update(snap, aircraft, now, look);
         renderer.render(cam);
+        aircraftOverlay?.setVisible(true);
+        aircraftOverlay?.render(cam, snap);
         hud.draw(snap, aircraft, now, cam.fovY, look);
         if (mode === 'crashed' && crashEl.hidden && !transitioning && now - crashedAtMs > CRASH_CARD_DELAY_MS) {
           showCrashCard(snap);
