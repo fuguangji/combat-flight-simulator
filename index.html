@@ -25,20 +25,20 @@
           第一人稱戰鬥機模擬。Rust / WebAssembly 6 自由度物理、30 Hz 固定步長、60 FPS 以上插值渲染，WebGPU 為主、WebGL 2 後備。
         </p>
         <div class="actions">
-          <button id="btn-start" class="primary" disabled>載入中…</button>
-          <button id="btn-tutorial" class="ghost" disabled>新手教學</button>
-          <button id="btn-howto" class="ghost" aria-expanded="false" aria-controls="howto">操作說明</button>
-          <button id="btn-hangar" class="ghost">機庫／機型介紹</button>
-          <button id="btn-equipment" class="ghost">裝備設定</button>
+          <button id="btn-start" class="primary" disabled>載入中… / LOADING…</button>
+          <button id="btn-tutorial" class="ghost" disabled>新手教學 / TUTORIAL</button>
+          <button id="btn-howto" class="ghost" aria-expanded="false" aria-controls="howto">操作說明 / CONTROLS</button>
+          <button id="btn-hangar" class="ghost">機庫／機型介紹 / HANGAR</button>
+          <button id="btn-equipment" class="ghost">裝備設定 / LOADOUT</button>
         </div>
 
         <section id="hangar-page" class="selection-page" hidden>
-          <div class="page-heading"><p class="eyebrow">AIRCRAFT HANGAR</p><h2>機庫</h2><p>選擇機體，查看獨立介紹與飛行特色。</p></div>
+          <div class="page-heading"><p class="eyebrow">AIRCRAFT HANGAR</p><h2>機庫</h2><p>選擇機體，查看獨立介紹與飛行特色 / Select an aircraft and review its flight characteristics.</p></div>
           <div id="hangar-grid" class="selection-grid"></div>
-          <button type="button" class="ghost page-back" data-page-back>返回主頁</button>
+          <button type="button" class="ghost page-back" data-page-back>返回主頁 / BACK</button>
         </section>
         <section id="equipment-page" class="selection-page" hidden>
-          <div class="page-heading"><p class="eyebrow">MISSION CONFIGURATION</p><h2>裝備設定</h2><p>選擇本次飛行的虛構任務裝備。所有發射效果均為畫面呈現，不含真實導引或命中功能。</p></div>
+          <div class="page-heading"><p class="eyebrow">MISSION CONFIGURATION</p><h2>裝備設定 / LOADOUT</h2><p>選擇本次飛行的虛構任務裝備。所有發射效果均為畫面呈現，不含真實導引或命中功能。</p></div>
           <div id="equipment-grid" class="selection-grid"></div>
           <button type="button" class="ghost page-back" data-page-back>返回主頁</button>
         </section>
@@ -85,9 +85,9 @@
       <div class="card">
         <h2>暫停</h2>
         <div class="actions vertical">
-          <button id="btn-resume" class="primary">繼續</button>
-          <button id="btn-restart-pause" class="ghost">重新開始</button>
-          <button id="btn-home-pause" class="ghost">回主頁</button>
+          <button id="btn-resume" class="primary">繼續 / RESUME</button>
+          <button id="btn-restart-pause" class="ghost">重新開始 / RESTART</button>
+          <button id="btn-home-pause" class="ghost">回主頁 / HOME</button>
         </div>
       </div>
     </div>
@@ -98,8 +98,8 @@
         <h2 id="crash-title">墜毀</h2>
         <dl id="crash-stats" class="stats"></dl>
         <div class="actions vertical">
-          <button id="btn-restart-crash" class="primary">再飛一次 <kbd>R</kbd></button>
-          <button id="btn-home-crash" class="ghost">回主頁</button>
+          <button id="btn-restart-crash" class="primary">再飛一次 / FLY AGAIN <kbd>R</kbd></button>
+          <button id="btn-home-crash" class="ghost">回主頁 / HOME</button>
         </div>
       </div>
     </div>
