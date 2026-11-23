@@ -521,6 +521,8 @@ async function boot(): Promise<void> {
           stats.maxG = Math.max(stats.maxG, snap.loadFactor);
           stats.minAlt = Math.min(stats.minAlt, snap.altitude);
         } else if (mode === 'flying') {
+          autopilot.enabled = false;
+          publishAutopilotState();
           setMode('crashed');
           crashedAtMs = now;
         }
