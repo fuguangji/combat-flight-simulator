@@ -1,0 +1,116 @@
+{
+  "id": 7,
+  "key": "spectre-03",
+  "displayName": "Spectre03 幽靈03號",
+  "description": "專用電子任務平台，遊戲中以資訊干擾視覺效果、任務支援與較均衡飛行性能為特色。",
+  "role": "穿透型電子作戰戰鬥機",
+  "features": "雙發／電子任務／支援型",
+  "specs": {
+    "emptyMassKg": 14800,
+    "mtowKg": 28500,
+    "payloadKg": 7200,
+    "fuelKg": 6500,
+    "cruiseBurnKgMin": 52,
+    "boostBurnKgMin": 360,
+    "maxMach": 1.8,
+    "gPositive": 7.5,
+    "gNegative": -2.5,
+    "thrustKN": 180,
+    "ceilingM": 15000,
+    "rangeKm": 900
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 14800,
+    "fuel_capacity": 6500,
+    "inertia_x": 34817,
+    "inertia_y": 231350,
+    "inertia_z": 204637,
+    "ixy": 3245,
+    "wing_area": 37,
+    "span": 10.56,
+    "chord": 3.81,
+    "max_thrust_sl": 140,
+    "ab_thrust_sl": 180,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 1.16,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 7.5,
+    "g_limit_neg": -2.5,
+    "max_q": 79506,
+    "max_mach": 1.8,
+    "start_altitude": 2700,
+    "start_speed": 180,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
