@@ -1,33 +1,53 @@
 {
   "id": 0,
-  "key": "generic-fighter",
-  "displayName": "Generic Light Fighter",
-  "description": "均衡的輕型戰鬥機：推力重量比高、可用後燃器，預設機型。",
+  "key": "viper-t21",
+  "displayName": "ViperT21 響尾蛇21號",
+  "description": "高敏捷日間制空與近距離空中對抗。無尾三角翼、全動前翼與高度整合的飛行控制；遊戲中定位為高機動、低慣性機型。",
+  "role": "輕型單發空優戰鬥機",
+  "features": "單發／Canard-Delta／高機動",
+  "specs": {
+    "emptyMassKg": 8500,
+    "mtowKg": 19200,
+    "payloadKg": 6800,
+    "fuelKg": 3900,
+    "cruiseBurnKgMin": 32,
+    "boostBurnKgMin": 210,
+    "maxMach": 2.05,
+    "gPositive": 9,
+    "gNegative": -3.2,
+    "thrustKN": 135,
+    "ceilingM": 16500,
+    "rangeKm": 750
+  },
   "cockpit": {
-    "eyeOffset": [3.8, 1.0, 0],
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
     "fovDeg": 70
   },
   "physics": {
-    "empty_mass": 9000,
-    "fuel_capacity": 3000,
-    "inertia_x": 12875,
-    "inertia_y": 85552,
-    "inertia_z": 75674,
-    "ixy": 1200,
-    "wing_area": 28,
-    "span": 9.1,
-    "chord": 3.45,
-    "max_thrust_sl": 76000,
-    "ab_thrust_sl": 120000,
-    "tsfc_mil": 2.3e-05,
-    "tsfc_ab": 5.6e-05,
-    "spool_up": 1.1,
+    "empty_mass": 8500,
+    "fuel_capacity": 3900,
+    "inertia_x": 11484,
+    "inertia_y": 76310,
+    "inertia_z": 67499,
+    "ixy": 1070,
+    "wing_area": 27,
+    "span": 8.95,
+    "chord": 3.41,
+    "max_thrust_sl": 105,
+    "ab_thrust_sl": 135,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 0.99,
     "spool_down": 0.7,
     "cl0": 0,
     "cl_alpha": 4.5,
     "alpha_stall": 0.3,
     "post_stall_cl": 1.1,
-    "post_stall_cd": 2.0,
+    "post_stall_cd": 2,
     "cd0": 0.022,
     "induced_k": 0.12,
     "cd_wave": 0.055,
@@ -37,8 +57,8 @@
     "cl_beta": 0.08,
     "cn_beta": 0.12,
     "cl_p": -0.35,
-    "cm_q": -12.0,
-    "cn_r": -1.0,
+    "cm_q": -12,
+    "cn_r": -1,
     "cl_r": 0.1,
     "cn_aileron": 0.004,
     "cl_rudder": 0.006,
@@ -46,23 +66,51 @@
     "cl_aileron": 0.04,
     "cn_rudder": 0.05,
     "actuator_tau": 0.07,
-    "g_limit_pos": 9.0,
-    "g_limit_neg": -3.0,
-    "max_q": 62000,
-    "max_mach": 2.0,
-    "start_altitude": 2000,
+    "g_limit_pos": 9,
+    "g_limit_neg": -3.2,
+    "max_q": 60253,
+    "max_mach": 2.05,
+    "start_altitude": 2970,
     "start_speed": 180,
     "start_alpha": 0.05,
-    "start_throttle": 0.3,
-    "hull_radius": 1.0,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
     "hull": [
-      [7.5, 0, 0],
-      [-7, 0, 0],
-      [-1, 0, -4.55],
-      [-1, 0, 4.55],
-      [-6.5, 2.6, 0],
-      [0, -1, 0],
-      [1, 1.2, 0]
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
     ]
   }
 }
