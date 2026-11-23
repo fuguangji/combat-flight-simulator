@@ -1,0 +1,116 @@
+{
+  "id": 14,
+  "key": "black-eagle-12",
+  "displayName": "BlackEagle12 黑鷹12號",
+  "description": "大型高空偵察平台，遊戲中航程與高速巡航能力突出，轉向較為遲緩。",
+  "role": "高空戰略偵察攻擊機",
+  "features": "大型平台／高空偵察／長航程",
+  "specs": {
+    "emptyMassKg": 30600,
+    "mtowKg": 78000,
+    "payloadKg": 6500,
+    "fuelKg": 36000,
+    "cruiseBurnKgMin": 280,
+    "boostBurnKgMin": 680,
+    "maxMach": 3.3,
+    "gPositive": 4.5,
+    "gNegative": -1.5,
+    "thrustKN": 420,
+    "ceilingM": 26000,
+    "rangeKm": 1800
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 30600,
+    "fuel_capacity": 36000,
+    "inertia_x": 148835,
+    "inertia_y": 988981,
+    "inertia_z": 874791,
+    "ixy": 13872,
+    "wing_area": 55,
+    "span": 13.14,
+    "chord": 4.41,
+    "max_thrust_sl": 328,
+    "ab_thrust_sl": 420,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 0.99,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 4.5,
+    "g_limit_neg": -1.5,
+    "max_q": 114322,
+    "max_mach": 3.3,
+    "start_altitude": 4200,
+    "start_speed": 300,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
