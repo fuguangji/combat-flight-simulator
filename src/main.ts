@@ -106,6 +106,8 @@ async function boot(): Promise<void> {
   let selectedEquipment = (() => {
     try { return localStorage.getItem('cfs.equipment') ?? 'nova17'; } catch { return 'pulse'; }
   })();
+  if (!weaponCatalog.some((weapon) => weapon.id === selectedEquipment)) selectedEquipment = 'nova17';
+  document.body.dataset.equipment = selectedEquipment;
   const openSubpage = (page: HTMLElement): void => {
     hangarPage.hidden = page !== hangarPage;
     equipmentPage.hidden = page !== equipmentPage;
