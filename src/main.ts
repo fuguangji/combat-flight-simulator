@@ -87,7 +87,7 @@ async function boot(): Promise<void> {
   const showAircraft = (): void => {
     specStart.textContent = `${aircraft.startAltitude.toLocaleString('en-US')} m · ${Math.round(aircraft.startSpeed * MS_TO_KT)} KT · 北向`;
     specDesc.textContent =
-      `${aircraft.description}（${aircraft.hasAfterburner ? '有後燃器' : '無後燃器'} · 過載上限 ${aircraft.gLimit} g · 最大 M ${aircraft.maxMach}）`;
+      `${aircraft.role} / ${aircraft.description}（空重 ${aircraft.specs.emptyMassKg.toLocaleString()} kg · MTOW ${aircraft.specs.mtowKg.toLocaleString()} kg · 燃油 ${aircraft.specs.fuelKg.toLocaleString()} kg · 最大 M ${aircraft.maxMach} · G ${aircraft.gLimit}）`;
   };
   showAircraft();
 
@@ -136,9 +136,9 @@ async function boot(): Promise<void> {
       const title = document.createElement('h3');
       title.textContent = a.displayName;
       const desc = document.createElement('p');
-      desc.textContent = a.description;
+      desc.textContent = `${a.role} / ${a.description} ${a.features ? `特色：${a.features}` : ''}`;
       const specs = document.createElement('small');
-      specs.textContent = `起始高度 ${a.startAltitude.toLocaleString()} m · ${Math.round(a.startSpeed * MS_TO_KT)} KT · ${a.hasAfterburner ? '後燃器' : '無後燃器'} · ${a.gLimit} G · M ${a.maxMach}`;
+      specs.textContent = `空重 ${a.specs.emptyMassKg.toLocaleString()} kg · MTOW ${a.specs.mtowKg.toLocaleString()} kg · 載荷 ${a.specs.payloadKg.toLocaleString()} kg · 燃油 ${a.specs.fuelKg.toLocaleString()} kg · 推力 ${a.specs.thrustKN} kN · 最大 M ${a.maxMach} · G +${a.specs.gPositive}/ ${a.specs.gNegative} · 升限 ${a.specs.ceilingM.toLocaleString()} m · 半徑 ${a.specs.rangeKm.toLocaleString()} km`;
       const select = document.createElement('button');
       select.type = 'button';
       select.className = a.key === aircraft.key ? 'primary' : 'ghost';
