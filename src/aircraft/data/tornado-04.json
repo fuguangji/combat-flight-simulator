@@ -1,0 +1,116 @@
+{
+  "id": 10,
+  "key": "tornado-04",
+  "displayName": "Tornado04 狂風04號",
+  "description": "可變翼重型平台，遊戲中可切換高速與穩定操控預設；任務定位偏向低空高速航線。",
+  "role": "可變後掠翼低空突防攻擊機",
+  "features": "雙發／可變翼／高速型",
+  "specs": {
+    "emptyMassKg": 13890,
+    "mtowKg": 28000,
+    "payloadKg": 9000,
+    "fuelKg": 5500,
+    "cruiseBurnKgMin": 50,
+    "boostBurnKgMin": 380,
+    "maxMach": 2.2,
+    "gPositive": 7.5,
+    "gNegative": -3,
+    "thrustKN": 142,
+    "ceilingM": 15200,
+    "rangeKm": 1390
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 13890,
+    "fuel_capacity": 5500,
+    "inertia_x": 30667,
+    "inertia_y": 203774,
+    "inertia_z": 180246,
+    "ixy": 2858,
+    "wing_area": 36,
+    "span": 10.37,
+    "chord": 3.76,
+    "max_thrust_sl": 111,
+    "ab_thrust_sl": 142,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 1.14,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 7.5,
+    "g_limit_neg": -3,
+    "max_q": 77023,
+    "max_mach": 2.2,
+    "start_altitude": 2736,
+    "start_speed": 180,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
