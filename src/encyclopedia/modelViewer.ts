@@ -40,7 +40,6 @@ export class EncyclopediaViewer {
   private dragging = false;
   private pointerX = 0;
   private pointerY = 0;
-  private frame = 0;
   private resizeObserver: ResizeObserver | null = null;
   private category: 'aircraft' | 'equipment' = 'aircraft';
 
@@ -121,7 +120,7 @@ export class EncyclopediaViewer {
   }
 
   private animate = (): void => {
-    this.frame = requestAnimationFrame(this.animate);
+    requestAnimationFrame(this.animate);
     if (!this.active) return;
     this.renderer.render(this.scene, this.camera);
   };
