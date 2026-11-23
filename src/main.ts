@@ -19,7 +19,7 @@ import { FreeLook } from './ui/look';
 import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
 import { EncyclopediaViewer } from './encyclopedia/modelViewer';
-import { AircraftSceneOverlay } from './rendering/aircraftOverlay';
+import * as THREE from 'three';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
 
@@ -119,24 +119,132 @@ async function boot(): Promise<void> {
   })();
   if (!weaponCatalog.some((weapon) => weapon.id === selectedEquipment)) selectedEquipment = 'nova17';
   document.body.dataset.equipment = selectedEquipment;
+  let hangarPreviewRenderer: THREE.WebGLRenderer | null = null;
+  let hangarPreviewScene: THREE.Scene | null = null;
+  let hangarPreviewCamera: THREE.PerspectiveCamera | null = null;
+  let hangarPreviewRoot: THREE.Group | null = null;
+  let hangarPreviewCanvas: HTMLCanvasElement | null = null;
+  let hangarPreviewActive = false;
+  let hangarPreviewResize: ResizeObserver | null = null;
+  let hangarPreviewSelected: AircraftDefinition = aircraft;
+  let hangarPointer: { x: number; y: number; id: number } | null = null;
+
+  const setHangarPreviewModel = (definition: AircraftDefinition): void => {
+    hangarPreviewSelected = definition;
+    if (!hangarPreviewRoot) return;
+    for (const child of [...hangarPreviewRoot.children]) {
+      child.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+        else mesh.material?.dispose();
+      });
+    }
+    hangarPreviewRoot.clear();
+    hangarPreviewRoot.add(encyclopedia.createAircraftModel(definition.id));
+    hangarPreviewRoot.rotation.set(-0.12, -0.52, 0);
+  };
+
+  const resizeHangarPreview = (): void => {
+    if (!hangarPreviewRenderer || !hangarPreviewCamera || !hangarPreviewCanvas) return;
+    const host = hangarPreviewCanvas.parentElement;
+    if (!host) return;
+    const width = Math.max(1, host.clientWidth);
+    const height = Math.max(1, host.clientHeight);
+    hangarPreviewRenderer.setSize(width, height, false);
+    hangarPreviewCamera.aspect = width / height;
+    hangarPreviewCamera.updateProjectionMatrix();
+  };
+
+  const ensureHangarPreview = (canvas: HTMLCanvasElement): void => {
+    if (hangarPreviewRenderer) {
+      resizeHangarPreview();
+      return;
+    }
+    hangarPreviewCanvas = canvas;
+    hangarPreviewRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
+    hangarPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    hangarPreviewRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    hangarPreviewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    hangarPreviewRenderer.toneMappingExposure = 1.2;
+    hangarPreviewScene = new THREE.Scene();
+    hangarPreviewScene.background = new THREE.Color(0x07120f);
+    hangarPreviewScene.add(new THREE.HemisphereLight(0xd9f6e4, 0x15211d, 2.25));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
+    keyLight.position.set(7, 10, 8);
+    hangarPreviewScene.add(keyLight);
+    const rimLight = new THREE.DirectionalLight(0x6bd9ae, 1.8);
+    rimLight.position.set(-7, 3, -5);
+    hangarPreviewScene.add(rimLight);
+    const floor = new THREE.GridHelper(24, 24, 0x315447, 0x172b24);
+    floor.position.y = -1.55;
+    hangarPreviewScene.add(floor);
+    hangarPreviewRoot = new THREE.Group();
+    hangarPreviewScene.add(hangarPreviewRoot);
+    hangarPreviewCamera = new THREE.PerspectiveCamera(38, 1, 0.1, 120);
+    hangarPreviewCamera.position.set(9, 6.2, 10);
+    hangarPreviewCamera.lookAt(0, 0, 0);
+    hangarPreviewResize = new ResizeObserver(resizeHangarPreview);
+    if (canvas.parentElement) hangarPreviewResize.observe(canvas.parentElement);
+    canvas.addEventListener('pointerdown', (event) => {
+      hangarPointer = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      if (!hangarPointer || !hangarPreviewRoot) return;
+      const dx = event.clientX - hangarPointer.x;
+      const dy = event.clientY - hangarPointer.y;
+      hangarPointer.x = event.clientX;
+      hangarPointer.y = event.clientY;
+      hangarPreviewRoot.rotation.y += dx * 0.009;
+      hangarPreviewRoot.rotation.x = THREE.MathUtils.clamp(hangarPreviewRoot.rotation.x + dy * 0.006, -0.85, 0.85);
+    });
+    const stopHangarDrag = (): void => { hangarPointer = null; };
+    canvas.addEventListener('pointerup', stopHangarDrag);
+    canvas.addEventListener('pointercancel', stopHangarDrag);
+    canvas.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      if (!hangarPreviewCamera) return;
+      hangarPreviewCamera.position.multiplyScalar(event.deltaY > 0 ? 1.08 : 0.93);
+      hangarPreviewCamera.position.clampLength(6.5, 24);
+      hangarPreviewCamera.lookAt(0, 0, 0);
+    }, { passive: false });
+    setHangarPreviewModel(hangarPreviewSelected);
+    resizeHangarPreview();
+    const draw = (): void => {
+      requestAnimationFrame(draw);
+      if (hangarPreviewActive && hangarPreviewRenderer && hangarPreviewScene && hangarPreviewCamera) {
+        hangarPreviewRenderer.render(hangarPreviewScene, hangarPreviewCamera);
+      }
+    };
+    requestAnimationFrame(draw);
+  };
+
+  const setHangarPreviewActive = (active: boolean): void => {
+    hangarPreviewActive = active;
+    if (active && hangarPreviewCanvas) resizeHangarPreview();
+  };
+
   const openSubpage = (page: HTMLElement): void => {
     for (const candidate of [hangarPage, equipmentPage, encyclopediaPage]) candidate.hidden = candidate !== page;
     menuPanel.classList.add('subpage-open');
     encyclopedia.setActive(page === encyclopediaPage);
+    setHangarPreviewActive(page === hangarPage);
   };
   const closeSubpage = (): void => {
     hangarPage.hidden = true;
     equipmentPage.hidden = true;
     encyclopediaPage.hidden = true;
     encyclopedia.setActive(false);
+    setHangarPreviewActive(false);
     menuPanel.classList.remove('subpage-open');
   };
-  let aircraftOverlay: AircraftSceneOverlay | null = null;
   const applyAircraftChoice = (key: string): void => {
     const next = aircraftRegistry.find(key);
     if (!next || next === aircraft) return;
     aircraft = next;
-    aircraftOverlay?.setAircraft(aircraft);
+    hangarPreviewSelected = next;
+    setHangarPreviewModel(next);
     aircraftSelect.value = aircraft.key;
     physics.setAircraft(aircraft.toPhysicsArray());
     physics.pause();
@@ -145,25 +253,150 @@ async function boot(): Promise<void> {
     try { localStorage.setItem('cfs.aircraft', aircraft.key); } catch { /* storage optional */ }
     renderHangar();
   };
-  const renderHangar = (): void => {
-    hangarGrid.replaceChildren();
-    for (const a of aircraftRegistry.list()) {
-      const card = document.createElement('article');
-      card.className = 'selection-card';
-      const title = document.createElement('h3');
-      title.textContent = a.displayName;
-      const desc = document.createElement('p');
-      desc.textContent = `${a.role} / ${a.description} ${a.features ? `特色：${a.features}` : ''}`;
-      const specs = document.createElement('small');
-      specs.textContent = `空重 ${a.specs.emptyMassKg.toLocaleString()} kg · MTOW ${a.specs.mtowKg.toLocaleString()} kg · 載荷 ${a.specs.payloadKg.toLocaleString()} kg · 燃油 ${a.specs.fuelKg.toLocaleString()} kg · 推力 ${a.specs.thrustKN} kN · 巡航油耗 ${a.specs.cruiseBurnKgMin} kg/min · 高推力油耗 ${a.specs.boostBurnKgMin} kg/min · 最大 M ${a.maxMach} · G +${a.specs.gPositive}/ ${a.specs.gNegative} · 升限 ${a.specs.ceilingM.toLocaleString()} m · 半徑 ${a.specs.rangeKm.toLocaleString()} km`;
-      const select = document.createElement('button');
-      select.type = 'button';
-      select.className = a.key === aircraft.key ? 'primary' : 'ghost';
-      select.textContent = a.key === aircraft.key ? '目前使用中' : '選擇此機型';
-      select.addEventListener('click', () => { applyAircraftChoice(a.key); });
-      card.append(title, desc, specs, select);
-      hangarGrid.append(card);
+  let hangarRoster: HTMLDivElement | null = null;
+  let hangarDetailTitle: HTMLElement | null = null;
+  let hangarDetailRole: HTMLElement | null = null;
+  let hangarDetailDescription: HTMLElement | null = null;
+  let hangarDetailFeatures: HTMLElement | null = null;
+  let hangarDetailSpecs: HTMLDivElement | null = null;
+  let hangarDetailMetrics: HTMLDivElement | null = null;
+  let hangarUseButton: HTMLButtonElement | null = null;
+
+  const updateHangarDetail = (): void => {
+    const item = hangarPreviewSelected;
+    if (!hangarDetailTitle || !hangarDetailRole || !hangarDetailDescription || !hangarDetailFeatures || !hangarDetailSpecs || !hangarDetailMetrics || !hangarUseButton) return;
+    hangarDetailTitle.textContent = item.displayName;
+    hangarDetailRole.textContent = item.role;
+    hangarDetailDescription.textContent = item.description;
+    hangarDetailFeatures.textContent = item.features || '原創機型設定';
+    hangarDetailSpecs.replaceChildren();
+    const s = item.specs;
+    const facts: Array<[string, string]> = [
+      ['EMPTY MASS', Math.round(s.emptyMassKg).toLocaleString('en-US') + ' kg'],
+      ['MAX TAKEOFF', Math.round(s.mtowKg).toLocaleString('en-US') + ' kg'],
+      ['FUEL', Math.round(s.fuelKg).toLocaleString('en-US') + ' kg'],
+      ['PAYLOAD', Math.round(s.payloadKg).toLocaleString('en-US') + ' kg'],
+    ];
+    for (const fact of facts) {
+      const cell = document.createElement('div');
+      cell.className = 'hangar-fact';
+      const label = document.createElement('span');
+      label.textContent = fact[0];
+      const value = document.createElement('strong');
+      value.textContent = fact[1];
+      cell.append(label, value);
+      hangarDetailSpecs.append(cell);
     }
+    hangarDetailMetrics.replaceChildren();
+    const all = aircraftRegistry.list();
+    const metrics: Array<{ label: string; value: number; max: number; suffix: string; digits: number }> = [
+      { label: 'MAX MACH', value: item.maxMach, max: Math.max(...all.map((a) => a.maxMach)), suffix: ' M', digits: 2 },
+      { label: 'SERVICE CEILING', value: s.ceilingM, max: Math.max(...all.map((a) => a.specs.ceilingM)), suffix: ' m', digits: 0 },
+      { label: 'COMBAT RADIUS', value: s.rangeKm, max: Math.max(...all.map((a) => a.specs.rangeKm)), suffix: ' km', digits: 0 },
+      { label: 'THRUST', value: s.thrustKN, max: Math.max(...all.map((a) => a.specs.thrustKN)), suffix: ' kN', digits: 0 },
+    ];
+    for (const metric of metrics) {
+      const row = document.createElement('div');
+      row.className = 'hangar-metric';
+      const header = document.createElement('div');
+      header.className = 'hangar-metric-head';
+      const label = document.createElement('span');
+      label.textContent = metric.label;
+      const value = document.createElement('strong');
+      value.textContent = metric.value.toFixed(metric.digits) + metric.suffix;
+      const track = document.createElement('div');
+      track.className = 'hangar-metric-track';
+      const fill = document.createElement('i');
+      fill.style.width = Math.max(0, Math.min(100, metric.max > 0 ? metric.value / metric.max * 100 : 0)) + '%';
+      track.append(fill);
+      header.append(label, value);
+      row.append(header, track);
+      hangarDetailMetrics.append(row);
+    }
+    hangarUseButton.textContent = item.key === aircraft.key ? '目前使用中 / IN USE' : '使用此機型 / SELECT AIRCRAFT';
+    hangarUseButton.disabled = item.key === aircraft.key;
+    hangarRoster?.querySelectorAll<HTMLButtonElement>('[data-aircraft-key]').forEach((button) => {
+      const active = button.dataset.aircraftKey === item.key;
+      button.classList.toggle('selected', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  };
+
+  const renderHangar = (): void => {
+    if (!hangarRoster) {
+      hangarGrid.className = 'hangar-layout';
+      const rosterPanel = document.createElement('aside');
+      rosterPanel.className = 'hangar-roster';
+      const rosterHeading = document.createElement('div');
+      rosterHeading.className = 'hangar-roster-heading';
+      rosterHeading.textContent = 'FLEET ROSTER / 機隊';
+      hangarRoster = document.createElement('div');
+      hangarRoster.className = 'hangar-roster-list';
+      rosterPanel.append(rosterHeading, hangarRoster);
+
+      const detail = document.createElement('section');
+      detail.className = 'hangar-detail';
+      const head = document.createElement('div');
+      head.className = 'hangar-detail-heading';
+      const titleWrap = document.createElement('div');
+      const eyebrow = document.createElement('p');
+      eyebrow.className = 'hangar-eyebrow';
+      eyebrow.textContent = 'AIRFRAME PROFILE / 機型資料';
+      hangarDetailTitle = document.createElement('h3');
+      hangarDetailRole = document.createElement('p');
+      hangarDetailRole.className = 'hangar-role';
+      titleWrap.append(eyebrow, hangarDetailTitle, hangarDetailRole);
+      head.append(titleWrap);
+
+      const viewer = document.createElement('div');
+      viewer.className = 'hangar-viewer';
+      const canvas = document.createElement('canvas');
+      canvas.className = 'hangar-model-canvas';
+      canvas.setAttribute('aria-label', '可旋轉縮放的飛機 3D 模型');
+      const hint = document.createElement('span');
+      hint.className = 'hangar-viewer-hint';
+      hint.textContent = 'DRAG TO ROTATE · SCROLL TO ZOOM';
+      viewer.append(canvas, hint);
+
+      const factsLabel = document.createElement('p');
+      factsLabel.className = 'hangar-section-label';
+      factsLabel.textContent = 'AIRFRAME DATA / 機體數據';
+      hangarDetailSpecs = document.createElement('div');
+      hangarDetailSpecs.className = 'hangar-facts';
+      const metricsLabel = document.createElement('p');
+      metricsLabel.className = 'hangar-section-label';
+      metricsLabel.textContent = 'PERFORMANCE INDEX / 性能指標';
+      hangarDetailMetrics = document.createElement('div');
+      hangarDetailMetrics.className = 'hangar-metrics';
+      hangarDetailDescription = document.createElement('p');
+      hangarDetailDescription.className = 'hangar-description';
+      hangarDetailFeatures = document.createElement('p');
+      hangarDetailFeatures.className = 'hangar-features';
+      hangarUseButton = document.createElement('button');
+      hangarUseButton.type = 'button';
+      hangarUseButton.className = 'primary hangar-use';
+      hangarUseButton.addEventListener('click', () => applyAircraftChoice(hangarPreviewSelected.key));
+      detail.append(head, viewer, factsLabel, hangarDetailSpecs, metricsLabel, hangarDetailMetrics, hangarDetailDescription, hangarDetailFeatures, hangarUseButton);
+      hangarGrid.replaceChildren(rosterPanel, detail);
+
+      const style = document.createElement('style');
+      style.textContent = '.hangar-layout{display:grid;grid-template-columns:minmax(155px,.62fr) minmax(0,2fr);gap:14px;min-height:520px;margin:14px 0}.hangar-roster{min-height:0;display:flex;flex-direction:column;border:1px solid rgba(125,255,154,.2);background:rgba(5,17,12,.55)}.hangar-roster-heading,.hangar-section-label{margin:0;padding:11px 12px;color:#8db9a1;font:10px ui-monospace,monospace;letter-spacing:.14em;border-bottom:1px solid rgba(125,255,154,.14)}.hangar-roster-list{overflow:auto;max-height:570px;padding:6px;display:flex;flex-direction:column;gap:4px}.hangar-roster-list button{width:100%;padding:10px 9px;text-align:left;font:11px ui-monospace,monospace;background:rgba(18,39,30,.65);border-color:rgba(125,255,154,.12);white-space:normal}.hangar-roster-list button.selected{color:#e3ffed;border-color:#8affb1;background:rgba(82,145,107,.3)}.hangar-detail{min-width:0;display:flex;flex-direction:column;gap:9px}.hangar-detail-heading h3{margin:0;color:#e5fff0;font-size:23px}.hangar-eyebrow,.hangar-section-label{padding:0;border:0;margin:0;color:#8db9a1;font:9px ui-monospace,monospace;letter-spacing:.16em}.hangar-role{margin:4px 0 0;color:#b3d5c0;font-size:12px}.hangar-viewer{position:relative;height:clamp(210px,34vh,330px);overflow:hidden;border:1px solid rgba(125,255,154,.24);border-radius:5px;background:radial-gradient(ellipse at 50% 45%,#1a3029,#07110f 76%)}.hangar-model-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}.hangar-model-canvas:active{cursor:grabbing}.hangar-viewer-hint{position:absolute;right:10px;bottom:8px;color:rgba(193,224,205,.58);font:8px ui-monospace,monospace;pointer-events:none}.hangar-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.hangar-fact{padding:9px 8px;background:rgba(125,255,154,.045);border:1px solid rgba(125,255,154,.13);display:flex;flex-direction:column;gap:4px;min-width:0}.hangar-fact span{color:#8db9a1;font:8px ui-monospace,monospace;letter-spacing:.08em}.hangar-fact strong{color:#e6fff0;font:600 12px ui-monospace,monospace;overflow-wrap:anywhere}.hangar-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}.hangar-metric-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;color:#a6cbb4;font:9px ui-monospace,monospace}.hangar-metric-head strong{color:#e6fff0;font-weight:600}.hangar-metric-track{height:5px;background:rgba(255,255,255,.1);overflow:hidden;border-radius:4px}.hangar-metric-track i{display:block;height:100%;background:linear-gradient(90deg,#39765b,#a0f4b5);box-shadow:0 0 9px rgba(125,255,154,.25)}.hangar-description{margin:0;color:rgba(225,242,230,.78);font-size:12px;line-height:1.65}.hangar-features{margin:0;color:#9cc8aa;font:10px/1.6 ui-monospace,monospace}.hangar-use{width:100%;padding:12px}.hangar-use:disabled{opacity:.65;cursor:default}@media(max-width:720px),(max-height:520px){.hangar-layout{grid-template-columns:minmax(100px,.58fr) minmax(0,1.6fr);gap:7px;min-height:0}.hangar-roster-list{max-height:400px;padding:4px}.hangar-roster-list button{padding:8px 5px;font-size:9px}.hangar-detail-heading h3{font-size:17px}.hangar-viewer{height:190px}.hangar-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.hangar-metrics{grid-template-columns:1fr;gap:7px}.hangar-fact strong{font-size:10px}.hangar-section-label{font-size:8px}}@media(max-width:430px){.hangar-layout{grid-template-columns:94px minmax(0,1fr)}.hangar-viewer{height:165px}.hangar-roster-list button{font-size:8px}.hangar-detail-heading h3{font-size:15px}}';
+      document.head.append(style);
+      hangarRoster.replaceChildren();
+      for (const item of aircraftRegistry.list()) {
+        const entry = document.createElement('button');
+        entry.type = 'button';
+        entry.dataset.aircraftKey = item.key;
+        entry.textContent = item.displayName;
+        entry.addEventListener('click', () => {
+          setHangarPreviewModel(item);
+          updateHangarDetail();
+        });
+        hangarRoster.append(entry);
+      }
+      ensureHangarPreview(canvas);
+    }
+    updateHangarDetail();
   };
   const renderEquipment = (): void => {
     equipmentGrid.replaceChildren();
@@ -207,7 +440,6 @@ async function boot(): Promise<void> {
   const wasmUrl = new URL(`${import.meta.env.BASE_URL}wasm/physics_engine.wasm`, location.href).href;
   const [handle] = await Promise.all([createRenderer(stage, forced), physics.start(wasmUrl, aircraft.toPhysicsArray())]);
   const { renderer, fallbackLog } = handle;
-  aircraftOverlay = new AircraftSceneOverlay(stage, aircraft, encyclopedia);
   handle.canvas.style.position = 'absolute';
   handle.canvas.style.inset = '0';
   handle.canvas.style.zIndex = '0';
@@ -502,13 +734,11 @@ async function boot(): Promise<void> {
     if (mode === 'menu' || mode === 'loading') {
       audio.silence();
       renderer.render(attractCamera(now));
-      aircraftOverlay?.setVisible(false);
       hud.draw(null, aircraft, now);
     } else if (mode === 'paused') {
       // frozen picture: same snapshot, same camera as the moment of pausing
       snap = frozenSnap;
       if (rig.last) renderer.render(rig.last);
-      if (rig.last && snap) { aircraftOverlay?.setVisible(true); aircraftOverlay?.render(rig.last, snap); }
       hud.draw(snap, aircraft, now, rig.last?.fovY, look);
     } else {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
@@ -574,8 +804,6 @@ async function boot(): Promise<void> {
         window.dispatchEvent(new CustomEvent('cfs:flight-snapshot', { detail: { x: snap.position[0], y: snap.altitude, z: snap.position[2], heading: attitude.heading, speed: snap.airspeed } }));
         const cam = rig.update(snap, aircraft, now, look);
         renderer.render(cam);
-        aircraftOverlay?.setVisible(true);
-        aircraftOverlay?.render(cam, snap);
         hud.draw(snap, aircraft, now, cam.fovY, look);
         if (mode === 'crashed' && crashEl.hidden && !transitioning && now - crashedAtMs > CRASH_CARD_DELAY_MS) {
           showCrashCard(snap);
