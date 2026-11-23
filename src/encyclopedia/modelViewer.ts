@@ -40,8 +40,6 @@ export class EncyclopediaViewer {
   private dragging = false;
   private pointerX = 0;
   private pointerY = 0;
-  private resizeObserver: ResizeObserver | null = null;
-  private category: 'aircraft' | 'equipment' = 'aircraft';
 
   constructor(elements: Elements, aircraft: AircraftDefinition[], weapons: WeaponDefinition[]) {
     this.elements = elements;
@@ -97,8 +95,8 @@ export class EncyclopediaViewer {
 
     const host = elements.canvas.parentElement;
     if (host) {
-      this.resizeObserver = new ResizeObserver(() => this.resize());
-      this.resizeObserver.observe(host);
+      const observer = new ResizeObserver(() => this.resize());
+      observer.observe(host);
     }
     this.setCategory('aircraft');
     this.animate();
@@ -126,7 +124,6 @@ export class EncyclopediaViewer {
   };
 
   private setCategory(category: 'aircraft' | 'equipment'): void {
-    this.category = category;
     this.elements.category.value = category;
     this.elements.list.replaceChildren();
     if (category === 'aircraft') {
@@ -160,6 +157,14 @@ export class EncyclopediaViewer {
   }
 
   private replaceModel(model: THREE.Group): void {
+    for (const child of [...this.root.children]) {
+      child.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        mesh.geometry?.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+        else mesh.material?.dispose();
+      });
+    }
     this.root.clear();
     this.root.add(model);
     this.root.rotation.set(-0.12, -0.45, 0);
@@ -246,8 +251,7 @@ export class EncyclopediaViewer {
     fuselage.rotation.z = -Math.PI / 2;
     const nose = this.mesh(new THREE.ConeGeometry(0.27, 1.35, 20), accent, group, [3.72, 0, 0]);
     nose.rotation.z = -Math.PI / 2;
-    const tailCone = this.mesh(new THREE.ConeGeometry(0.31, 0.95, 20), body, group, [-3.45, 0, 0]);
-    tailCone.rotation.z = Math.PI / 2;
+    this.mesh(new THREE.ConeGeometry(0.31, 0.95, 20), body, group, [-3.45, 0, 0]).rotation.z = Math.PI / 2;
 
     this.wing(group, span, sweep, rear, wingColor, 1);
     this.wing(group, span, sweep, rear, wingColor, -1);
@@ -278,8 +282,7 @@ export class EncyclopediaViewer {
       const inner = this.mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.035, 16), this.material(0x6a9d8c, 0.5, 0.3), group, [-3.17, -0.02, z]);
       inner.rotation.z = Math.PI / 2;
     }
-    const stripe = this.mesh(new THREE.BoxGeometry(1.05, 0.025, 0.04), accent, group, [-0.35, 0.27, 0]);
-    stripe.rotation.z = -0.02;
+    this.mesh(new THREE.BoxGeometry(1.05, 0.025, 0.04), accent, group, [-0.35, 0.27, 0]).rotation.z = -0.02;
     group.scale.setScalar(1.05);
     return group;
   }
@@ -291,16 +294,14 @@ export class EncyclopediaViewer {
     const glow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8, metalness: 0.3, roughness: 0.2 });
     const core = this.mesh(new THREE.CylinderGeometry(0.38, 0.38, 3.15, 24), shell, group, [0, 0, 0]);
     core.rotation.z = -Math.PI / 2;
-    const nose = this.mesh(new THREE.SphereGeometry(0.39, 20, 12), glow, group, [1.62, 0, 0]);
-    nose.scale.set(1.2, 0.8, 0.8);
+    this.mesh(new THREE.SphereGeometry(0.39, 20, 12), glow, group, [1.62, 0, 0]).scale.set(1.2, 0.8, 0.8);
     const rear = this.mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.42, 20), this.material(0x263a39), group, [-1.78, 0, 0]);
     rear.rotation.z = -Math.PI / 2;
     for (const x of [-0.85, 0.05, 0.95]) {
       const ring = this.mesh(new THREE.TorusGeometry(0.405, 0.045, 8, 24), glow, group, [x, 0, 0]);
       ring.rotation.y = Math.PI / 2;
     }
-    const band = this.mesh(new THREE.BoxGeometry(0.48, 0.055, 0.055), glow, group, [-0.42, 0.39, 0]);
-    band.rotation.z = 0.15;
+    this.mesh(new THREE.BoxGeometry(0.48, 0.055, 0.055), glow, group, [-0.42, 0.39, 0]).rotation.z = 0.15;
     group.userData.catalogId = id;
     return group;
   }
