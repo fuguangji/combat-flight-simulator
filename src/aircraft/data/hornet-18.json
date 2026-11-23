@@ -1,0 +1,116 @@
+{
+  "id": 13,
+  "key": "hornet-18",
+  "displayName": "Hornet18 胡蜂18號",
+  "description": "多用途艦載平台，遊戲中操控均衡、適合多任務與觸控式座艙操作。",
+  "role": "艦載全天候戰鬥攻擊機",
+  "features": "雙發／艦載／多用途",
+  "specs": {
+    "emptyMassKg": 14550,
+    "mtowKg": 29900,
+    "payloadKg": 8050,
+    "fuelKg": 6670,
+    "cruiseBurnKgMin": 52,
+    "boostBurnKgMin": 350,
+    "maxMach": 1.8,
+    "gPositive": 7.5,
+    "gNegative": -2.5,
+    "thrustKN": 195,
+    "ceilingM": 15200,
+    "rangeKm": 950
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 14550,
+    "fuel_capacity": 6670,
+    "inertia_x": 33650,
+    "inertia_y": 223600,
+    "inertia_z": 197782,
+    "ixy": 3136,
+    "wing_area": 36,
+    "span": 10.51,
+    "chord": 3.8,
+    "max_thrust_sl": 152,
+    "ab_thrust_sl": 195,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 1.15,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 7.5,
+    "g_limit_neg": -2.5,
+    "max_q": 78832,
+    "max_mach": 1.8,
+    "start_altitude": 2736,
+    "start_speed": 180,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
