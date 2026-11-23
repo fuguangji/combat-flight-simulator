@@ -1,3 +1,4 @@
+import { sampleTerrain } from '../terrain/procedural';
 /** Lightweight flight navigation display and deterministic infinite-world coordinates. */
 export interface NavigationSnapshot { x: number; y: number; z: number; heading: number; speed: number; }
 export class NavigationDisplay {
@@ -39,6 +40,13 @@ export class NavigationDisplay {
     ctx.strokeStyle = 'rgba(125,255,154,.12)'; ctx.lineWidth = 1;
     for(let gx=0;gx<=w;gx+=32){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,h);ctx.stroke();}
     for(let gy=0;gy<=h;gy+=28){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(w,gy);ctx.stroke();}
+    // The map samples the same deterministic world field used by the terrain system.
+    for(let gy=0;gy<10;gy++) for(let gx=0;gx<20;gx++) {
+      const wx=x+(gx-10)*1200, wz=z+(gy-5)*1200;
+      const terrain=sampleTerrain(wx,wz,this.seed);
+      ctx.fillStyle=terrain.biome==='ridge'?'rgba(130,145,135,.28)':terrain.biome==='basin'?'rgba(45,105,112,.28)':'rgba(76,126,72,.20)';
+      ctx.fillRect(gx*16,gy*14,16,14);
+    }
     const hash=(a:number,b:number)=>{const v=Math.sin(a*127.1+b*311.7)*43758.5453;return v-Math.floor(v);};
     for(let i=0;i<26;i++){
       const tx=(hash(i,Math.floor(x/4000))*w), ty=(hash(i+9,Math.floor(z/4000))*h);
