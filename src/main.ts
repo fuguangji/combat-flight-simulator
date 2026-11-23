@@ -207,7 +207,7 @@ async function boot(): Promise<void> {
   const wasmUrl = new URL(`${import.meta.env.BASE_URL}wasm/physics_engine.wasm`, location.href).href;
   const [handle] = await Promise.all([createRenderer(stage, forced), physics.start(wasmUrl, aircraft.toPhysicsArray())]);
   const { renderer, fallbackLog } = handle;
-  aircraftOverlay = new AircraftSceneOverlay(stage, aircraft);
+  aircraftOverlay = new AircraftSceneOverlay(stage, aircraft, encyclopedia);
   handle.canvas.style.position = 'absolute';
   handle.canvas.style.inset = '0';
   handle.canvas.style.zIndex = '0';
