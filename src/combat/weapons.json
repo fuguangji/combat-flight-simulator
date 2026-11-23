@@ -1,0 +1,122 @@
+[
+  {
+    "id": "nova17",
+    "name": "Nova17 超新星17號",
+    "category": "空對空 / AIR-TO-AIR",
+    "role": "近距空中對抗",
+    "description": "短節奏、高靈敏的近距遊戲裝備；以明亮脈衝與快速回饋呈現。",
+    "effect": "PULSE BURST",
+    "capacity": 6,
+    "cooldown": 1,
+    "color": "#ffc56b",
+    "life": 0.72
+  },
+  {
+    "id": "meteor88",
+    "name": "Meteor88 流星88號",
+    "category": "空對空 / AIR-TO-AIR",
+    "role": "遠距空域壓力",
+    "description": "遠距任務型遊戲裝備；以長尾光跡與較長的演出時間區別。",
+    "effect": "COMET TRAIL",
+    "capacity": 4,
+    "cooldown": 1.6,
+    "color": "#7de7ff",
+    "life": 1.4
+  },
+  {
+    "id": "hellfire09",
+    "name": "Hellfire09 地獄火09號",
+    "category": "空對地 / AIR-TO-GROUND",
+    "role": "地面任務支援",
+    "description": "地面任務專用的遊戲化效果套件；以集中式能量閃光表現。",
+    "effect": "EMBER ARC",
+    "capacity": 5,
+    "cooldown": 1.2,
+    "color": "#ff985c",
+    "life": 1.05
+  },
+  {
+    "id": "vortex33",
+    "name": "Vortex33 旋渦33號",
+    "category": "空對地／空對艦 / SURFACE",
+    "role": "海面任務效果",
+    "description": "海面任務型遊戲裝備；以寬幅渦旋與水面光環表現。",
+    "effect": "TIDAL RING",
+    "capacity": 3,
+    "cooldown": 1.8,
+    "color": "#65d9e8",
+    "life": 1.5
+  },
+  {
+    "id": "stinger05",
+    "name": "Stinger05 毒刺05號",
+    "category": "空對空 / AIR-TO-AIR",
+    "role": "輕型近距配置",
+    "description": "輕型、快速的遊戲化視覺裝備；適合短促的連續演出。",
+    "effect": "SPARK DART",
+    "capacity": 8,
+    "cooldown": 0.7,
+    "color": "#a8ffc9",
+    "life": 0.65
+  },
+  {
+    "id": "thunder66",
+    "name": "Thunder66 雷神66號",
+    "category": "空對地 / AIR-TO-GROUND",
+    "role": "電子任務效果",
+    "description": "電子任務用抽象效果；以干擾波紋與短暫訊號雜訊呈現。",
+    "effect": "STATIC WAVE",
+    "capacity": 4,
+    "cooldown": 1.5,
+    "color": "#b6a1ff",
+    "life": 1.3
+  },
+  {
+    "id": "gungnir01",
+    "name": "Gungnir01 永恆之槍01號",
+    "category": "空對地 / AIR-TO-GROUND",
+    "role": "重型任務演出",
+    "description": "重型任務型遊戲裝備；以高空光柱與大範圍環形視覺表現。",
+    "effect": "SKY LANCE",
+    "capacity": 2,
+    "cooldown": 2.2,
+    "color": "#f2d38a",
+    "life": 1.8
+  },
+  {
+    "id": "frostbite12",
+    "name": "Frostbite12 霜凍12號",
+    "category": "空對空 / AIR-TO-AIR",
+    "role": "協同任務視覺",
+    "description": "協同任務型遊戲裝備；以冷色雙層光跡與同步閃爍表現。",
+    "effect": "FROST TRACE",
+    "capacity": 4,
+    "cooldown": 1.35,
+    "color": "#9deaff",
+    "life": 1.25
+  },
+  {
+    "id": "ironhammer20",
+    "name": "IronHammer20 鐵錘20號",
+    "category": "空對地 / AIR-TO-GROUND",
+    "role": "重型地面任務",
+    "description": "重型地面任務視覺套件；以沉重落點光環與塵霧表現。",
+    "effect": "IMPACT HALO",
+    "capacity": 2,
+    "cooldown": 2,
+    "color": "#ffb36b",
+    "life": 1.7
+  },
+  {
+    "id": "phoenix54",
+    "name": "Phoenix54 不死鳥54號",
+    "category": "空對空 / AIR-TO-AIR",
+    "role": "大型空域任務",
+    "description": "大型空域任務型遊戲裝備；以長時間燃燒光跡與多段光暈表現。",
+    "effect": "PHOENIX WAKE",
+    "capacity": 2,
+    "cooldown": 2.1,
+    "color": "#ff7d75",
+    "life": 1.9
+  }
+]
