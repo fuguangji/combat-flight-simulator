@@ -239,7 +239,12 @@ export function mountCockpitShell(): CockpitShell {
   window.addEventListener('cfs:autopilot-state', (event) => {
     const enabled = Boolean((event as CustomEvent<{ enabled?: boolean }>).detail?.enabled);
     const button = shell.querySelector<HTMLButtonElement>('[data-action="autopilot"]');
-    if (button) button.textContent = enabled ? 'AP / 自動駕駛 ON' : 'AP / 自動駕駛 OFF';
+    if (button) {
+      button.classList.toggle('is-on', enabled);
+      button.setAttribute('aria-pressed', String(enabled));
+      const state = button.querySelector<HTMLElement>('.switch-state');
+      if (state) state.textContent = enabled ? 'ON' : 'OFF';
+    }
   });
 
   return {
