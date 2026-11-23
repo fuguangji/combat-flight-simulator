@@ -34,6 +34,7 @@ export class ArcadeProjectileSystem {
   private flash = 0;
   private contactIndex = 0;
   private focused = false;
+  private lastPanelSignature = '';
 
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -108,6 +109,9 @@ export class ArcadeProjectileSystem {
     const spec = EQUIPMENT[this.equipment];
     const remaining = this.ammo[this.equipment];
     const state = this.cooldowns[this.equipment] > 0 ? 'RECHARGING' : remaining > 0 ? 'READY' : 'EMPTY';
+    const signature = [this.equipment, remaining, state, this.contactIndex, this.focused].join('|');
+    if (signature === this.lastPanelSignature) return;
+    this.lastPanelSignature = signature;
     this.panel.textContent = `${spec.short}  ·  ${String(remaining).padStart(2, '0')} / ${spec.capacity}  ·  ${state}  ·  F`;
     this.panel.dataset.state = remaining > 0 && this.cooldowns[this.equipment] <= 0 ? 'ready' : 'busy';
     this.panel.style.setProperty('--equipment-color', spec.color);
