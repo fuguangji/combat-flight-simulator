@@ -220,20 +220,37 @@ export class ArcadeProjectileSystem {
       ctx.shadowColor = spec.color;
       ctx.shadowBlur = effect.equipment === 'prism' || effect.equipment === 'nova' ? 18 : 12;
       if (effect.equipment === 'arc') {
-        ctx.beginPath(); ctx.moveTo(x, y + 26); ctx.lineTo(x - 7, y + 10);
-        ctx.lineTo(x + 6, y - 2); ctx.lineTo(x - 4, y - 18); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y + 26); ctx.lineTo(x - 7, y + 10); ctx.lineTo(x + 6, y - 2); ctx.lineTo(x - 4, y - 18); ctx.stroke();
       } else if (effect.equipment === 'prism') {
-        ctx.beginPath(); ctx.moveTo(x, y - 18); ctx.lineTo(x + 9, y);
-        ctx.lineTo(x, y + 18); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y - 18); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 18); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.stroke();
         ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
-      } else if (effect.equipment === 'nova') {
-        ctx.beginPath(); ctx.arc(x, y, 7 + t * 24, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(x, y, 3 + t * 8, 0, Math.PI * 2); ctx.stroke();
-      } else if (effect.equipment === 'lumen') {
-        for (let ray = 0; ray < 5; ray++) {
-          const offset = (ray - 2) * 5;
+      } else if (effect.equipment === 'nova' || effect.equipment === 'vortex33' || effect.equipment === 'ironhammer20') {
+        const radius = 7 + t * (effect.equipment === 'ironhammer20' ? 34 : 24);
+        ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, radius * 0.48, 0, Math.PI * 2); ctx.stroke();
+        if (effect.equipment === 'vortex33') { ctx.beginPath(); ctx.arc(x, y, radius * 0.72, t, t + Math.PI * 1.5); ctx.stroke(); }
+      } else if (effect.equipment === 'lumen' || effect.equipment === 'frostbite12') {
+        const rays = effect.equipment === 'frostbite12' ? 2 : 5;
+        for (let ray = 0; ray < rays; ray++) {
+          const offset = effect.equipment === 'frostbite12' ? (ray ? 7 : -7) : (ray - 2) * 5;
           ctx.beginPath(); ctx.moveTo(x + offset, y + 25); ctx.lineTo(x + offset * 0.5, y - 18); ctx.stroke();
         }
+      } else if (effect.equipment === 'meteor88' || effect.equipment === 'phoenix54') {
+        const spread = effect.equipment === 'phoenix54' ? 9 : 4;
+        for (let ray = -1; ray <= 1; ray++) {
+          ctx.beginPath(); ctx.moveTo(x + ray * spread, y + 36); ctx.lineTo(x + ray * spread * 0.35, y - 18); ctx.stroke();
+        }
+        if (effect.equipment === 'phoenix54') { ctx.beginPath(); ctx.arc(x, y + 12, 10 + t * 12, 0, Math.PI * 2); ctx.stroke(); }
+      } else if (effect.equipment === 'hellfire09' || effect.equipment === 'stinger05') {
+        ctx.beginPath(); ctx.moveTo(x, y + 30); ctx.lineTo(x, y - 12); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y - 12, effect.equipment === 'hellfire09' ? 7 : 3, 0, Math.PI * 2); ctx.stroke();
+        if (effect.equipment === 'hellfire09') { ctx.beginPath(); ctx.arc(x, y - 12, 14 + t * 10, 0, Math.PI * 2); ctx.stroke(); }
+      } else if (effect.equipment === 'thunder66') {
+        ctx.beginPath(); ctx.moveTo(x, y + 25); ctx.lineTo(x - 12, y + 10); ctx.lineTo(x + 12, y - 4); ctx.lineTo(x - 8, y - 20); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 20 + t * 8, 0, Math.PI * 2); ctx.stroke();
+      } else if (effect.equipment === 'gungnir01') {
+        ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x, y + 40); ctx.lineTo(x, y - 30); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y + 16, 10 + t * 16, 0, Math.PI * 2); ctx.stroke();
       } else {
         ctx.beginPath(); ctx.moveTo(x, y + 34); ctx.lineTo(x, y - 8); ctx.stroke();
       }
