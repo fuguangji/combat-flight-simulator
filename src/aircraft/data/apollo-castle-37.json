@@ -1,0 +1,116 @@
+{
+  "id": 15,
+  "key": "apollo-castle-37",
+  "displayName": "Apollo-Castle37 太陽神堡壘37",
+  "description": "重型支援平台，遊戲中強調耐久、載荷與多引擎冗餘風格，機動性較低。",
+  "role": "重型攻擊機",
+  "features": "四發風格／重裝甲外觀／重載荷",
+  "specs": {
+    "emptyMassKg": 25000,
+    "mtowKg": 60000,
+    "payloadKg": 20000,
+    "fuelKg": 15000,
+    "cruiseBurnKgMin": 84,
+    "boostBurnKgMin": 84,
+    "maxMach": 1.7,
+    "gPositive": 6.5,
+    "gNegative": -2,
+    "thrustKN": 600,
+    "ceilingM": 17000,
+    "rangeKm": 1400
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 25000,
+    "fuel_capacity": 15000,
+    "inertia_x": 99344,
+    "inertia_y": 660123,
+    "inertia_z": 583904,
+    "ixy": 9259,
+    "wing_area": 49,
+    "span": 12.36,
+    "chord": 4.23,
+    "max_thrust_sl": 468,
+    "ab_thrust_sl": 468,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 0.99,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 6.5,
+    "g_limit_neg": -2,
+    "max_q": 103333,
+    "max_mach": 1.7,
+    "start_altitude": 3060,
+    "start_speed": 260,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
