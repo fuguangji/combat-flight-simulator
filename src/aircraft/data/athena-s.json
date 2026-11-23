@@ -1,0 +1,116 @@
+{
+  "id": 12,
+  "key": "athena-s",
+  "displayName": "Athena-S 雅典娜S",
+  "description": "實驗性高空高速驗證平台；遊戲中以特殊高速任務模式呈現，不採用現實極音速武器或攻擊模擬。",
+  "role": "遠程極音速突擊驗證機",
+  "features": "組合動力風格／實驗機／高空高速",
+  "specs": {
+    "emptyMassKg": 24000,
+    "mtowKg": 55000,
+    "payloadKg": 8000,
+    "fuelKg": 22000,
+    "cruiseBurnKgMin": 120,
+    "boostBurnKgMin": 850,
+    "maxMach": 5.2,
+    "gPositive": 5.5,
+    "gNegative": -1.5,
+    "thrustKN": 360,
+    "ceilingM": 32000,
+    "rangeKm": 2500
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 24000,
+    "fuel_capacity": 22000,
+    "inertia_x": 91556,
+    "inertia_y": 608370,
+    "inertia_z": 538126,
+    "ixy": 8533,
+    "wing_area": 48,
+    "span": 12.21,
+    "chord": 4.2,
+    "max_thrust_sl": 281,
+    "ab_thrust_sl": 360,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 1.42,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 5.5,
+    "g_limit_neg": -1.5,
+    "max_q": 101246,
+    "max_mach": 5.2,
+    "start_altitude": 4200,
+    "start_speed": 380,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
