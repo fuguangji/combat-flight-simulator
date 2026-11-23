@@ -199,3 +199,28 @@ body.touch #tutorial p { font-size: 12px; line-height: 1.45; }
   .selection-grid { grid-template-columns: 1fr; }
   .selection-card p,.selection-card small { min-height: 0; }
 }
+
+
+/* ---- procedural 3D encyclopedia ---- */
+.encyclopedia-page { max-height: min(78vh, 820px); }
+.encyclopedia-layout { display: grid; grid-template-columns: minmax(170px, 0.72fr) minmax(0, 2fr); gap: 14px; min-height: 390px; margin: 14px 0; }
+.encyclopedia-sidebar { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.encyclopedia-sidebar label { color: #8db9a1; font: 10px ui-monospace, monospace; letter-spacing: .12em; }
+.encyclopedia-sidebar select { width: 100%; padding: 9px; color: #e5f8eb; background: #0b1713; border: 1px solid #426452; border-radius: 4px; }
+.encyclopedia-list { min-height: 0; max-height: 440px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+.encyclopedia-entry { padding: 9px 8px; text-align: left; font: 10px ui-monospace, monospace; border-radius: 3px; background: rgba(20,42,33,.68); }
+.encyclopedia-entry.selected { color: #d9ffe4; border-color: #8affb1; background: rgba(82,145,107,.26); }
+.encyclopedia-detail { min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.encyclopedia-model-wrap { position: relative; height: clamp(220px, 34vh, 360px); overflow: hidden; border: 1px solid rgba(125,255,154,.24); border-radius: 5px; background: radial-gradient(ellipse at 50% 45%,#1a3029,#07110f 75%); }
+#encyclopedia-model { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#encyclopedia-model:active { cursor: grabbing; }
+.encyclopedia-model-wrap > span { position: absolute; bottom: 8px; right: 10px; color: rgba(193,224,205,.5); font: 8px ui-monospace, monospace; pointer-events: none; }
+.encyclopedia-detail h3 { margin: 2px 0 0; color: #e5fff0; font-size: 19px; }
+.encyclopedia-detail p { margin: 0; color: rgba(225,242,230,.76); font-size: 12px; line-height: 1.7; }
+.encyclopedia-detail .encyclopedia-specs { color: #a9d1b7; font: 10px/1.9 ui-monospace, monospace; }
+@media(max-width:720px), (max-height:520px) {
+  .encyclopedia-layout { grid-template-columns: minmax(112px,.7fr) minmax(0,1.6fr); min-height: 300px; gap: 8px; }
+  .encyclopedia-list { max-height: 300px; }
+  .encyclopedia-entry { padding: 8px 5px; font-size: 9px; }
+  .encyclopedia-model-wrap { height: 210px; }
+}
