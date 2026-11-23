@@ -37,6 +37,7 @@ export class EncyclopediaViewer {
   private readonly weapons: WeaponDefinition[];
   private readonly elements: Elements;
   private active = false;
+  private resizeObserver: ResizeObserver;
   private dragging = false;
   private pointerX = 0;
   private pointerY = 0;
@@ -95,8 +96,8 @@ export class EncyclopediaViewer {
 
     const host = elements.canvas.parentElement;
     if (host) {
-      const observer = new ResizeObserver(() => this.resize());
-      observer.observe(host);
+      this.resizeObserver = new ResizeObserver(() => this.resize());
+      this.resizeObserver.observe(host);
     }
     this.setCategory('aircraft');
     this.animate();
@@ -104,7 +105,11 @@ export class EncyclopediaViewer {
 
   setActive(active: boolean): void {
     this.active = active;
-    if (active) this.resize();
+    if (active) {
+      const host = this.elements.canvas.parentElement;
+      if (host) this.resizeObserver.observe(host);
+      this.resize();
+    }
   }
 
   private resize(): void {
