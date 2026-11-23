@@ -28,7 +28,7 @@ export class ArcadeProjectileSystem {
   private readonly active: VisualEffect[] = [];
   private equipment: EquipmentId = 'pulse';
   private ammo: Record<EquipmentId, number> = { pulse: 8, arc: 5, prism: 3 };
-  private cooldown = 0;
+  private cooldowns: Record<EquipmentId, number> = { pulse: 0, arc: 0, prism: 0 };
   private previousMode = '';
   private lastTime = performance.now();
   private flash = 0;
@@ -83,7 +83,6 @@ export class ArcadeProjectileSystem {
   private selectEquipment(id: EquipmentId): void {
     if (!EQUIPMENT[id]) return;
     this.equipment = id;
-    this.cooldown = 0;
     this.renderPanel();
   }
   private selectContact(index: number): void {
@@ -96,11 +95,11 @@ export class ArcadeProjectileSystem {
 
   private launch(): void {
     const spec = EQUIPMENT[this.equipment];
-    if (this.ammo[this.equipment] <= 0 || this.cooldown > 0) { this.flash = 0.16; return; }
+    if (this.ammo[this.equipment] <= 0 || this.cooldowns[this.equipment] > 0) { this.flash = 0.16; return; }
     // Cosmetic screen-space flourish only; it is not connected to the selected contact.
     this.active.push({ age: 0, lane: (this.active.length % 2 ? -1 : 1) * 0.018, equipment: this.equipment });
     this.ammo[this.equipment] -= 1;
-    this.cooldown = spec.cooldown;
+    this.cooldowns[this.equipment] = spec.cooldown;
     this.flash = 0.12;
     this.renderPanel();
   }
@@ -108,9 +107,9 @@ export class ArcadeProjectileSystem {
   private renderPanel(): void {
     const spec = EQUIPMENT[this.equipment];
     const remaining = this.ammo[this.equipment];
-    const state = this.cooldown > 0 ? 'RECHARGING' : remaining > 0 ? 'READY' : 'EMPTY';
+    const state = this.cooldowns[this.equipment] > 0 ? 'RECHARGING' : remaining > 0 ? 'READY' : 'EMPTY';
     this.panel.textContent = `${spec.short}  ·  ${String(remaining).padStart(2, '0')} / ${spec.capacity}  ·  ${state}  ·  F`;
-    this.panel.dataset.state = remaining > 0 && this.cooldown <= 0 ? 'ready' : 'busy';
+    this.panel.dataset.state = remaining > 0 && this.cooldowns[this.equipment] <= 0 ? 'ready' : 'busy';
     this.panel.style.setProperty('--equipment-color', spec.color);
     this.status.querySelectorAll<HTMLButtonElement>('[data-equip]').forEach((button) => {
       const id = button.dataset.equip as EquipmentId;
@@ -134,7 +133,7 @@ export class ArcadeProjectileSystem {
     const mode = document.body.dataset.mode ?? '';
     if (mode === 'menu' && this.previousMode !== 'menu') {
       this.ammo = { pulse: 8, arc: 5, prism: 3 };
-      this.cooldown = 0;
+      this.cooldowns = { pulse: 0, arc: 0, prism: 0 };
       this.active.length = 0;
       this.focused = false;
       this.contactIndex = 0;
@@ -142,7 +141,7 @@ export class ArcadeProjectileSystem {
     }
     this.previousMode = mode;
     if (mode === 'flying') {
-      this.cooldown = Math.max(0, this.cooldown - dt);
+      for (const id of Object.keys(this.cooldowns) as EquipmentId[]) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
       for (const effect of this.active) effect.age += dt;
       for (let i = this.active.length - 1; i >= 0; i--) {
         if (this.active[i].age >= EQUIPMENT[this.active[i].equipment].life) this.active.splice(i, 1);
