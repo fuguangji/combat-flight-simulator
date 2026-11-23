@@ -21,6 +21,9 @@ export interface AircraftJson {
   description: string;
   cockpit: { eyeOffset: [number, number, number]; fovDeg: number };
   physics: Record<string, number | number[][]>;
+  role?: string;
+  features?: string;
+  specs?: { emptyMassKg: number; mtowKg: number; payloadKg: number; fuelKg: number; cruiseBurnKgMin: number; boostBurnKgMin: number; maxMach: number; gPositive: number; gNegative: number; thrustKN: number; ceilingM: number; rangeKm: number };
 }
 
 export class AircraftDataError extends Error {
@@ -41,6 +44,9 @@ export class AircraftDefinition {
   readonly key: string;
   readonly displayName: string;
   readonly description: string;
+  readonly role: string;
+  readonly features: string;
+  readonly specs: NonNullable<AircraftJson['specs']>;
   /** Pilot eye position in the body frame (x forward, y up, z right), metres from the CG. */
   readonly eyeOffset: Vec3;
   /** Vertical field of view of the cockpit camera, radians. */
@@ -62,6 +68,9 @@ export class AircraftDefinition {
     this.key = json.key;
     this.displayName = json.displayName;
     this.description = json.description;
+    this.role = json.role ?? '多用途航空器';
+    this.features = json.features ?? '';
+    this.specs = json.specs ?? { emptyMassKg: p.empty_mass as number, mtowKg: p.empty_mass as number, payloadKg: 0, fuelKg: p.fuel_capacity as number, cruiseBurnKgMin: 0, boostBurnKgMin: 0, maxMach: p.max_mach as number, gPositive: p.g_limit_pos as number, gNegative: p.g_limit_neg as number, thrustKN: (p.max_thrust_sl as number) / 1000, ceilingM: 0, rangeKm: 0 };
     this.eyeOffset = [...json.cockpit.eyeOffset];
     this.fovY = degToRad(json.cockpit.fovDeg);
     this.scalars = PHYSICS_KEYS.map((k) => p[k] as number);
