@@ -55,7 +55,7 @@ export class ArcadeProjectileSystem {
         <button type="button" data-contact="1">ECHO-02</button>
         <button type="button" data-contact="2">ECHO-03</button>
       </div></div>
-      <div class="combat-focus"><span id="contact-name">ECHO-01 · DRONE</span><strong id="focus-state">NO FOCUS</strong></div>
+      <div class="combat-focus"><span id="contact-name">ECHO-01 · DRONE</span><button type="button" id="focus-state" data-focus="toggle">NO FOCUS</button></div>
       <div class="combat-hint">TAB：切換接觸點　T：切換焦點　F：觸發效果</div>
     `;
     document.body.append(this.canvas, this.panel, this.status);
@@ -77,6 +77,7 @@ export class ArcadeProjectileSystem {
       if (!(target instanceof HTMLButtonElement)) return;
       if (target.dataset.equip) this.selectEquipment(target.dataset.equip as EquipmentId);
       if (target.dataset.contact) this.selectContact(Number(target.dataset.contact));
+      if (target.dataset.focus) this.toggleFocus();
     });
     requestAnimationFrame(this.frame);
   }
