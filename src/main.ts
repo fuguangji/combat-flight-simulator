@@ -140,7 +140,7 @@ async function boot(): Promise<void> {
       const desc = document.createElement('p');
       desc.textContent = `${a.role} / ${a.description} ${a.features ? `特色：${a.features}` : ''}`;
       const specs = document.createElement('small');
-      specs.textContent = `空重 ${a.specs.emptyMassKg.toLocaleString()} kg · MTOW ${a.specs.mtowKg.toLocaleString()} kg · 載荷 ${a.specs.payloadKg.toLocaleString()} kg · 燃油 ${a.specs.fuelKg.toLocaleString()} kg · 推力 ${a.specs.thrustKN} kN · 最大 M ${a.maxMach} · G +${a.specs.gPositive}/ ${a.specs.gNegative} · 升限 ${a.specs.ceilingM.toLocaleString()} m · 半徑 ${a.specs.rangeKm.toLocaleString()} km`;
+      specs.textContent = `空重 ${a.specs.emptyMassKg.toLocaleString()} kg · MTOW ${a.specs.mtowKg.toLocaleString()} kg · 載荷 ${a.specs.payloadKg.toLocaleString()} kg · 燃油 ${a.specs.fuelKg.toLocaleString()} kg · 推力 ${a.specs.thrustKN} kN · 巡航油耗 ${a.specs.cruiseBurnKgMin} kg/min · 高推力油耗 ${a.specs.boostBurnKgMin} kg/min · 最大 M ${a.maxMach} · G +${a.specs.gPositive}/ ${a.specs.gNegative} · 升限 ${a.specs.ceilingM.toLocaleString()} m · 半徑 ${a.specs.rangeKm.toLocaleString()} km`;
       const select = document.createElement('button');
       select.type = 'button';
       select.className = a.key === aircraft.key ? 'primary' : 'ghost';
