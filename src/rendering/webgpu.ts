@@ -59,14 +59,40 @@ fn gridLine(p: vec2<f32>, cell: f32) -> f32 {
   let d = abs(fract(q - 0.5) - 0.5) / fwidth(q);
   return 1.0 - min(min(d.x, d.y), 1.0);
 }
+fn valueNoise(p: vec2<f32>) -> f32 {
+  let i = floor(p);
+  var f = fract(p);
+  f = f * f * (vec2<f32>(3.0) - 2.0 * f);
+  let a = hash2(i);
+  let b = hash2(i + vec2<f32>(1.0, 0.0));
+  let c = hash2(i + vec2<f32>(0.0, 1.0));
+  let d = hash2(i + vec2<f32>(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+fn terrainHeight(p: vec2<f32>) -> f32 {
+  let broad = (valueNoise(p * 0.000055) - 0.5) * 900.0;
+  let medium = (valueNoise(p * 0.00022) - 0.5) * 420.0;
+  let fine = (valueNoise(p * 0.0011) - 0.5) * 90.0;
+  let ridge = 1.0 - abs(valueNoise(p * 0.00014) * 2.0 - 1.0);
+  return broad + medium + fine + pow(ridge, 3.0) * 420.0;
+}
 @fragment fn fs(in: GOut) -> @location(0) vec4<f32> {
   let w = in.rel + g.camPos.xz;
+  let h = terrainHeight(w);
+  let hx = terrainHeight(w + vec2<f32>(24.0, 0.0)) - terrainHeight(w - vec2<f32>(24.0, 0.0));
+  let hz = terrainHeight(w + vec2<f32>(0.0, 24.0)) - terrainHeight(w - vec2<f32>(0.0, 24.0));
+  let slope = length(vec2<f32>(hx, hz)) / 48.0;
   let tint = hash2(floor(w / 1000.0));
-  var col = mix(vec3<f32>(0.20, 0.30, 0.16), vec3<f32>(0.34, 0.36, 0.20), tint);
+  let plain = mix(vec3<f32>(0.15, 0.25, 0.13), vec3<f32>(0.27, 0.34, 0.18), tint);
+  let rock = vec3<f32>(0.34, 0.35, 0.32);
+  var col = mix(plain, rock, smoothstep(0.35, 1.25, slope) * 0.8);
+  col = mix(col, vec3<f32>(0.66, 0.69, 0.66), smoothstep(850.0, 1450.0, h) * 0.75);
+  let contour = 1.0 - smoothstep(0.0, 18.0, abs(fract(h / 100.0) - 0.5) * 100.0);
+  col = mix(col, col * 0.72, contour * 0.18);
   let dist = length(vec3<f32>(in.rel.x, g.camPos.y, in.rel.y));
   let fade = 1.0 - clamp(dist / 12000.0, 0.0, 1.0);
-  col = mix(col, vec3<f32>(0.08, 0.12, 0.06), gridLine(w, 100.0) * 0.35 * fade);
-  col = mix(col, vec3<f32>(0.05, 0.07, 0.04), gridLine(w, 1000.0) * 0.6);
+  col = mix(col, vec3<f32>(0.08, 0.12, 0.06), gridLine(w, 100.0) * 0.16 * fade);
+  col = mix(col, vec3<f32>(0.05, 0.07, 0.04), gridLine(w, 1000.0) * 0.22);
   return vec4<f32>(applyFog(col, dist), 1.0);
 }
 `;
