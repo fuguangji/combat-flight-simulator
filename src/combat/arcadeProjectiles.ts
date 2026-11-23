@@ -4,17 +4,21 @@
  * These are non-guided, screen-space visual effects only. They are not connected
  * to contacts, world coordinates, collision, damage, sensors, tracking or guidance.
  */
-type EquipmentId = 'pulse' | 'arc' | 'prism' | 'nova' | 'lumen';
+type EquipmentId = string;
 type Contact = { id: string; className: string };
 type VisualEffect = { age: number; lane: number; equipment: EquipmentId };
+import weaponCatalog from './weapons.json';
 
-const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: number; cooldown: number; color: string; life: number }> = {
-  pulse: { name: 'PULSE 脈衝彈', short: 'PULSE', capacity: 8, cooldown: 0.65, color: '#ffc56b', life: 0.72 },
-  arc: { name: 'ARC 電弧彈', short: 'ARC', capacity: 5, cooldown: 1.05, color: '#7de7ff', life: 1.0 },
-  prism: { name: 'PRISM 稜鏡彈', short: 'PRISM', capacity: 3, cooldown: 1.45, color: '#d4a1ff', life: 1.25 },
-  nova: { name: 'NOVA 星爆彈', short: 'NOVA', capacity: 4, cooldown: 1.2, color: '#ff8eae', life: 1.1 },
-  lumen: { name: 'LUMEN 光幕彈', short: 'LUMEN', capacity: 6, cooldown: 0.9, color: '#a8ffc9', life: 1.35 },
-};
+const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: number; cooldown: number; color: string; life: number }> = Object.fromEntries(
+  weaponCatalog.map((weapon) => [weapon.id, {
+    name: weapon.name,
+    short: weapon.id.toUpperCase(),
+    capacity: weapon.capacity,
+    cooldown: weapon.cooldown,
+    color: weapon.color,
+    life: weapon.life,
+  }]),
+);
 const CONTACTS: Contact[] = [
   { id: 'ECHO-01', className: 'DRONE' },
   { id: 'ECHO-02', className: 'DRONE' },
@@ -28,9 +32,9 @@ export class ArcadeProjectileSystem {
   private readonly status: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
   private readonly active: VisualEffect[] = [];
-  private equipment: EquipmentId = 'pulse';
-  private ammo: Record<EquipmentId, number> = { pulse: 8, arc: 5, prism: 3, nova: 4, lumen: 6 };
-  private cooldowns: Record<EquipmentId, number> = { pulse: 0, arc: 0, prism: 0, nova: 0, lumen: 0 };
+  private equipment: EquipmentId = 'nova17';
+  private ammo: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, weapon.capacity]));
+  private cooldowns: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
   private previousMode = '';
   private lastTime = performance.now();
   private flash = 0;
