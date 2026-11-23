@@ -2,6 +2,8 @@ import './ui/style.css';
 import { aircraftRegistry, type AircraftDefinition } from './aircraft/registry';
 import { detectCapabilities } from './core/capabilities';
 import { CameraRig, attitudeFromQuat } from './cockpit/camera';
+import { mountCockpitShell } from './cockpit/cockpitShell';
+import { NavigationDisplay } from './navigation/navigation';
 import { Hud } from './cockpit/hud';
 import { PhysicsClient, type ControlInput } from './physics/PhysicsClient';
 import { CRASH_BUILDING, type AircraftSnapshot } from './physics/stateLayout';
@@ -197,6 +199,9 @@ async function boot(): Promise<void> {
   const rig = new CameraRig();
   const audio = new WarningAudio();
   const look = new FreeLook();
+  const cockpit = mountCockpitShell();
+  new NavigationDisplay();
+  window.addEventListener('cfs:look-recenter', () => look.recenter());
   const touchMode = isTouchDevice();
   document.body.classList.toggle('touch', touchMode);
   const touch = new TouchControls(document.body);
@@ -235,7 +240,15 @@ async function boot(): Promise<void> {
   let crashedAtMs = 0;
   let transitioning = false;
   const stats = { maxKt: 0, maxG: 0, minAlt: Infinity, preCrashKt: 0 };
-  const autopilot = { enabled: false, targetAltitude: 0, targetHeading: 0, throttle: 0.45 };
+  const autopilot = { enabled: false, targetAltitude: 3000, targetHeading: 0, throttle: 0.55, altitudeGain: 0.00018, pitchDamping: 0.62, rollGain: 0.9, headingGain: 0.22, yawDamping: 0.14 };
+  window.addEventListener('cfs:autopilot-config', (event) => {
+    const cfg = (event as CustomEvent<{ targetAltitude?: number; targetHeading?: number; throttle?: number; altitudeGain?: number; headingGain?: number }>).detail;
+    if (Number.isFinite(cfg?.targetAltitude)) autopilot.targetAltitude = cfg.targetAltitude!;
+    if (Number.isFinite(cfg?.targetHeading)) autopilot.targetHeading = cfg.targetHeading!;
+    if (Number.isFinite(cfg?.throttle)) autopilot.throttle = Math.max(0.2, Math.min(1, cfg.throttle!));
+    if (Number.isFinite(cfg?.altitudeGain)) autopilot.altitudeGain = Math.max(0.00005, Math.min(0.0005, cfg.altitudeGain!));
+    if (Number.isFinite(cfg?.headingGain)) autopilot.headingGain = Math.max(0.05, Math.min(0.5, cfg.headingGain!));
+  });
   const publishAutopilotState = (): void => {
     window.dispatchEvent(new CustomEvent('cfs:autopilot-state', { detail: { enabled: autopilot.enabled } }));
   };
@@ -249,12 +262,6 @@ async function boot(): Promise<void> {
   window.addEventListener('cfs:autopilot-toggle', () => {
     if (!lastSnap || mode !== 'flying') return;
     autopilot.enabled = !autopilot.enabled;
-    if (autopilot.enabled) {
-      const attitude = attitudeFromQuat(lastSnap.orientation);
-      autopilot.targetAltitude = lastSnap.altitude;
-      autopilot.targetHeading = attitude.heading;
-      autopilot.throttle = lastSnap.throttle;
-    }
     publishAutopilotState();
   });
 
@@ -491,9 +498,9 @@ async function boot(): Promise<void> {
         );
         // Fictional simulator-level cruise hold: level wings, retain heading and altitude.
         c.pitch = Math.max(-0.32, Math.min(0.32,
-          (autopilot.targetAltitude - lastSnap.altitude) * 0.00018 - attitude.pitch * 0.62 - lastSnap.angularVelocity[2] * 0.24));
-        c.roll = Math.max(-0.45, Math.min(0.45, -attitude.roll * 0.9 - lastSnap.angularVelocity[0] * 0.22));
-        c.yaw = Math.max(-0.3, Math.min(0.3, headingError * 0.22 - lastSnap.angularVelocity[1] * 0.14));
+          (autopilot.targetAltitude - lastSnap.altitude) * autopilot.altitudeGain - attitude.pitch * autopilot.pitchDamping - lastSnap.angularVelocity[2] * 0.24));
+        c.roll = Math.max(-0.45, Math.min(0.45, -attitude.roll * autopilot.rollGain - lastSnap.angularVelocity[0] * 0.22));
+        c.yaw = Math.max(-0.3, Math.min(0.3, headingError * autopilot.headingGain - lastSnap.angularVelocity[1] * autopilot.yawDamping));
         c.throttle = autopilot.throttle;
       }
       if (touchMode && Math.abs(c.throttle - shownThrottle) > 1e-3) {
@@ -537,6 +544,10 @@ async function boot(): Promise<void> {
         }
         audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
         look.update(frameMs / 1000);
+        cockpit.setHeadPose(look.yaw, look.pitch);
+        const attitude = attitudeFromQuat(snap.orientation);
+        cockpit.setFlightReadout(snap.altitude, snap.airspeed * MS_TO_KT, attitude.heading);
+        window.dispatchEvent(new CustomEvent('cfs:flight-snapshot', { detail: { x: snap.position[0], y: snap.altitude, z: snap.position[2], heading: attitude.heading, speed: snap.airspeed } }));
         const cam = rig.update(snap, aircraft, now, look);
         renderer.render(cam);
         hud.draw(snap, aircraft, now, cam.fovY, look);
