@@ -235,6 +235,21 @@ async function boot(): Promise<void> {
   let crashedAtMs = 0;
   let transitioning = false;
   const stats = { maxKt: 0, maxG: 0, minAlt: Infinity, preCrashKt: 0 };
+  const autopilot = { enabled: false, targetAltitude: 0, targetHeading: 0, throttle: 0.45 };
+  const publishAutopilotState = (): void => {
+    window.dispatchEvent(new CustomEvent('cfs:autopilot-state', { detail: { enabled: autopilot.enabled } }));
+  };
+  window.addEventListener('cfs:autopilot-toggle', () => {
+    if (!lastSnap || mode !== 'flying') return;
+    autopilot.enabled = !autopilot.enabled;
+    if (autopilot.enabled) {
+      const attitude = attitudeFromQuat(lastSnap.orientation);
+      autopilot.targetAltitude = lastSnap.altitude;
+      autopilot.targetHeading = attitude.heading;
+      autopilot.throttle = lastSnap.throttle;
+    }
+    publishAutopilotState();
+  });
 
   const showOverlay = (which: 'menu' | 'pause' | 'crash' | null): void => {
     menuEl.hidden = which !== 'menu';
@@ -256,6 +271,8 @@ async function boot(): Promise<void> {
 
   const beginFlight = (): void => {
     physics.reset();
+    autopilot.enabled = false;
+    publishAutopilotState();
     input.reset(aircraft.startThrottle);
     lastSent = { ...input.state, throttle: -1 };
     rig.reset();
@@ -389,13 +406,11 @@ async function boot(): Promise<void> {
   const endLook = (e: PointerEvent): void => {
     if (e.pointerId !== lookFinger) return;
     lookFinger = -1;
-    look.recenter();
   };
   stage.addEventListener('pointerup', endLook);
   stage.addEventListener('pointercancel', endLook);
   window.addEventListener('mouseup', () => {
-    if (dragging) look.recenter(); // drag mode behaves like a hat switch: release = look ahead again
-    dragging = false;
+    dragging = false; // releasing the drag preserves the pilot's head direction
   });
   window.addEventListener('mousemove', (e) => {
     if (!canLook()) return;
@@ -470,6 +485,19 @@ async function boot(): Promise<void> {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
       input.update(Math.min(frameMs / 1000, 0.1));
       const c = input.state;
+      if (autopilot.enabled && lastSnap && mode === 'flying') {
+        const attitude = attitudeFromQuat(lastSnap.orientation);
+        const headingError = Math.atan2(
+          Math.sin(autopilot.targetHeading - attitude.heading),
+          Math.cos(autopilot.targetHeading - attitude.heading),
+        );
+        // Fictional simulator-level cruise hold: level wings, retain heading and altitude.
+        c.pitch = Math.max(-0.32, Math.min(0.32,
+          (autopilot.targetAltitude - lastSnap.altitude) * 0.00022 - lastSnap.angularVelocity[2] * 0.22));
+        c.roll = Math.max(-0.45, Math.min(0.45, -attitude.roll * 0.9 - lastSnap.angularVelocity[0] * 0.22));
+        c.yaw = Math.max(-0.3, Math.min(0.3, headingError * 0.22 - lastSnap.angularVelocity[1] * 0.14));
+        c.throttle = autopilot.throttle;
+      }
       if (touchMode && Math.abs(c.throttle - shownThrottle) > 1e-3) {
         shownThrottle = c.throttle;
         touch.setThrottle(c.throttle);
