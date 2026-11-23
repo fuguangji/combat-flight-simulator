@@ -446,7 +446,7 @@ async function boot(): Promise<void> {
 
   startBtn.disabled = false;
   tutorialBtn.disabled = false;
-  startBtn.textContent = '起飛';
+  startBtn.textContent = '起飛 / TAKE OFF';
   showOverlay('menu');
   setMode('menu');
   startBtn.focus({ preventScroll: true });
