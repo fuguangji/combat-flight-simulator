@@ -46,6 +46,7 @@ export function isTouchDevice(search = location.search): boolean {
 export class TouchControls {
   readonly axes: TouchAxes = { pitch: 0, roll: 0, yaw: 0 };
   onThrottle: ((v: number) => void) | null = null;
+  onManualInput: (() => void) | null = null;
   onPause: (() => void) | null = null;
   onRecenter: (() => void) | null = null;
 
@@ -91,6 +92,7 @@ export class TouchControls {
     stick.addEventListener('pointerdown', (e) => {
       if (this.stickPointer !== -1) return;
       e.preventDefault();
+      this.onManualInput?.();
       this.stickPointer = e.pointerId;
       stick.setPointerCapture(e.pointerId);
       moveStick(e);
@@ -117,6 +119,7 @@ export class TouchControls {
     slider.addEventListener('pointerdown', (e) => {
       if (this.sliderPointer !== -1) return;
       e.preventDefault();
+      this.onManualInput?.();
       this.sliderPointer = e.pointerId;
       slider.setPointerCapture(e.pointerId);
       moveSlider(e);
@@ -137,6 +140,7 @@ export class TouchControls {
       const side = b.dataset.rudder as 'left' | 'right';
       b.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        this.onManualInput?.();
         b.setPointerCapture(e.pointerId);
         this.rudder[side] = true;
         applyRudder();
