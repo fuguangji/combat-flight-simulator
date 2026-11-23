@@ -14,7 +14,7 @@ export const LOOK_SENSITIVITY = 0.0022;
 export class FreeLook {
   yaw = 0;
   pitch = 0;
-  /** When true the view eases back to straight ahead (drag mode after the button is released, `C`). */
+  /** When true the view eases back to straight ahead only after an explicit recenter command. */
   recentering = false;
 
   /** Mouse movement in pixels. Cancels any recentering in progress. */
@@ -24,6 +24,7 @@ export class FreeLook {
     this.pitch = clamp(this.pitch - dy * sensitivity, LOOK_PITCH_MIN, LOOK_PITCH_MAX);
   }
 
+  /** Explicitly recenter only when requested by the pilot (C / recenter control). */
   recenter(): void {
     this.recentering = true;
   }
