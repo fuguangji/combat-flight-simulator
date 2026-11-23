@@ -55,14 +55,37 @@ float gridLine(vec2 p, float cell) {
   vec2 d = abs(fract(q - 0.5) - 0.5) / fwidth(q);
   return 1.0 - min(min(d.x, d.y), 1.0);
 }
+float valueNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash2(i), b = hash2(i + vec2(1.0, 0.0));
+  float c = hash2(i + vec2(0.0, 1.0)), d = hash2(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+float terrainHeight(vec2 p) {
+  float broad = (valueNoise(p * 0.000055) - 0.5) * 900.0;
+  float medium = (valueNoise(p * 0.00022) - 0.5) * 420.0;
+  float fine = (valueNoise(p * 0.0011) - 0.5) * 90.0;
+  float ridge = 1.0 - abs(valueNoise(p * 0.00014) * 2.0 - 1.0);
+  return broad + medium + fine + pow(ridge, 3.0) * 420.0;
+}
 void main() {
   vec2 w = vRel + uCamPos.xz;
+  float h = terrainHeight(w);
+  float hx = terrainHeight(w + vec2(24.0, 0.0)) - terrainHeight(w - vec2(24.0, 0.0));
+  float hz = terrainHeight(w + vec2(0.0, 24.0)) - terrainHeight(w - vec2(0.0, 24.0));
+  float slope = length(vec2(hx, hz)) / 48.0;
   float tint = hash2(floor(w / 1000.0));
-  vec3 col = mix(vec3(0.20, 0.30, 0.16), vec3(0.34, 0.36, 0.20), tint);
+  vec3 plain = mix(vec3(0.15, 0.25, 0.13), vec3(0.27, 0.34, 0.18), tint);
+  vec3 rock = vec3(0.34, 0.35, 0.32);
+  vec3 col = mix(plain, rock, smoothstep(0.35, 1.25, slope) * 0.8);
+  col = mix(col, vec3(0.66, 0.69, 0.66), smoothstep(850.0, 1450.0, h) * 0.75);
+  float contour = 1.0 - smoothstep(0.0, 18.0, abs(fract(h / 100.0) - 0.5) * 100.0);
+  col = mix(col, col * 0.72, contour * 0.18);
   float dist = length(vec3(vRel.x, uCamPos.y, vRel.y));
   float fade = 1.0 - clamp(dist / 12000.0, 0.0, 1.0);
-  col = mix(col, vec3(0.08, 0.12, 0.06), gridLine(w, 100.0) * 0.35 * fade);
-  col = mix(col, vec3(0.05, 0.07, 0.04), gridLine(w, 1000.0) * 0.6);
+  col = mix(col, vec3(0.08, 0.12, 0.06), gridLine(w, 100.0) * 0.16 * fade);
+  col = mix(col, vec3(0.05, 0.07, 0.04), gridLine(w, 1000.0) * 0.22);
   outColor = vec4(applyFog(col, dist), 1.0);
 }`;
 
