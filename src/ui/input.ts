@@ -10,6 +10,7 @@ const GAME_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'K
 export class KeyboardControls {
   readonly state: ControlInput;
   onReset: (() => void) | null = null;
+  onManualInput: (() => void) | null = null;
   onPause: (() => void) | null = null;
   /** Enter / Space: confirm the primary action of whatever overlay is showing. */
   onConfirm: (() => void) | null = null;
@@ -25,7 +26,8 @@ export class KeyboardControls {
   constructor(startThrottle: number) {
     this.state = { throttle: startThrottle, pitch: 0, roll: 0, yaw: 0 };
     window.addEventListener('keydown', (e) => {
-      if (GAME_KEYS.has(e.code)) e.preventDefault();
+      if (GAME_KEYS.has(e.code)) { e.preventDefault(); this.onManualInput?.(); }
+      if (e.code === 'KeyW' || e.code === 'KeyS') this.onManualInput?.();
       if (!e.repeat) {
         if (e.code === 'KeyR') this.onReset?.();
         else if (e.code === 'KeyN') this.onSkip?.();
