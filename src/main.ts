@@ -18,6 +18,7 @@ import { TUTORIAL_STEPS, Tutorial } from './ui/tutorial';
 import { FreeLook } from './ui/look';
 import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
+import { EncyclopediaViewer } from './encyclopedia/modelViewer';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
 
@@ -96,6 +97,15 @@ async function boot(): Promise<void> {
   const equipmentPage = $<HTMLElement>('equipment-page');
   const hangarGrid = $<HTMLDivElement>('hangar-grid');
   const equipmentGrid = $<HTMLDivElement>('equipment-grid');
+  const encyclopediaPage = $<HTMLElement>('encyclopedia-page');
+  const encyclopedia = new EncyclopediaViewer({
+    canvas: $<HTMLCanvasElement>('encyclopedia-model'),
+    list: $<HTMLElement>('encyclopedia-list'),
+    title: $<HTMLElement>('encyclopedia-title'),
+    description: $<HTMLElement>('encyclopedia-description'),
+    specs: $<HTMLElement>('encyclopedia-specs'),
+    category: $<HTMLSelectElement>('encyclopedia-category'),
+  }, aircraftRegistry.list(), weaponCatalog);
   const menuPanel = menuEl.querySelector('.panel') as HTMLDivElement;
   const equipmentOptions = weaponCatalog.map((weapon) => ({
     id: weapon.id,
@@ -109,13 +119,15 @@ async function boot(): Promise<void> {
   if (!weaponCatalog.some((weapon) => weapon.id === selectedEquipment)) selectedEquipment = 'nova17';
   document.body.dataset.equipment = selectedEquipment;
   const openSubpage = (page: HTMLElement): void => {
-    hangarPage.hidden = page !== hangarPage;
-    equipmentPage.hidden = page !== equipmentPage;
+    for (const candidate of [hangarPage, equipmentPage, encyclopediaPage]) candidate.hidden = candidate !== page;
     menuPanel.classList.add('subpage-open');
+    encyclopedia.setActive(page === encyclopediaPage);
   };
   const closeSubpage = (): void => {
     hangarPage.hidden = true;
     equipmentPage.hidden = true;
+    encyclopediaPage.hidden = true;
+    encyclopedia.setActive(false);
     menuPanel.classList.remove('subpage-open');
   };
   const applyAircraftChoice = (key: string): void => {
@@ -180,6 +192,7 @@ async function boot(): Promise<void> {
   renderEquipment();
   $<HTMLButtonElement>('btn-hangar').addEventListener('click', () => openSubpage(hangarPage));
   $<HTMLButtonElement>('btn-equipment').addEventListener('click', () => openSubpage(equipmentPage));
+  $<HTMLButtonElement>('btn-encyclopedia').addEventListener('click', () => openSubpage(encyclopediaPage));
   menuEl.querySelectorAll<HTMLButtonElement>('[data-page-back]').forEach((button) => button.addEventListener('click', closeSubpage));
   document.body.dataset.equipment = selectedEquipment;
   howtoBtn.addEventListener('click', () => {
