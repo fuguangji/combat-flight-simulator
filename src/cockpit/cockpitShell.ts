@@ -100,6 +100,26 @@ export function mountCockpitShell(): CockpitShell {
       font:600 10px ui-monospace,monospace; cursor:pointer; touch-action:manipulation;
     }
     .cockpit-switches button:active,.cockpit-config button:active { background:#42634f; }
+    .cockpit-switches .physical-toggle {
+      position:relative; display:grid; grid-template-columns:34px auto auto; align-items:center; gap:8px;
+      min-width:150px; padding:7px 9px; border:1px solid #77867c; border-radius:3px;
+      background:linear-gradient(180deg,#39453f 0%,#151e1a 48%,#080e0c 100%);
+      box-shadow:inset 0 1px 2px rgba(255,255,255,.22),0 3px 5px #000;
+      color:#f0f5ed; text-align:left;
+    }
+    .physical-toggle .toggle-track { position:relative; width:30px; height:34px; border:1px solid #65766b; border-radius:3px; background:linear-gradient(90deg,#090e0c,#34423a,#0b100d); box-shadow:inset 0 2px 5px #000; }
+    .physical-toggle .toggle-track i { position:absolute; left:10px; top:4px; width:8px; height:23px; border-radius:3px; transform:rotate(-24deg); transform-origin:50% 85%; background:linear-gradient(90deg,#68746d,#e0e5df 45%,#58645c); box-shadow:1px 2px 3px #000; transition:transform .16s ease,top .16s ease; }
+    .physical-toggle.is-on .toggle-track i { top:1px; transform:rotate(24deg); }
+    .physical-toggle .toggle-caption { display:flex; flex-direction:column; gap:2px; }
+    .physical-toggle .toggle-caption b { color:#fff; font:700 10px ui-monospace,monospace; letter-spacing:.16em; }
+    .physical-toggle .toggle-caption small { color:#d8e1d9; font:9px "Noto Sans TC",sans-serif; letter-spacing:.05em; }
+    .physical-toggle .switch-state { color:#e6a69a; font:700 9px ui-monospace,monospace; }
+    .physical-toggle.is-on .switch-state { color:#a8ffc9; text-shadow:0 0 7px #6dff9b; }
+    .cockpit-config-panel input[type=range] { appearance:none; height:22px; background:transparent; cursor:pointer; }
+    .cockpit-config-panel input[type=range]::-webkit-slider-runnable-track { height:6px; border:1px solid #52665b; border-radius:5px; background:repeating-linear-gradient(90deg,#0b1511 0 8px,#31483a 8px 9px); box-shadow:inset 0 1px 3px #000; }
+    .cockpit-config-panel input[type=range]::-webkit-slider-thumb { appearance:none; width:22px; height:22px; margin-top:-9px; border:1px solid #b6c1b8; border-radius:50%; background:radial-gradient(circle at 35% 28%,#eef1e9 0,#87978b 32%,#34433a 65%,#111a15 100%); box-shadow:0 2px 4px #000, inset 0 1px 2px rgba(255,255,255,.5); }
+    .cockpit-config-panel input[type=range]::-moz-range-track { height:6px; border:1px solid #52665b; border-radius:5px; background:repeating-linear-gradient(90deg,#0b1511 0 8px,#31483a 8px 9px); }
+    .cockpit-config-panel input[type=range]::-moz-range-thumb { width:20px; height:20px; border:1px solid #b6c1b8; border-radius:50%; background:radial-gradient(circle at 35% 28%,#eef1e9 0,#87978b 32%,#34433a 65%,#111a15 100%); box-shadow:0 2px 4px #000; }
     .cockpit-switches button.primary { border-color:#b8a36d; color:#ffe0a0; }
     .cockpit-config {
       position:absolute; right:4%; bottom:12px; display:flex; gap:7px; align-items:center;
@@ -158,7 +178,7 @@ export function mountCockpitShell(): CockpitShell {
         <div class="cockpit-screen left"></div><div class="cockpit-screen right"></div>
         <div class="cockpit-switches">
           <button type="button" data-action="fire" class="primary">STORE / 裝備</button>
-          <button type="button" data-action="autopilot">AP / 自動駕駛</button>
+          <button type="button" data-action="autopilot" class="physical-toggle" aria-pressed="false"><span class="toggle-track"><i></i></span><span class="toggle-caption"><b>AUTO</b><small>自動駕駛</small></span><span class="switch-state">OFF</span></button>
           <button type="button" data-action="recenter">CENTER / 回正</button>
         </div>
         <details class="cockpit-config">
