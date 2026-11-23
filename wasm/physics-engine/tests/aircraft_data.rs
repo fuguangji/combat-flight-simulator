@@ -6,10 +6,12 @@ use physics_engine::aircraft::{AircraftParams, PARAM_NAMES};
 use physics_engine::flight::{Controls, Sim};
 use physics_engine::math::Vec3;
 
-const FILES: [(&str, &str); 3] = [
+const FILES: [(&str, &str); 5] = [
     ("generic-fighter", include_str!("../../../src/aircraft/data/generic-fighter.json")),
     ("light-trainer", include_str!("../../../src/aircraft/data/light-trainer.json")),
     ("heavy-interceptor", include_str!("../../../src/aircraft/data/heavy-interceptor.json")),
+    ("aether-vector", include_str!("../../../src/aircraft/data/aether-vector.json")),
+    ("stratos-guardian", include_str!("../../../src/aircraft/data/stratos-guardian.json")),
 ];
 const KEYS: &str = include_str!("../../../src/aircraft/physics-keys.json");
 const DT: f64 = 1.0 / 30.0;
