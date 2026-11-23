@@ -491,7 +491,7 @@ async function boot(): Promise<void> {
         );
         // Fictional simulator-level cruise hold: level wings, retain heading and altitude.
         c.pitch = Math.max(-0.32, Math.min(0.32,
-          (autopilot.targetAltitude - lastSnap.altitude) * 0.00022 - lastSnap.angularVelocity[2] * 0.22));
+          (autopilot.targetAltitude - lastSnap.altitude) * 0.00018 - attitude.pitch * 0.62 - lastSnap.angularVelocity[2] * 0.24));
         c.roll = Math.max(-0.45, Math.min(0.45, -attitude.roll * 0.9 - lastSnap.angularVelocity[0] * 0.22));
         c.yaw = Math.max(-0.3, Math.min(0.3, headingError * 0.22 - lastSnap.angularVelocity[1] * 0.14));
         c.throttle = autopilot.throttle;
