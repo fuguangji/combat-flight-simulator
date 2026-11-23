@@ -222,7 +222,12 @@ async function boot(): Promise<void> {
 
   const setHangarPreviewActive = (active: boolean): void => {
     hangarPreviewActive = active;
-    if (active && hangarPreviewCanvas) resizeHangarPreview();
+    if (active && hangarPreviewCanvas) {
+      if (hangarPreviewCanvas.parentElement) hangarPreviewResize?.observe(hangarPreviewCanvas.parentElement);
+      resizeHangarPreview();
+    } else {
+      hangarPreviewResize?.disconnect();
+    }
   };
 
   const openSubpage = (page: HTMLElement): void => {
