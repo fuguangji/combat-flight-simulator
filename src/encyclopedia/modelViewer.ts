@@ -37,7 +37,7 @@ export class EncyclopediaViewer {
   private readonly weapons: WeaponDefinition[];
   private readonly elements: Elements;
   private active = false;
-  private resizeObserver: ResizeObserver;
+  private resizeObserver: ResizeObserver | null = null;
   private dragging = false;
   private pointerX = 0;
   private pointerY = 0;
@@ -107,7 +107,7 @@ export class EncyclopediaViewer {
     this.active = active;
     if (active) {
       const host = this.elements.canvas.parentElement;
-      if (host) this.resizeObserver.observe(host);
+      if (host) this.resizeObserver?.observe(host);
       this.resize();
     }
   }
