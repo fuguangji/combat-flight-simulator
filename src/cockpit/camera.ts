@@ -42,6 +42,31 @@ export function perturbBasis(cam: CameraState, pitch: number, yaw: number, roll:
   return { ...cam, forward, right, up };
 }
 
+/**
+ * Turn the head: yaw about the camera's up axis, then pitch about the resulting right axis
+ * (yaw + = right, pitch + = up). Pure rotation of the basis; the eye position is unchanged.
+ */
+export function applyLook(cam: CameraState, yaw: number, pitch: number): CameraState {
+  if (yaw === 0 && pitch === 0) return cam;
+  const [cy, sy] = [Math.cos(yaw), Math.sin(yaw)];
+  const [cp, sp] = [Math.cos(pitch), Math.sin(pitch)];
+  const f1 = vecAdd(vecScale(cam.forward, cy), vecScale(cam.right, sy));
+  const r1 = vecAdd(vecScale(cam.right, cy), vecScale(cam.forward, -sy));
+  const forward = vecAdd(vecScale(f1, cp), vecScale(cam.up, sp));
+  const up = vecAdd(vecScale(cam.up, cp), vecScale(f1, -sp));
+  return { ...cam, forward, up, right: r1 };
+}
+
+/**
+ * Express a body-frame direction in the (head-turned) camera frame: x ahead, y up, z right.
+ * Used by the HUD to keep the boresight and flight-path marker on the right spot of the screen.
+ */
+export function bodyDirToView(v: Vec3, yaw: number, pitch: number): Vec3 {
+  const view = applyLook({ position: [0, 0, 0], forward: [1, 0, 0], up: [0, 1, 0], right: [0, 0, 1], fovY: 0 }, yaw, pitch);
+  const dot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  return [dot(v, view.forward), dot(v, view.up), dot(v, view.right)];
+}
+
 /** Sum of three incommensurate sines: cheap, deterministic, smooth "noise" in about [-1, 1]. */
 function wobble(t: number, f1: number, f2: number, f3: number, phase: number): number {
   return (
@@ -75,7 +100,7 @@ export class CameraRig {
     this.last = null;
   }
 
-  update(s: AircraftSnapshot, def: AircraftDefinition, nowMs: number): CameraState {
+  update(s: AircraftSnapshot, def: AircraftDefinition, nowMs: number, look?: { yaw: number; pitch: number }): CameraState {
     const dt = Number.isNaN(this.lastNow) ? 1 / 60 : clamp((nowMs - this.lastNow) / 1000, 0, 0.1);
     this.lastNow = nowMs;
     const t = nowMs / 1000;
@@ -91,13 +116,14 @@ export class CameraRig {
     const q: Quat = s.orientation;
     const eyeBody: Vec3 = [def.eyeOffset[0], def.eyeOffset[1] + this.headY, def.eyeOffset[2]];
     const eye = quatRotate(q, eyeBody);
-    const base: CameraState = {
+    const seat: CameraState = {
       position: [s.position[0] + eye[0], Math.max(MIN_EYE_HEIGHT, s.position[1] + eye[1]), s.position[2] + eye[2]],
       right: quatRotate(q, [0, 0, 1]),
       up: quatRotate(q, [0, 1, 0]),
       forward: quatRotate(q, [1, 0, 0]),
       fovY: this.fov,
     };
+    const base = look ? applyLook(seat, look.yaw, look.pitch) : seat;
 
     // --- Vibration / buffet (radians).
     this.stall += ((s.stallWarning && !s.crashed ? 1 : 0) - this.stall) * damp(6, dt);

@@ -12,6 +12,7 @@ import { activeWarnings } from './physics/warnings';
 import { attractCamera } from './ui/attract';
 import { WarningAudio } from './ui/audio';
 import { Tutorial } from './ui/tutorial';
+import { FreeLook } from './ui/look';
 import { KeyboardControls } from './ui/input';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
@@ -87,6 +88,7 @@ async function boot(): Promise<void> {
   const dynRes = new DynamicResolution();
   const rig = new CameraRig();
   const audio = new WarningAudio();
+  const look = new FreeLook();
   const tutorial = new Tutorial();
   let tutorialOn = false;
   let lastSent: ControlInput = { ...input.state, throttle: -1 }; // force first send
@@ -121,6 +123,7 @@ async function boot(): Promise<void> {
     input.reset(aircraft.startThrottle);
     lastSent = { ...input.state, throttle: -1 };
     rig.reset();
+    look.reset();
     tutorial.reset();
     tutorialEl.hidden = !tutorialOn;
     lastSnap = null;
@@ -151,6 +154,7 @@ async function boot(): Promise<void> {
     void withFade(() => {
       physics.pause();
       audio.silence();
+      if (document.pointerLockElement) document.exitPointerLock();
       tutorialEl.hidden = true;
       tutorialOn = false;
       frozenSnap = null;
@@ -164,6 +168,7 @@ async function boot(): Promise<void> {
     if (mode !== 'flying') return;
     physics.pause();
     audio.silence();
+    if (document.pointerLockElement) document.exitPointerLock();
     frozenSnap = lastSnap;
     showOverlay('pause');
     setMode('paused');
@@ -198,6 +203,37 @@ async function boot(): Promise<void> {
   $<HTMLButtonElement>('btn-restart-crash').addEventListener('click', startFlight);
   $<HTMLButtonElement>('btn-home-crash').addEventListener('click', goHome);
 
+  // ---- free look: mouse turns the head only; the flight controls stay on the keyboard / nose ----
+  let dragging = false;
+  const canLook = (): boolean => mode === 'flying' || mode === 'crashed';
+  stage.addEventListener('click', () => {
+    if (mode === 'flying' && !document.pointerLockElement) {
+      // Pointer lock hides the cursor and gives unlimited movement; if the browser refuses, dragging still works.
+      void Promise.resolve(stage.requestPointerLock()).catch(() => undefined);
+    }
+  });
+  stage.addEventListener('mousedown', (e) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      look.recenter();
+    } else if (e.button === 0 && canLook() && !document.pointerLockElement) {
+      dragging = true;
+    }
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragging) look.recenter(); // drag mode behaves like a hat switch: release = look ahead again
+    dragging = false;
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!canLook()) return;
+    if (document.pointerLockElement === stage || dragging) look.move(e.movementX, e.movementY);
+  });
+  document.addEventListener('pointerlockchange', () => {
+    if (!document.pointerLockElement && mode === 'flying') pauseFlight(); // Esc released the mouse
+  });
+  input.onRecenter = () => {
+    if (canLook()) look.recenter();
+  };
   input.onSkip = () => {
     if (tutorialOn && mode === 'flying') tutorial.skip();
   };
@@ -255,7 +291,7 @@ async function boot(): Promise<void> {
       // frozen picture: same snapshot, same camera as the moment of pausing
       snap = frozenSnap;
       if (rig.last) renderer.render(rig.last);
-      hud.draw(snap, aircraft, now, rig.last?.fovY);
+      hud.draw(snap, aircraft, now, rig.last?.fovY, look);
     } else {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
       input.update(Math.min(frameMs / 1000, 0.1));
@@ -294,9 +330,10 @@ async function boot(): Promise<void> {
           if (v.caution) tutorialCautionEl.textContent = v.caution;
         }
         audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
-        const cam = rig.update(snap, aircraft, now);
+        look.update(frameMs / 1000);
+        const cam = rig.update(snap, aircraft, now, look);
         renderer.render(cam);
-        hud.draw(snap, aircraft, now, cam.fovY);
+        hud.draw(snap, aircraft, now, cam.fovY, look);
         if (mode === 'crashed' && crashEl.hidden && !transitioning && now - crashedAtMs > CRASH_CARD_DELAY_MS) {
           showCrashCard(snap);
         }

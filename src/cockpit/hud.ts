@@ -2,7 +2,7 @@ import type { AircraftDefinition } from '../aircraft/registry';
 import { quatRotate, radToDeg, type Quat } from '../core/math';
 import { CRASH_BUILDING, type AircraftSnapshot } from '../physics/stateLayout';
 import { activeWarnings } from '../physics/warnings';
-import { attitudeFromQuat } from './camera';
+import { attitudeFromQuat, bodyDirToView } from './camera';
 
 const GREEN = '#7dff9a';
 const WARN = '#ff5a4d';
@@ -38,7 +38,7 @@ export class Hud {
   }
 
   /** `fovY` is the field of view actually used by the 3D camera (it varies with speed). */
-  draw(s: AircraftSnapshot | null, def: AircraftDefinition, nowMs: number, fovY = def.fovY): void {
+  draw(s: AircraftSnapshot | null, def: AircraftDefinition, nowMs: number, fovY = def.fovY, look = { yaw: 0, pitch: 0 }): void {
     this.fit();
     const { ctx, w, h } = this;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -59,6 +59,16 @@ export class Hud {
     ctx.font = `${14 * u}px ui-monospace, Menlo, Consolas, monospace`;
     ctx.textBaseline = 'middle';
 
+    // The pitch ladder is only valid for a view straight ahead; while the head is turned the
+    // aircraft-referenced symbols (boresight, flight path marker) move across the screen instead.
+    const lookAway = Math.abs(look.yaw) > 0.035 || Math.abs(look.pitch) > 0.035;
+    // body direction -> screen position (null when behind the view plane)
+    const toScreen = (v: [number, number, number]): [number, number] | null => {
+      const d = bodyDirToView(v, look.yaw, look.pitch);
+      if (d[0] < 0.05) return null;
+      return [cx + (d[2] / d[0]) * pxPerUnit, cy - (d[1] / d[0]) * pxPerUnit];
+    };
+
     // --- Pitch ladder (rotates with the world, clipped to a central window)
     ctx.save();
     ctx.beginPath();
@@ -66,7 +76,7 @@ export class Hud {
     ctx.clip();
     ctx.translate(cx, cy);
     ctx.rotate(-att.roll);
-    for (let deg = -90; deg <= 90; deg += 5) {
+    for (let deg = -90; deg <= 90 && !lookAway; deg += 5) {
       const rel = (deg * Math.PI) / 180 - att.pitch;
       if (Math.abs(rel) > 0.6) continue;
       const y = -Math.tan(rel) * pxPerUnit;
@@ -93,9 +103,9 @@ export class Hud {
     // --- Flight path marker: where the aircraft is actually going (differs from the nose by AoA / sideslip)
     const conj: Quat = [-s.orientation[0], -s.orientation[1], -s.orientation[2], s.orientation[3]];
     const vb = quatRotate(conj, s.velocity);
-    if (!s.crashed && vb[0] > 5) {
-      const fx = cx + (vb[2] / vb[0]) * pxPerUnit;
-      const fy = cy - (vb[1] / vb[0]) * pxPerUnit;
+    const fpm = !s.crashed && vb[0] > 5 ? toScreen(vb) : null;
+    if (fpm) {
+      const [fx, fy] = fpm;
       if (Math.abs(fx - cx) < w && Math.abs(fy - cy) < h) {
         ctx.beginPath();
         ctx.arc(fx, fy, 7 * u, 0, Math.PI * 2);
@@ -109,16 +119,24 @@ export class Hud {
       }
     }
 
-    // --- Boresight
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5 * u, 0, Math.PI * 2);
-    ctx.moveTo(cx - 18 * u, cy);
-    ctx.lineTo(cx - 5 * u, cy);
-    ctx.moveTo(cx + 5 * u, cy);
-    ctx.lineTo(cx + 18 * u, cy);
-    ctx.moveTo(cx, cy - 5 * u);
-    ctx.lineTo(cx, cy - 14 * u);
-    ctx.stroke();
+    // --- Boresight (the nose direction; stays centred unless the head is turned)
+    const bore = toScreen([1, 0, 0]);
+    if (bore) {
+      const [bx0, by0] = bore;
+      ctx.beginPath();
+      ctx.arc(bx0, by0, 5 * u, 0, Math.PI * 2);
+      ctx.moveTo(bx0 - 18 * u, by0);
+      ctx.lineTo(bx0 - 5 * u, by0);
+      ctx.moveTo(bx0 + 5 * u, by0);
+      ctx.lineTo(bx0 + 18 * u, by0);
+      ctx.moveTo(bx0, by0 - 5 * u);
+      ctx.lineTo(bx0, by0 - 14 * u);
+      ctx.stroke();
+    }
+    if (lookAway) {
+      ctx.textAlign = 'center';
+      ctx.fillText(`LOOK ${radToDeg(look.yaw).toFixed(0)}° / ${radToDeg(look.pitch).toFixed(0)}°  (C = 回正)`, cx, h - 24 * u);
+    }
 
     // --- Heading tape
     const hd = radToDeg(att.heading);
