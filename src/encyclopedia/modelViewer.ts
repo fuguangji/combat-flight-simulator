@@ -236,6 +236,11 @@ export class EncyclopediaViewer {
     this.mesh(geometry, this.material(color), parent, [0, -0.12, 0]);
   }
 
+  /** Public factory so the encyclopedia and live scene use the exact same geometry. */
+  createAircraftModel(id: number): THREE.Group {
+    return this.buildAircraft(id);
+  }
+
   private buildAircraft(id: number): THREE.Group {
     const group = new THREE.Group();
     const palette = [0x738d83, 0x8d9b92, 0x586d78, 0x536b78, 0x899c88, 0x59666b, 0x7d8c95, 0x596c75];
