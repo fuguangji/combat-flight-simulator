@@ -194,3 +194,11 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 - 雙語化主選單、頁面標題與駕駛艙主要控制。
 - **目前界線**：駕駛艙是 CSS 透視式固定介面原型，尚未轉成真正的 glTF / GPU 網格模型；程序地貌目前是視覺陰影與高度取樣基礎，還沒有可碰撞的 3D 高度場、動態地形區塊與地形 LOD。導航圖是簡化方向圖，不是完整地圖資料服務。
 - **武器待整合**：待使用者提供 15 種虛構武器資料後，才擴充裝備定義與遊戲化投射物呈現；不實作現實武器導引或真實攻擊流程。
+
+
+### 機隊與裝備資料庫（2026-11-23）
+- 機庫擴充為 16 架獨立機型：ViperT21、Atlantic 9、Strike 15、Shadow 35、Aurora07、Titan99、Falcon16、Spectre03、Thunder 97、Raptor22、Tornado04、Typhoon08、Athena-S、Hornet18、BlackEagle12、Apollo-Castle37。
+- 每架機型都有獨立 JSON 資料、任務定位、特色、空重、最大起飛重量、起飛淨載荷、燃油、油耗摘要、推力、速度級別、G 限制、升限及作戰半徑；機庫頁展示完整規格。
+- 飛行物理使用遊戲平衡參數，與規格展示資料分開；不是現實機型性能預測或工程模型。
+- 新增 10 種虛構武器裝備資料：Nova17、Meteor88、Hellfire09、Vortex33、Stinger05、Thunder66、Gungnir01、Frostbite12、IronHammer20、Phoenix54。裝備設定頁讀取 `src/combat/weapons.json`，依空對空、空對地及空對艦任務分類。
+- 目前武器仍使用遊戲化視覺演出，不含現實導引、追蹤、引信、命中或攻擊流程；未把真實武器參數映射為武器模擬參數。
