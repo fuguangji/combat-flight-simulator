@@ -84,6 +84,8 @@ export function mountCockpitShell(): CockpitShell {
             <label>目標高度 Target altitude <output id="ap-alt-out">3000 m</output><input id="ap-alt" type="range" min="500" max="12000" step="100" value="3000"></label>
             <label>目標航向 Target heading <output id="ap-hdg-out">000°</output><input id="ap-hdg" type="range" min="0" max="359" step="1" value="0"></label>
             <label>巡航油門 Cruise throttle <output id="ap-thr-out">55%</output><input id="ap-thr" type="range" min="20" max="100" step="1" value="55"></label>
+            <label>高度反應 Altitude response <output id="ap-alt-gain-out">36%</output><input id="ap-alt-gain" type="range" min="10" max="100" step="1" value="36"></label>
+            <label>航向反應 Heading response <output id="ap-hdg-gain-out">44%</output><input id="ap-hdg-gain" type="range" min="10" max="100" step="1" value="44"></label>
             <div class="cockpit-divider"></div>
             <h3>SIM TARGET DISPLAY / 遊戲目標顯示</h3>
             <label>顯示靈敏度 Display sensitivity <output id="lock-sens-out">50%</output><input id="lock-sens" type="range" min="10" max="100" step="1" value="50"></label>
@@ -104,10 +106,12 @@ export function mountCockpitShell(): CockpitShell {
   const updateOutputs = (): void => {
     const alt = readRange('ap-alt'), hdg = readRange('ap-hdg'), thr = readRange('ap-thr');
     const sens = readRange('lock-sens'), range = readRange('lock-range');
-    for (const [id, value] of [['ap-alt-out', `${alt} m`], ['ap-hdg-out', `${String(hdg).padStart(3,'0')}°`], ['ap-thr-out', `${thr}%`], ['lock-sens-out', `${sens}%`], ['lock-range-out', `${range} km`]] as const) {
+    const altitudeGain = readRange('ap-alt-gain') / 100 * 0.0005;
+    const headingGain = readRange('ap-hdg-gain') / 100 * 0.5;
+    for (const [id, value] of [['ap-alt-out', `${alt} m`], ['ap-hdg-out', `${String(hdg).padStart(3,'0')}°`], ['ap-thr-out', `${thr}%`], ['ap-alt-gain-out', `${readRange('ap-alt-gain')}%`], ['ap-hdg-gain-out', `${readRange('ap-hdg-gain')}%`], ['lock-sens-out', `${sens}%`], ['lock-range-out', `${range} km`]] as const) {
       const out = shell.querySelector<HTMLOutputElement>(`#${id}`); if (out) out.textContent = value;
     }
-    window.dispatchEvent(new CustomEvent('cfs:autopilot-config', { detail: { targetAltitude: alt, targetHeading: hdg * Math.PI / 180, throttle: thr / 100 } }));
+    window.dispatchEvent(new CustomEvent('cfs:autopilot-config', { detail: { targetAltitude: alt, targetHeading: hdg * Math.PI / 180, throttle: thr / 100, altitudeGain, headingGain } }));
     window.dispatchEvent(new CustomEvent('cfs:target-display-config', { detail: { sensitivity: sens / 100, rangeKm: range } }));
   };
   shell.querySelectorAll<HTMLInputElement>('input[type="range"]').forEach((input) => input.addEventListener('input', updateOutputs));
