@@ -181,3 +181,21 @@ body.touch #tutorial p { font-size: 12px; line-height: 1.45; }
   button { padding: 12px 18px; }
   .card { max-width: calc(100vw - 32px); }
 }
+
+/* Hangar and equipment configuration sub-pages */
+.panel.subpage-open > :not(.selection-page) { display: none !important; }
+.selection-page { width: 100%; max-height: min(76vh, 760px); overflow-y: auto; }
+.page-heading h2 { margin: 4px 0 8px; font-size: 28px; }
+.page-heading > p:not(.eyebrow) { color: var(--muted, #a7b7ad); font-size: 13px; line-height: 1.6; }
+.selection-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin: 14px 0; }
+.selection-card { display: flex; flex-direction: column; gap: 9px; padding: 13px; border: 1px solid rgba(125,255,154,.22); border-radius: 5px; background: rgba(125,255,154,.035); }
+.selection-card h3 { margin: 0; color: #dfffea; font-size: 16px; }
+.selection-card p { min-height: 42px; margin: 0; color: rgba(225,242,230,.72); font-size: 12px; line-height: 1.55; }
+.selection-card small { min-height: 30px; color: #8cae98; font-size: 10px; line-height: 1.5; }
+.selection-card button { margin-top: auto; padding: 9px 12px; font-size: 11px; }
+.page-back { width: 100%; }
+@media (max-width: 720px), (max-height: 520px) {
+  .selection-page { max-height: 70vh; }
+  .selection-grid { grid-template-columns: 1fr; }
+  .selection-card p,.selection-card small { min-height: 0; }
+}
