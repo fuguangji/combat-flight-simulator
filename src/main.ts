@@ -1,7 +1,7 @@
 import './ui/style.css';
 import { aircraftRegistry, type AircraftDefinition } from './aircraft/registry';
 import { detectCapabilities } from './core/capabilities';
-import { CameraRig } from './cockpit/camera';
+import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { Hud } from './cockpit/hud';
 import { PhysicsClient, type ControlInput } from './physics/PhysicsClient';
 import { CRASH_BUILDING, type AircraftSnapshot } from './physics/stateLayout';
@@ -88,6 +88,96 @@ async function boot(): Promise<void> {
       `${aircraft.description}（${aircraft.hasAfterburner ? '有後燃器' : '無後燃器'} · 過載上限 ${aircraft.gLimit} g · 最大 M ${aircraft.maxMach}）`;
   };
   showAircraft();
+
+  const hangarPage = $<HTMLElement>('hangar-page');
+  const equipmentPage = $<HTMLElement>('equipment-page');
+  const hangarGrid = $<HTMLDivElement>('hangar-grid');
+  const equipmentGrid = $<HTMLDivElement>('equipment-grid');
+  const menuPanel = menuEl.querySelector('.panel') as HTMLDivElement;
+  const equipmentOptions = [
+    { id: 'pulse', name: 'PULSE 脈衝彈', desc: '短促、明亮的直線光效。', note: '快速視覺回饋 · 8 次展示額度' },
+    { id: 'arc', name: 'ARC 電弧彈', desc: '帶有分岔電弧的特殊效果。', note: '電弧視覺 · 5 次展示額度' },
+    { id: 'prism', name: 'PRISM 稜鏡彈', desc: '幾何稜鏡形狀與折射光感。', note: '稜鏡視覺 · 3 次展示額度' },
+    { id: 'nova', name: 'NOVA 星爆彈', desc: '較大的環形脈衝與短暫光暈。', note: '環形視覺 · 4 次展示額度' },
+    { id: 'lumen', name: 'LUMEN 光幕彈', desc: '柔和的多層光幕與粒子拖尾。', note: '光幕視覺 · 6 次展示額度' },
+  ] as const;
+  let selectedEquipment = (() => {
+    try { return localStorage.getItem('cfs.equipment') ?? 'pulse'; } catch { return 'pulse'; }
+  })();
+  const openSubpage = (page: HTMLElement): void => {
+    hangarPage.hidden = page !== hangarPage;
+    equipmentPage.hidden = page !== equipmentPage;
+    menuPanel.classList.add('subpage-open');
+  };
+  const closeSubpage = (): void => {
+    hangarPage.hidden = true;
+    equipmentPage.hidden = true;
+    menuPanel.classList.remove('subpage-open');
+  };
+  const applyAircraftChoice = (key: string): void => {
+    const next = aircraftRegistry.find(key);
+    if (!next || next === aircraft) return;
+    aircraft = next;
+    aircraftSelect.value = aircraft.key;
+    physics.setAircraft(aircraft.toPhysicsArray());
+    physics.pause();
+    input.reset(aircraft.startThrottle);
+    showAircraft();
+    try { localStorage.setItem('cfs.aircraft', aircraft.key); } catch { /* storage optional */ }
+    renderHangar();
+  };
+  const renderHangar = (): void => {
+    hangarGrid.replaceChildren();
+    for (const a of aircraftRegistry.list()) {
+      const card = document.createElement('article');
+      card.className = 'selection-card';
+      const title = document.createElement('h3');
+      title.textContent = a.displayName;
+      const desc = document.createElement('p');
+      desc.textContent = a.description;
+      const specs = document.createElement('small');
+      specs.textContent = `起始高度 ${a.startAltitude.toLocaleString()} m · ${Math.round(a.startSpeed * MS_TO_KT)} KT · ${a.hasAfterburner ? '後燃器' : '無後燃器'} · ${a.gLimit} G · M ${a.maxMach}`;
+      const select = document.createElement('button');
+      select.type = 'button';
+      select.className = a.key === aircraft.key ? 'primary' : 'ghost';
+      select.textContent = a.key === aircraft.key ? '目前使用中' : '選擇此機型';
+      select.addEventListener('click', () => { applyAircraftChoice(a.key); });
+      card.append(title, desc, specs, select);
+      hangarGrid.append(card);
+    }
+  };
+  const renderEquipment = (): void => {
+    equipmentGrid.replaceChildren();
+    for (const option of equipmentOptions) {
+      const card = document.createElement('article');
+      card.className = 'selection-card';
+      const title = document.createElement('h3');
+      title.textContent = option.name;
+      const desc = document.createElement('p');
+      desc.textContent = option.desc;
+      const note = document.createElement('small');
+      note.textContent = option.note;
+      const select = document.createElement('button');
+      select.type = 'button';
+      select.className = selectedEquipment === option.id ? 'primary' : 'ghost';
+      select.textContent = selectedEquipment === option.id ? '已配置' : '配置此裝備';
+      select.addEventListener('click', () => {
+        selectedEquipment = option.id;
+        document.body.dataset.equipment = selectedEquipment;
+        try { localStorage.setItem('cfs.equipment', selectedEquipment); } catch { /* storage optional */ }
+        window.dispatchEvent(new CustomEvent('cfs:equipment-select', { detail: { id: selectedEquipment } }));
+        renderEquipment();
+      });
+      card.append(title, desc, note, select);
+      equipmentGrid.append(card);
+    }
+  };
+  renderHangar();
+  renderEquipment();
+  $<HTMLButtonElement>('btn-hangar').addEventListener('click', () => openSubpage(hangarPage));
+  $<HTMLButtonElement>('btn-equipment').addEventListener('click', () => openSubpage(equipmentPage));
+  menuEl.querySelectorAll<HTMLButtonElement>('[data-page-back]').forEach((button) => button.addEventListener('click', closeSubpage));
+  document.body.dataset.equipment = selectedEquipment;
   howtoBtn.addEventListener('click', () => {
     howtoEl.hidden = !howtoEl.hidden;
     howtoBtn.setAttribute('aria-expanded', String(!howtoEl.hidden));
@@ -243,18 +333,8 @@ async function boot(): Promise<void> {
   };
 
   aircraftSelect.addEventListener('change', () => {
-    const next = aircraftRegistry.find(aircraftSelect.value);
-    if (!next || next === aircraft || mode !== 'menu') return;
-    aircraft = next;
-    physics.setAircraft(aircraft.toPhysicsArray());
-    physics.pause();
-    input.reset(aircraft.startThrottle);
-    showAircraft();
-    try {
-      localStorage.setItem('cfs.aircraft', aircraft.key);
-    } catch {
-      /* private mode: the choice just is not remembered */
-    }
+    if (mode !== 'menu') return;
+    applyAircraftChoice(aircraftSelect.value);
   });
 
   // ---- wiring -------------------------------------------------------------------------------
