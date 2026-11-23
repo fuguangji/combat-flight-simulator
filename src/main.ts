@@ -372,17 +372,11 @@ async function boot(): Promise<void> {
   // ---- free look: mouse turns the head only; the flight controls stay on the keyboard / nose ----
   let dragging = false;
   const canLook = (): boolean => mode === 'flying' || mode === 'crashed';
-  stage.addEventListener('click', () => {
-    if (mode === 'flying' && !touchMode && !document.pointerLockElement) {
-      // Pointer lock hides the cursor and gives unlimited movement; if the browser refuses, dragging still works.
-      void Promise.resolve(stage.requestPointerLock()).catch(() => undefined);
-    }
-  });
   stage.addEventListener('mousedown', (e) => {
     if (e.button === 1) {
       e.preventDefault();
       look.recenter();
-    } else if (e.button === 0 && canLook() && !document.pointerLockElement) {
+    } else if (e.button === 0 && canLook()) {
       dragging = true;
     }
   });
@@ -414,10 +408,7 @@ async function boot(): Promise<void> {
   });
   window.addEventListener('mousemove', (e) => {
     if (!canLook()) return;
-    if (document.pointerLockElement === stage || dragging) look.move(e.movementX, e.movementY);
-  });
-  document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && mode === 'flying') pauseFlight(); // Esc released the mouse
+    if (dragging) look.move(e.movementX, e.movementY);
   });
   input.onRecenter = () => {
     if (canLook()) look.recenter();
