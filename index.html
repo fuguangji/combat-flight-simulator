@@ -28,7 +28,20 @@
           <button id="btn-start" class="primary" disabled>載入中…</button>
           <button id="btn-tutorial" class="ghost" disabled>新手教學</button>
           <button id="btn-howto" class="ghost" aria-expanded="false" aria-controls="howto">操作說明</button>
+          <button id="btn-hangar" class="ghost">機庫／機型介紹</button>
+          <button id="btn-equipment" class="ghost">裝備設定</button>
         </div>
+
+        <section id="hangar-page" class="selection-page" hidden>
+          <div class="page-heading"><p class="eyebrow">AIRCRAFT HANGAR</p><h2>機庫</h2><p>選擇機體，查看獨立介紹與飛行特色。</p></div>
+          <div id="hangar-grid" class="selection-grid"></div>
+          <button type="button" class="ghost page-back" data-page-back>返回主頁</button>
+        </section>
+        <section id="equipment-page" class="selection-page" hidden>
+          <div class="page-heading"><p class="eyebrow">MISSION CONFIGURATION</p><h2>裝備設定</h2><p>選擇本次飛行的虛構任務裝備。所有發射效果均為畫面呈現，不含真實導引或命中功能。</p></div>
+          <div id="equipment-grid" class="selection-grid"></div>
+          <button type="button" class="ghost page-back" data-page-back>返回主頁</button>
+        </section>
         <section id="howto" hidden>
           <table>
             <tr><th>↑ / ↓</th><td>俯仰（↓ = 拉桿，機頭抬起）</td></tr>
