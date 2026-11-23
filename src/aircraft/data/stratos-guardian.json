@@ -1,0 +1,100 @@
+{
+  "id": 4,
+  "key": "stratos-guardian",
+  "displayName": "Stratos Guardian",
+  "description": "Stratos Guardian／大型長航時平台：巡航穩定、燃油容量較高，轉向反應較沉穩，適合長時間飛行與自動駕駛測試。",
+  "cockpit": {
+    "eyeOffset": [
+      4.8,
+      1.2,
+      0
+    ],
+    "fovDeg": 69
+  },
+  "physics": {
+    "empty_mass": 12800,
+    "fuel_capacity": 4600,
+    "inertia_x": 28500,
+    "inertia_y": 158000,
+    "inertia_z": 141000,
+    "ixy": 2500,
+    "wing_area": 42,
+    "span": 12.6,
+    "chord": 4.3,
+    "max_thrust_sl": 90000,
+    "ab_thrust_sl": 145000,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 1.35,
+    "spool_down": 0.85,
+    "cl0": 0,
+    "cl_alpha": 4.35,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.026,
+    "induced_k": 0.14,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 7.4,
+    "g_limit_neg": -2.8,
+    "max_q": 66000,
+    "max_mach": 1.65,
+    "start_altitude": 2600,
+    "start_speed": 165,
+    "start_alpha": 0.05,
+    "start_throttle": 0.38,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
