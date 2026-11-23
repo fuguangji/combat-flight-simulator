@@ -1,0 +1,116 @@
+{
+  "id": 8,
+  "key": "thunder-97",
+  "displayName": "Thunder 97 雷暴97號",
+  "description": "低速支援型平台，強調低速穩定、耐久與低空任務；遊戲中速度較低但操控平穩。",
+  "role": "近距密接支援攻擊機",
+  "features": "雙發／低速支援／短距起降風格",
+  "specs": {
+    "emptyMassKg": 11300,
+    "mtowKg": 23000,
+    "payloadKg": 7250,
+    "fuelKg": 4900,
+    "cruiseBurnKgMin": 24,
+    "boostBurnKgMin": 50,
+    "maxMach": 0.58,
+    "gPositive": 6,
+    "gNegative": -2,
+    "thrustKN": 80,
+    "ceilingM": 13700,
+    "rangeKm": 500
+  },
+  "cockpit": {
+    "eyeOffset": [
+      3.8,
+      1,
+      0
+    ],
+    "fovDeg": 70
+  },
+  "physics": {
+    "empty_mass": 11300,
+    "fuel_capacity": 4900,
+    "inertia_x": 20296,
+    "inertia_y": 134866,
+    "inertia_z": 119294,
+    "ixy": 1892,
+    "wing_area": 32,
+    "span": 9.74,
+    "chord": 3.61,
+    "max_thrust_sl": 62,
+    "ab_thrust_sl": 80,
+    "tsfc_mil": 0.000023,
+    "tsfc_ab": 0.000056,
+    "spool_up": 1.06,
+    "spool_down": 0.7,
+    "cl0": 0,
+    "cl_alpha": 4.5,
+    "alpha_stall": 0.3,
+    "post_stall_cl": 1.1,
+    "post_stall_cd": 2,
+    "cd0": 0.022,
+    "induced_k": 0.12,
+    "cd_wave": 0.055,
+    "cy_beta": 0.8,
+    "cm0": 0.03,
+    "cm_alpha": -0.6,
+    "cl_beta": 0.08,
+    "cn_beta": 0.12,
+    "cl_p": -0.35,
+    "cm_q": -12,
+    "cn_r": -1,
+    "cl_r": 0.1,
+    "cn_aileron": 0.004,
+    "cl_rudder": 0.006,
+    "cm_elevator": 0.25,
+    "cl_aileron": 0.04,
+    "cn_rudder": 0.05,
+    "actuator_tau": 0.07,
+    "g_limit_pos": 6,
+    "g_limit_neg": -2,
+    "max_q": 69472,
+    "max_mach": 0.58,
+    "start_altitude": 2466,
+    "start_speed": 115,
+    "start_alpha": 0.05,
+    "start_throttle": 0.34,
+    "hull_radius": 1,
+    "hull": [
+      [
+        7.5,
+        0,
+        0
+      ],
+      [
+        -7,
+        0,
+        0
+      ],
+      [
+        -1,
+        0,
+        -4.55
+      ],
+      [
+        -1,
+        0,
+        4.55
+      ],
+      [
+        -6.5,
+        2.6,
+        0
+      ],
+      [
+        0,
+        -1,
+        0
+      ],
+      [
+        1,
+        1.2,
+        0
+      ]
+    ]
+  }
+}
