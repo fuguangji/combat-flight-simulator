@@ -73,9 +73,9 @@ describe('validation and registry', () => {
   });
 
   it('derived facts follow the data (trainer has no afterburner, fighter does)', () => {
-    const t = aircraftRegistry.find('light-trainer');
-    const g = aircraftRegistry.find('generic-fighter');
-    expect(t?.hasAfterburner).toBe(false);
-    expect(g?.hasAfterburner).toBe(true);
+    const heavy = aircraftRegistry.find('apollo-castle-37');
+    const fighter = aircraftRegistry.find('viper-t21');
+    expect(heavy?.hasAfterburner).toBe(false);
+    expect(fighter?.hasAfterburner).toBe(true);
   });
 });
