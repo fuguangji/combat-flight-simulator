@@ -1,3 +1,5 @@
+import { SEA_LEVEL, sampleTerrain } from '../terrain/procedural';
+
 /**
  * Phase-1 test scene: an instanced field of boxes ("towers" and "massifs") over a procedural
  * ground. Deterministic, so every run and every backend draws the same world.
@@ -44,8 +46,16 @@ export function buildTestScene(towers = 3600, massifs = 400, halfExtent = 25_000
   const instances = new Float32Array(count * 4);
   for (let i = 0; i < count; i++) {
     const big = i >= towers;
-    const x = (rnd() * 2 - 1) * halfExtent;
-    const z = (rnd() * 2 - 1) * halfExtent;
+    // Re-roll the position (bounded, deterministic) until it lands on dry ground, so no tower
+    // stands in the sea or a river. The same instance array is uploaded to the physics worker.
+    let x = 0;
+    let z = 0;
+    for (let tries = 0; tries < 12; tries++) {
+      x = (rnd() * 2 - 1) * halfExtent;
+      z = (rnd() * 2 - 1) * halfExtent;
+      const t = sampleTerrain(x, z);
+      if (t.biome !== 'water' && t.height > SEA_LEVEL + 15) break;
+    }
     const w = big ? 400 + rnd() * 1100 : 25 + rnd() * rnd() * 160;
     const h = big ? 250 + rnd() * rnd() * 1300 : 15 + rnd() * rnd() * rnd() * 520;
     instances.set([x, z, w, h], i * 4);

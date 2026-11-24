@@ -1,6 +1,7 @@
 import { GLOBALS_BYTES, GLOBALS_FLOATS, packGlobals } from './globals';
 import type { CameraState, RenderStats, Renderer } from './Renderer';
 import { buildTestScene } from './scene';
+import { TERRAIN_WGSL } from '../terrain/terrainShader';
 
 const COMMON = /* wgsl */ `
 struct Globals {
@@ -20,7 +21,9 @@ fn applyFog(c: vec3<f32>, dist: f32) -> vec3<f32> {
   return mix(c, HORIZON, clamp(f, 0.0, 1.0));
 }
 fn hash2(p: vec2<f32>) -> f32 {
-  return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
+  var q = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
 }
 `;
 
@@ -54,45 +57,11 @@ struct GOut { @builtin(position) pos: vec4<f32>, @location(0) rel: vec2<f32> };
   o.rel = rel.xz;
   return o;
 }
-fn gridLine(p: vec2<f32>, cell: f32) -> f32 {
-  let q = p / cell;
-  let d = abs(fract(q - 0.5) - 0.5) / fwidth(q);
-  return 1.0 - min(min(d.x, d.y), 1.0);
-}
-fn valueNoise(p: vec2<f32>) -> f32 {
-  let i = floor(p);
-  var f = fract(p);
-  f = f * f * (vec2<f32>(3.0) - 2.0 * f);
-  let a = hash2(i);
-  let b = hash2(i + vec2<f32>(1.0, 0.0));
-  let c = hash2(i + vec2<f32>(0.0, 1.0));
-  let d = hash2(i + vec2<f32>(1.0, 1.0));
-  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-fn terrainHeight(p: vec2<f32>) -> f32 {
-  let broad = (valueNoise(p * 0.000055) - 0.5) * 900.0;
-  let medium = (valueNoise(p * 0.00022) - 0.5) * 420.0;
-  let fine = (valueNoise(p * 0.0011) - 0.5) * 90.0;
-  let ridge = 1.0 - abs(valueNoise(p * 0.00014) * 2.0 - 1.0);
-  return broad + medium + fine + pow(ridge, 3.0) * 420.0;
-}
+${TERRAIN_WGSL}
 @fragment fn fs(in: GOut) -> @location(0) vec4<f32> {
   let w = in.rel + g.camPos.xz;
-  let h = terrainHeight(w);
-  let hx = terrainHeight(w + vec2<f32>(24.0, 0.0)) - terrainHeight(w - vec2<f32>(24.0, 0.0));
-  let hz = terrainHeight(w + vec2<f32>(0.0, 24.0)) - terrainHeight(w - vec2<f32>(0.0, 24.0));
-  let slope = length(vec2<f32>(hx, hz)) / 48.0;
-  let tint = hash2(floor(w / 1000.0));
-  let plain = mix(vec3<f32>(0.15, 0.25, 0.13), vec3<f32>(0.27, 0.34, 0.18), tint);
-  let rock = vec3<f32>(0.34, 0.35, 0.32);
-  var col = mix(plain, rock, smoothstep(0.35, 1.25, slope) * 0.8);
-  col = mix(col, vec3<f32>(0.66, 0.69, 0.66), smoothstep(850.0, 1450.0, h) * 0.75);
-  let contour = 1.0 - smoothstep(0.0, 18.0, abs(fract(h / 100.0) - 0.5) * 100.0);
-  col = mix(col, col * 0.72, contour * 0.18);
+  let col = shadeGround(w, in.rel, g.camPos.y);
   let dist = length(vec3<f32>(in.rel.x, g.camPos.y, in.rel.y));
-  let fade = 1.0 - clamp(dist / 12000.0, 0.0, 1.0);
-  col = mix(col, vec3<f32>(0.08, 0.12, 0.06), gridLine(w, 100.0) * 0.16 * fade);
-  col = mix(col, vec3<f32>(0.05, 0.07, 0.04), gridLine(w, 1000.0) * 0.22);
   return vec4<f32>(applyFog(col, dist), 1.0);
 }
 `;
@@ -121,7 +90,7 @@ struct VOut {
 }
 @fragment fn fs(in: VOut) -> @location(0) vec4<f32> {
   let n = normalize(in.nrm);
-  let l = normalize(vec3<f32>(0.5, 0.8, 0.3));
+  let l = vec3<f32>(0.50508, 0.80812, 0.30305);
   let base = mix(vec3<f32>(0.55, 0.56, 0.60), vec3<f32>(0.70, 0.62, 0.50), in.tint);
   let col = base * (0.35 + 0.65 * max(dot(n, l), 0.0));
   return vec4<f32>(applyFog(col, length(in.rel)), 1.0);
@@ -282,16 +251,17 @@ export class WebGPURenderer implements Renderer {
     pass.setBindGroup(0, this.bindGroups[0]);
     pass.draw(3);
 
-    pass.setPipeline(this.ground);
-    pass.setBindGroup(0, this.bindGroups[1]);
-    pass.draw(6);
-
+    // objects first: early-z then skips the expensive ground shader behind buildings
     pass.setPipeline(this.objects);
     pass.setBindGroup(0, this.bindGroups[2]);
     pass.setVertexBuffer(0, this.vbo);
     pass.setVertexBuffer(1, this.instBuf);
     pass.setIndexBuffer(this.ibo, 'uint32');
     pass.drawIndexed(this.indexCount, this.instanceCount);
+
+    pass.setPipeline(this.ground);
+    pass.setBindGroup(0, this.bindGroups[1]);
+    pass.draw(6);
 
     pass.end();
     this.device.queue.submit([encoder.finish()]);

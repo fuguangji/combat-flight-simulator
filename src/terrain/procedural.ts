@@ -1,19 +1,102 @@
-/** Deterministic, coordinate-based terrain sampler; the world does not depend on loaded chunks. */
-export interface TerrainSample { height: number; biome: 'plain' | 'ridge' | 'basin'; }
-const fract=(v:number)=>v-Math.floor(v);
-function hash(x:number,z:number,seed:number):number{return fract(Math.sin(x*127.1+z*311.7+seed*74.7)*43758.5453123);}
-function smooth(t:number):number{return t*t*(3-2*t);}
-function noise(x:number,z:number,seed:number):number{
-  const ix=Math.floor(x),iz=Math.floor(z),fx=smooth(fract(x)),fz=smooth(fract(z));
-  const a=hash(ix,iz,seed),b=hash(ix+1,iz,seed),c=hash(ix,iz+1,seed),d=hash(ix+1,iz+1,seed);
-  const ab=a+(b-a)*fx,cd=c+(d-c)*fx;return ab+(cd-ab)*fz;
+/**
+ * Deterministic, coordinate-based terrain sampler; the world does not depend on loaded chunks.
+ *
+ * The very same functions are written in GLSL and WGSL in `terrainShader.ts`. Keep the constants
+ * (frequencies, amplitudes, offsets) in sync: the minimap, the scene builder and both renderers
+ * must agree on where the sea, rivers and mountains are.
+ */
+export type Biome = 'water' | 'shore' | 'desert' | 'plain' | 'forest' | 'ridge' | 'snow';
+export interface TerrainSample {
+  height: number;
+  /** 0 (dry) .. 1 (wet); drives desert / forest. */
+  moisture: number;
+  biome: Biome;
 }
+
+/** Heights below this are sea / lake (metres). */
+export const SEA_LEVEL = -55;
+
+const fract = (v: number): number => v - Math.floor(v);
+
+/** Sine-free hash (Hoskins "hash12"): cheap and precise in float32 on the GPU. */
+export function terrainHash(x: number, z: number): number {
+  let a = fract(x * 0.1031);
+  let b = fract(z * 0.1031);
+  let c = a;
+  const d = a * (b + 33.33) + b * (c + 33.33) + c * (a + 33.33);
+  a += d;
+  b += d;
+  c += d;
+  return fract((a + b) * c);
+}
+
+export function terrainNoise(x: number, z: number): number {
+  const ix = Math.floor(x);
+  const iz = Math.floor(z);
+  let fx = fract(x);
+  let fz = fract(z);
+  fx = fx * fx * (3 - 2 * fx);
+  fz = fz * fz * (3 - 2 * fz);
+  const a = terrainHash(ix, iz);
+  const b = terrainHash(ix + 1, iz);
+  const c = terrainHash(ix, iz + 1);
+  const d = terrainHash(ix + 1, iz + 1);
+  const ab = a + (b - a) * fx;
+  const cd = c + (d - c) * fx;
+  return ab + (cd - ab) * fz;
+}
+
+/** Low-frequency height (broad hills, medium relief, ridge lines). */
+export function terrainBase(x: number, z: number): number {
+  const r = 1 - Math.abs(terrainNoise(x * 0.00014, z * 0.00014) * 2 - 1);
+  return (
+    (terrainNoise(x * 0.000055, z * 0.000055) - 0.5) * 900 +
+    (terrainNoise(x * 0.00022, z * 0.00022) - 0.5) * 420 +
+    r * r * r * 420
+  );
+}
+
+export function terrainFine(x: number, z: number): number {
+  return (terrainNoise(x * 0.0011, z * 0.0011) - 0.5) * 90;
+}
+
+export function terrainMoisture(x: number, z: number): number {
+  return (
+    terrainNoise(x * 0.00007 + 31.7, z * 0.00007 + 11.3) * 0.7 +
+    terrainNoise(x * 0.00031 + 5.1, z * 0.00031 + 73.9) * 0.3
+  );
+}
+
+const smoothstep = (a: number, b: number, v: number): number => {
+  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+/** 0..1 coverage of meandering rivers; they only exist in the lowlands. */
+export function riverMask(x: number, z: number, h: number): number {
+  const warp = (terrainNoise(x * 0.0004, z * 0.0004) - 0.5) * 3000;
+  const qx = x + warp;
+  const qz = z - warp;
+  const r = Math.abs(terrainNoise(qx * 0.00009 + 91.3, qz * 0.00009 + 47.7) * 2 - 1);
+  return (1 - smoothstep(0.02, 0.03, r)) * (1 - smoothstep(400, 650, h));
+}
+
 /** Infinite deterministic height field in metres, suitable for chunk generation and minimap sampling. */
-export function sampleTerrain(x:number,z:number,seed=1337):TerrainSample{
-  const broad=noise(x/12000,z/12000,seed)-.5;
-  const medium=noise(x/3200,z/3200,seed+1)-.5;
-  const fine=noise(x/650,z/650,seed+2)-.5;
-  const ridge=1-Math.abs(noise(x/7000,z/7000,seed+3)*2-1);
-  const height=Math.max(-180,Math.min(1850,broad*900+medium*420+fine*90+Math.pow(ridge,3)*420));
-  return {height,biome:height>700?'ridge':height<80?'basin':'plain'};
+export function sampleTerrain(x: number, z: number, seed = 0): TerrainSample {
+  const ox = x + seed * 1237.7;
+  const oz = z + seed * 911.3;
+  const height = Math.max(-180, Math.min(1850, terrainBase(ox, oz) + terrainFine(ox, oz)));
+  const moisture = terrainMoisture(ox, oz);
+  let biome: Biome;
+  if (height < SEA_LEVEL || riverMask(ox, oz, height) > 0.5) biome = 'water';
+  else if (height < SEA_LEVEL + 22) biome = 'shore';
+  else if (height > 1150) biome = 'snow';
+  else if (height > 700) biome = 'ridge';
+  else if (moisture < 0.3 && height < 500) biome = 'desert';
+  else if (moisture > 0.55) biome = 'forest';
+  else biome = 'plain';
+  return { height, moisture, biome };
 }
+
+/** True for open water (sea, lake or river). */
+export const isWater = (x: number, z: number): boolean => sampleTerrain(x, z).biome === 'water';
