@@ -803,11 +803,11 @@ async function boot(): Promise<void> {
         }
         audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
         look.update(frameMs / 1000);
-        cockpit.setHeadPose(look.yaw, look.pitch);
         const attitude = attitudeFromQuat(snap.orientation);
         cockpit.setFlightReadout(snap.altitude, snap.airspeed * MS_TO_KT, attitude.heading);
         window.dispatchEvent(new CustomEvent('cfs:flight-snapshot', { detail: { x: snap.position[0], y: snap.altitude, z: snap.position[2], heading: attitude.heading, speed: snap.airspeed } }));
         const cam = rig.update(snap, aircraft, now, look);
+        cockpit.setHeadPose(look.yaw, look.pitch, cam.fovY);
         renderer.render(cam);
         hud.draw(snap, aircraft, now, cam.fovY, look);
         if (mode === 'crashed' && crashEl.hidden && !transitioning && now - crashedAtMs > CRASH_CARD_DELAY_MS) {

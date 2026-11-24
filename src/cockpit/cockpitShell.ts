@@ -7,8 +7,25 @@
  * parallax instead of simply spinning in place.
  */
 export interface CockpitShell {
-  setHeadPose(yaw: number, pitch: number): void;
+  /** `fovY` (radians) is the 3D camera's current vertical field of view; omit to use raw angles. */
+  setHeadPose(yaw: number, pitch: number, fovY?: number): void;
   setFlightReadout(altitude: number, speedKt: number, heading: number): void;
+}
+
+/** CSS perspective distance in px; the pilot's eye is this far in front of the screen plane. */
+const PERSPECTIVE = 1600;
+/** Beyond this the panels are far off-screen anyway; also keeps tan() finite. */
+const MAX_PANEL_ANGLE = (83 * Math.PI) / 180;
+
+/**
+ * Head angle -> CSS rotation angle. The panels are drawn with a fixed 1600 px perspective while the
+ * 3D scene uses the real field of view, so the same head angle would slide them at a different
+ * rate. Scaling tan(angle) by pxPerTan / PERSPECTIVE makes a point straight ahead move across the
+ * screen by exactly as many pixels as the outside world does.
+ */
+export function panelAngle(angle: number, pxPerTan: number): number {
+  const a = Math.max(-MAX_PANEL_ANGLE, Math.min(MAX_PANEL_ANGLE, angle));
+  return Math.atan(Math.tan(a) * (pxPerTan / PERSPECTIVE));
 }
 
 export function mountCockpitShell(): CockpitShell {
@@ -20,13 +37,15 @@ export function mountCockpitShell(): CockpitShell {
   style.textContent = `
     #cockpit-shell {
       position:fixed; inset:0; z-index:5; pointer-events:none;
-      perspective:1600px; perspective-origin:50% 52%; overflow:hidden;
+      perspective:${PERSPECTIVE}px; perspective-origin:50% 52%; overflow:hidden;
     }
     #cockpit-airframe {
       position:absolute; inset:0; transform-style:preserve-3d;
-      transform-origin:50% 52%;
-      /* The scene counter-rotates around the pilot's eye, not around each panel. */
-      transform:rotateY(var(--head-yaw,0rad)) rotateX(var(--head-pitch,0rad));
+      /* The eye sits at the perspective distance: the cockpit counter-rotates about it. */
+      transform-origin:50% 52% ${PERSPECTIVE}px;
+      /* Head pose = yaw first, then pitch about the turned head. The cockpit applies the same two
+         rotations to its points in that order (the rightmost function acts first), about the eye. */
+      transform:rotateX(var(--head-pitch,0rad)) rotateY(var(--head-yaw,0rad));
       will-change:transform;
     }
     .canopy-post {
@@ -252,18 +271,22 @@ export function mountCockpitShell(): CockpitShell {
   let lastReadout = "";
   let readoutEl: HTMLElement | null = null;
   return {
-    setHeadPose: (yaw, pitch) => {
-      // Inverse camera pose: a rightward look moves the fixed cockpit left,
-      // while an upward look moves the lower console down. CSS perspective
-      // supplies the depth-dependent amount of displacement.
+    setHeadPose: (yaw, pitch, fovY) => {
+      // The cockpit rotates about the pilot's eye (transform-origin z = perspective distance), so
+      // everything behind the eye plane (z < PERSPECTIVE) swings the way the outside world does:
+      // a rightward look (+yaw) moves the cockpit left, an upward look (+pitch) moves it down.
+      // Both CSS angles are therefore positive for a positive head angle.
       // Writing a custom property on <html> invalidates style for the whole document, so skip
-      // frames where the head has not moved (the common case).
-      if (yaw === lastYaw && pitch === lastPitch) return;
-      lastYaw = yaw;
-      lastPitch = pitch;
+      // frames where nothing changed (the common case).
+      const pxPerTan = fovY && fovY > 0.05 && fovY < 3 ? window.innerHeight / 2 / Math.tan(fovY / 2) : PERSPECTIVE;
+      const cssYaw = panelAngle(yaw, pxPerTan);
+      const cssPitch = panelAngle(pitch, pxPerTan);
+      if (cssYaw === lastYaw && cssPitch === lastPitch) return;
+      lastYaw = cssYaw;
+      lastPitch = cssPitch;
       const root = document.documentElement.style;
-      root.setProperty('--head-yaw', `${-yaw}rad`);
-      root.setProperty('--head-pitch', `${-pitch}rad`);
+      root.setProperty('--head-yaw', `${cssYaw}rad`);
+      root.setProperty('--head-pitch', `${cssPitch}rad`);
     },
     setFlightReadout: (altitude, speedKt, heading) => {
       readoutEl ??= shell.querySelector<HTMLElement>('#cockpit-flight-readout');
