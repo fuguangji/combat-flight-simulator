@@ -1,10 +1,23 @@
-import { sampleTerrain } from '../terrain/procedural';
+import { sampleTerrain, type Biome } from '../terrain/procedural';
 /** Lightweight flight navigation display and deterministic infinite-world coordinates. */
 export interface NavigationSnapshot { x: number; y: number; z: number; heading: number; speed: number; }
+const BIOME_COLOUR: Record<Biome, string> = {
+  water: 'rgba(40,110,150,.55)',
+  shore: 'rgba(190,175,120,.40)',
+  desert: 'rgba(176,150,96,.32)',
+  plain: 'rgba(76,126,72,.22)',
+  forest: 'rgba(36,98,52,.40)',
+  ridge: 'rgba(130,145,135,.34)',
+  snow: 'rgba(225,232,232,.50)',
+};
 export class NavigationDisplay {
   private readonly root: HTMLDivElement;
   private waypoint = { x: 12000, z: -18000 };
-  private seed = 1337;
+  /** Only picks the next waypoint; the terrain itself is fixed so the map matches what is rendered. */
+  private waypointSeed = 1337;
+  private readonly els = new Map<string, HTMLElement>();
+  private lastMapMs = -Infinity;
+  private lastMapKey = '';
   constructor() {
     const style = document.createElement('style');
     style.textContent = `
@@ -23,9 +36,9 @@ export class NavigationDisplay {
     this.root.innerHTML = `<div class="nav-title"><span>NAV / 導航</span><span>PROC WORLD</span></div><canvas width="320" height="140"></canvas><div class="nav-data"><span id="nav-coord">X 0 / Z 0</span><span id="nav-heading">HDG 000°</span><span id="nav-alt">ALT 0 m</span><span id="nav-waypoint">WP 000 km</span></div><button type="button" id="nav-next">NEXT WAYPOINT / 下一航點</button>`;
     document.body.append(this.root);
     this.root.querySelector('#nav-next')?.addEventListener('click', () => {
-      this.seed = (this.seed + 7919) >>> 0;
-      const angle = ((this.seed % 360) * Math.PI) / 180;
-      const radius = 8000 + (this.seed % 12000);
+      this.waypointSeed = (this.waypointSeed + 7919) >>> 0;
+      const angle = ((this.waypointSeed % 360) * Math.PI) / 180;
+      const radius = 8000 + (this.waypointSeed % 12000);
       this.waypoint = { x: Math.sin(angle) * radius, z: -Math.cos(angle) * radius };
     });
     window.addEventListener('cfs:flight-snapshot', (event) => this.update((event as CustomEvent<NavigationSnapshot>).detail));
@@ -43,8 +56,7 @@ export class NavigationDisplay {
     // The map samples the same deterministic world field used by the terrain system.
     for(let gy=0;gy<10;gy++) for(let gx=0;gx<20;gx++) {
       const wx=x+(gx-10)*1200, wz=z+(gy-5)*1200;
-      const terrain=sampleTerrain(wx,wz,this.seed);
-      ctx.fillStyle=terrain.biome==='ridge'?'rgba(130,145,135,.28)':terrain.biome==='basin'?'rgba(45,105,112,.28)':'rgba(76,126,72,.20)';
+      ctx.fillStyle=BIOME_COLOUR[sampleTerrain(wx,wz).biome];
       ctx.fillRect(gx*16,gy*14,16,14);
     }
     const hash=(a:number,b:number)=>{const v=Math.sin(a*127.1+b*311.7)*43758.5453;return v-Math.floor(v);};
@@ -66,11 +78,18 @@ export class NavigationDisplay {
   private update(s: NavigationSnapshot): void {
     const headingDeg = ((Math.round(s.heading*180/Math.PI)%360)+360)%360;
     const distance = Math.hypot(this.waypoint.x-s.x,this.waypoint.z-s.z)/1000;
-    const set=(id:string,value:string)=>{const el=this.root.querySelector<HTMLElement>(`#${id}`);if(el)el.textContent=value;};
+    const set=(id:string,value:string)=>{let el=this.els.get(id);if(!el){el=this.root.querySelector<HTMLElement>(`#${id}`)??undefined;if(!el)return;this.els.set(id,el);}if(el.textContent!==value)el.textContent=value;};
     set('nav-coord',`X ${Math.round(s.x)} / Z ${Math.round(s.z)}`);
     set('nav-heading',`HDG ${String(headingDeg).padStart(3,'0')}°`);
     set('nav-alt',`ALT ${Math.round(s.y).toLocaleString()} m`);
     set('nav-waypoint',`WP ${distance.toFixed(1)} km`);
-    this.drawMap(s.x,s.z,s.heading);
+    // The map needs ~200 terrain samples: redraw at 10 Hz and only when the picture would change.
+    const now = performance.now();
+    const key = `${Math.round(s.x / 40)}|${Math.round(s.z / 40)}|${Math.round(s.heading * 40)}|${this.waypoint.x}|${this.waypoint.z}`;
+    if (now - this.lastMapMs >= 100 && key !== this.lastMapKey) {
+      this.lastMapMs = now;
+      this.lastMapKey = key;
+      this.drawMap(s.x,s.z,s.heading);
+    }
   }
 }

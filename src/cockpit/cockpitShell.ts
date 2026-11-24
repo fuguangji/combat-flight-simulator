@@ -247,17 +247,32 @@ export function mountCockpitShell(): CockpitShell {
     }
   });
 
+  let lastYaw = Number.NaN;
+  let lastPitch = Number.NaN;
+  let lastReadout = "";
+  let readoutEl: HTMLElement | null = null;
   return {
     setHeadPose: (yaw, pitch) => {
       // Inverse camera pose: a rightward look moves the fixed cockpit left,
       // while an upward look moves the lower console down. CSS perspective
       // supplies the depth-dependent amount of displacement.
-      document.documentElement.style.setProperty('--head-yaw', `${-yaw}rad`);
-      document.documentElement.style.setProperty('--head-pitch', `${-pitch}rad`);
+      // Writing a custom property on <html> invalidates style for the whole document, so skip
+      // frames where the head has not moved (the common case).
+      if (yaw === lastYaw && pitch === lastPitch) return;
+      lastYaw = yaw;
+      lastPitch = pitch;
+      const root = document.documentElement.style;
+      root.setProperty('--head-yaw', `${-yaw}rad`);
+      root.setProperty('--head-pitch', `${-pitch}rad`);
     },
     setFlightReadout: (altitude, speedKt, heading) => {
-      const el = shell.querySelector<HTMLElement>('#cockpit-flight-readout');
-      if (el) el.textContent = `ALT ${Math.round(altitude).toLocaleString()} m · SPD ${Math.round(speedKt)} kt · HDG ${String(Math.round(heading * 180 / Math.PI) % 360).padStart(3, '0')}°`;
+      readoutEl ??= shell.querySelector<HTMLElement>('#cockpit-flight-readout');
+      if (!readoutEl) return;
+      const text = `ALT ${Math.round(altitude).toLocaleString()} m · SPD ${Math.round(speedKt)} kt · HDG ${String(Math.round(heading * 180 / Math.PI) % 360).padStart(3, '0')}°`;
+      if (text !== lastReadout) {
+        lastReadout = text;
+        readoutEl.textContent = text;
+      }
     },
   };
 }
