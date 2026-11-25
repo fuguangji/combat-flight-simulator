@@ -199,7 +199,7 @@ export class EncyclopediaViewer {
   private showWeapon(item: WeaponDefinition, button: HTMLButtonElement): void {
     this.selectEntry(button);
     this.elements.title.textContent = item.name;
-    this.elements.description.textContent = `${item.role}。 ${item.description} 模型採原創科幻能量艙外觀，只用於遊戲圖鑑與視覺展示，不模擬現實武器結構或導引。`;
+    this.elements.description.textContent = `${item.role}。 ${item.description} 模型採原創科幻能量彈體外觀，具有發光錐形端部、分段外殼與能量環，只用於遊戲圖鑑展示，不模擬現實飛彈結構、導引或推進系統。`;
     this.elements.specs.textContent = [
       item.category,
       `視覺效果 ${item.effect}`,
@@ -304,7 +304,9 @@ export class EncyclopediaViewer {
     const glow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8, metalness: 0.3, roughness: 0.2 });
     const core = this.mesh(new THREE.CylinderGeometry(0.38, 0.38, 3.15, 24), shell, group, [0, 0, 0]);
     core.rotation.z = -Math.PI / 2;
-    this.mesh(new THREE.SphereGeometry(0.39, 20, 12), glow, group, [1.62, 0, 0]).scale.set(1.2, 0.8, 0.8);
+    const tip = this.mesh(new THREE.ConeGeometry(0.34, 0.82, 20), glow, group, [1.96, 0, 0]);
+    tip.rotation.z = -Math.PI / 2;
+    this.mesh(new THREE.SphereGeometry(0.27, 16, 10), glow, group, [-2.02, 0, 0]).scale.set(1.2, 0.9, 0.9);
     const rear = this.mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.42, 20), this.material(0x263a39), group, [-1.78, 0, 0]);
     rear.rotation.z = -Math.PI / 2;
     for (const x of [-0.85, 0.05, 0.95]) {
