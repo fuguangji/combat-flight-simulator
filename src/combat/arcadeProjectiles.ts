@@ -170,11 +170,46 @@ export class ArcadeProjectileSystem {
     this.renderPanel();
   }
 
+  private launchMissile(): void {
+    const spec = MISSILES[this.selectedMissile];
+    if (!spec || this.missileAmmo[this.selectedMissile] <= 0 || this.missileCooldowns[this.selectedMissile] > 0) {
+      this.flash = 0.16;
+      return;
+    }
+    if (spec.lockRequired && this.focusProgress < 1) {
+      this.status.dataset.lockBlocked = 'true';
+      this.flash = 0.16;
+      this.renderPanel();
+      return;
+    }
+    // Screen-space authored path to fixed UI anchors only. No world coordinates,
+    // sensor data, homing, steering law, target state or physical interception.
+    const anchors = [0.3, 0.5, 0.7];
+    this.activeMissiles.push({
+      age: 0,
+      id: this.selectedMissile,
+      targetIndex: this.contactIndex,
+      endX: spec.lockRequired ? anchors[this.contactIndex] : 0.5,
+      endY: spec.lockRequired ? 0.27 : 0.42,
+    });
+    this.missileAmmo[this.selectedMissile] -= 1;
+    this.missileCooldowns[this.selectedMissile] = spec.cooldown;
+    this.focused = false;
+    this.focusProgress = 0;
+    this.status.dataset.lockBlocked = 'false';
+    this.flash = 0.12;
+    this.lastPanelSignature = '';
+    this.renderPanel();
+  }
+
   private renderPanel(): void {
     const spec = EQUIPMENT[this.equipment];
     const remaining = this.ammo[this.equipment];
     const state = this.cooldowns[this.equipment] > 0 ? 'RECHARGING' : remaining > 0 ? 'READY' : 'EMPTY';
-    const signature = [this.equipment, remaining, state, this.contactIndex, this.focused].join('|');
+    const missile = MISSILES[this.selectedMissile];
+    const missileRemaining = this.missileAmmo[this.selectedMissile];
+    const missileState = this.missileCooldowns[this.selectedMissile] > 0 ? 'RECHARGING' : missileRemaining > 0 ? 'READY' : 'EMPTY';
+    const signature = [this.equipment, remaining, state, this.contactIndex, this.focused, this.focusProgress.toFixed(2), this.selectedMissile, missileRemaining, missileState].join('|');
     if (signature !== this.lastPanelSignature) {
       this.lastPanelSignature = signature;
       const readout = this.panel.querySelector('#dashboard-readout');
@@ -185,8 +220,18 @@ export class ArcadeProjectileSystem {
       const name = this.status.querySelector('#contact-name');
       const focus = this.status.querySelector('#focus-state');
       if (name) name.textContent = `${contact.id} · ${contact.className}`;
-      if (focus) focus.textContent = this.focused ? 'FOCUS SELECTED' : 'NO FOCUS';
+      if (focus) focus.textContent = this.focused ? 'FOCUS ACTIVE' : 'FOCUS';
+      const progress = this.status.querySelector<HTMLElement>('#guidance-progress');
+      const guidance = this.status.querySelector<HTMLElement>('#guidance-readout');
+      if (progress) progress.style.width = String(Math.round(this.focusProgress * 100)) + '%';
+      if (guidance) guidance.textContent = missile.lockRequired
+        ? 'ARCADE ASSIST · ' + Math.round(this.focusProgress * 100) + '% · ' + missileState + ' · ' + missileRemaining + '/' + missile.capacity
+        : 'AREA EFFECT · ' + missileState + ' · ' + missileRemaining + '/' + missile.capacity;
+      const selector = this.status.querySelector<HTMLSelectElement>('[data-missile-select]');
+      if (selector && selector.value !== this.selectedMissile) selector.value = this.selectedMissile;
       this.status.dataset.focused = String(this.focused);
+      this.status.dataset.locked = String(this.focusProgress >= 1);
+      this.status.dataset.lockBlocked = this.status.dataset.lockBlocked || 'false';
       this.status.querySelectorAll<HTMLButtonElement>('[data-contact]').forEach((button) => {
         button.dataset.active = String(Number(button.dataset.contact) === this.contactIndex);
       });
