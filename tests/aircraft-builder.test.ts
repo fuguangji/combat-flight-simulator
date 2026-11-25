@@ -20,6 +20,17 @@ describe('modular aircraft geometry builder', () => {
     expect(model.children[0].children[0].children).toHaveLength(0);
   });
 
+  it('rejects circular parent hierarchies', () => {
+    const config: AircraftVisualConfig = {
+      version: 1,
+      parts: [
+        { id: 'left-wing', shape: 'box', parent: 'right-wing' },
+        { id: 'right-wing', shape: 'box', parent: 'left-wing' },
+      ],
+    };
+    expect(() => createModularAircraft(config)).toThrow(/Circular aircraft part hierarchy/);
+  });
+
   it('supports visibility, transforms and primitive dimensions', () => {
     const part = createAircraftPart({
       id: 'engine', shape: 'cylinder', radiusTop: 0.2, radiusBottom: 0.3, height: 2,
