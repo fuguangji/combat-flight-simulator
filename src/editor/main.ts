@@ -344,7 +344,7 @@ const addCannonVisual = (): void => {
   notify('已新增固定式機炮外觀；可再調整炮管與固定座');
 };
 
-const duplicateSelected = (mirror = false): void {
+const duplicateSelected = (mirror = false): void => {
   const source = selectedPart();
   if (!source) return;
   const copyPart = clone(source);
