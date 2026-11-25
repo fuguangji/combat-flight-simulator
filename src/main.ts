@@ -1,7 +1,6 @@
 import './ui/style.css';
 import { aircraftRegistry, type AircraftDefinition } from './aircraft/registry';
 import weaponCatalog from './combat/weapons.json';
-import missileCatalog from './combat/missiles.json';
 import { detectCapabilities } from './core/capabilities';
 import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { mountCockpitShell } from './cockpit/cockpitShell';
@@ -107,7 +106,7 @@ async function boot(): Promise<void> {
     description: $<HTMLElement>('encyclopedia-description'),
     specs: $<HTMLElement>('encyclopedia-specs'),
     category: $<HTMLSelectElement>('encyclopedia-category'),
-  }, aircraftRegistry.list(), weaponCatalog, missileCatalog);
+  }, aircraftRegistry.list(), weaponCatalog);
   const menuPanel = menuEl.querySelector('.panel') as HTMLDivElement;
   const equipmentOptions = weaponCatalog.map((weapon) => ({
     id: weapon.id,
