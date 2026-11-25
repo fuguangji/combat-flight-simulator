@@ -282,78 +282,20 @@ export class EncyclopediaViewer {
     return object;
   }
 
-  private wing(parent: THREE.Group, span: number, sweep: number, rear: number, color: number, side: 1 | -1): void {
-    const shape = new THREE.Shape();
-    shape.moveTo(1.05, 0);
-    shape.lineTo(0.55 - sweep, side * span);
-    shape.lineTo(-rear - sweep * 0.18, side * span * 0.96);
-    shape.lineTo(-1.42, 0);
-    shape.closePath();
-    const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 0.035, bevelThickness: 0.025 });
-    geometry.rotateX(-Math.PI / 2);
-    geometry.computeVertexNormals();
-    this.mesh(geometry, this.material(color), parent, [0, -0.12, 0]);
-  }
-
   /** Public factory so the encyclopedia and live scene use the exact same geometry. */
   createAircraftModel(id: number): THREE.Group {
-    return this.buildAircraft(id);
+    const item = this.aircraft.find((aircraft) => aircraft.id === id) ?? this.aircraft[0];
+    if (!item) throw new Error('No aircraft is registered');
+    return this.buildAircraft(item);
   }
 
-  private buildAircraft(id: number): THREE.Group {
-    const group = new THREE.Group();
-    const palette = [0x738d83, 0x8d9b92, 0x586d78, 0x536b78, 0x899c88, 0x59666b, 0x7d8c95, 0x596c75];
-    const body = this.material(palette[id % palette.length], 0.72, 0.3);
-    const wingColor = palette[(id + 2) % palette.length];
-    const accent = this.material(0xb9d2c4, 0.8, 0.24);
-    const glass = new THREE.MeshPhysicalMaterial({ color: 0x4cae9b, metalness: 0.45, roughness: 0.12, transparent: true, opacity: 0.78, clearcoat: 1 });
-    const twin = id % 4 === 0 || id === 5 || id === 8 || id === 14;
-    const canard = id % 3 === 0 || id === 12;
-    const twinTail = id % 4 === 1 || id === 5 || id === 9 || id === 14;
-    const delta = id % 5 === 2 || id === 3 || id === 10;
-    const span = 2.5 + (id % 5) * 0.25;
-    const sweep = delta ? 1.35 : 0.35 + (id % 4) * 0.18;
-    const rear = delta ? 1.8 : 0.95 + (id % 3) * 0.2;
-
-    // Main fuselage, nose and rear fairing.
-    const fuselage = this.mesh(new THREE.CylinderGeometry(0.27, 0.39, 6.2, 20, 1), body, group, [0, 0, 0]);
-    fuselage.rotation.z = -Math.PI / 2;
-    const nose = this.mesh(new THREE.ConeGeometry(0.27, 1.35, 20), accent, group, [3.72, 0, 0]);
-    nose.rotation.z = -Math.PI / 2;
-    this.mesh(new THREE.ConeGeometry(0.31, 0.95, 20), body, group, [-3.45, 0, 0]).rotation.z = Math.PI / 2;
-
-    this.wing(group, span, sweep, rear, wingColor, 1);
-    this.wing(group, span, sweep, rear, wingColor, -1);
-
-    if (canard) {
-      this.wing(group, 1.1, 0.18, 0.42, 0x9aafa3, 1);
-      this.wing(group, 1.1, 0.18, 0.42, 0x9aafa3, -1);
-      group.children.slice(-2).forEach((part) => { part.position.x = 1.65; part.scale.set(0.52, 1, 0.62); });
-    }
-
-    const canopy = this.mesh(new THREE.SphereGeometry(1, 20, 14), glass, group, [0.95, 0.3, 0]);
-    canopy.scale.set(1.18, 0.37, 0.47);
-
-    const finShape = new THREE.Shape();
-    finShape.moveTo(-2.5, 0.18); finShape.lineTo(-1.2, 1.5); finShape.lineTo(-0.75, 1.42); finShape.lineTo(-0.85, 0.12); finShape.closePath();
-    const finGeo = new THREE.ShapeGeometry(finShape);
-    this.mesh(finGeo, body, group, [0, 0.15, twinTail ? 0.48 : 0]);
-    if (twinTail) {
-      const second = this.mesh(finGeo.clone(), body, group, [0, 0.15, -0.48]);
-      second.rotation.y = Math.PI;
-    }
-
-    const engineCount = twin ? 2 : 1;
-    for (let i = 0; i < engineCount; i++) {
-      const z = twin ? (i === 0 ? -0.48 : 0.48) : 0;
-      const nozzle = this.mesh(new THREE.CylinderGeometry(0.19, 0.24, 0.8, 16), this.material(0x273c3a, 0.9, 0.24), group, [-2.75, -0.02, z]);
-      nozzle.rotation.z = Math.PI / 2;
-      const inner = this.mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.035, 16), this.material(0x6a9d8c, 0.5, 0.3), group, [-3.17, -0.02, z]);
-      inner.rotation.z = Math.PI / 2;
-    }
-    this.mesh(new THREE.BoxGeometry(1.05, 0.025, 0.04), accent, group, [-0.35, 0.27, 0]).rotation.z = -0.02;
-    group.scale.setScalar(1.05);
-    return group;
+  private buildAircraft(item: AircraftDefinition): THREE.Group {
+    const visualPath = Object.keys(this.visualConfigs).find((path) => path.endsWith(`/${item.key}.json`));
+    const custom = visualPath ? this.visualConfigs[visualPath] as AircraftVisualConfig : undefined;
+    const model = createModularAircraft(custom ?? createProceduralAircraftConfig(item.id));
+    model.scale.setScalar(1.05);
+    model.userData.aircraftKey = item.key;
+    return model;
   }
 
   private buildEnergyPod(colorText: string, id: string): THREE.Group {
