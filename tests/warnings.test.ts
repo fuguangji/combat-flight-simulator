@@ -8,6 +8,11 @@ describe('warning table', () => {
     for (let i = 1; i < WARNINGS.length; i++) expect(WARNINGS[i].level).toBeLessThanOrEqual(WARNINGS[i - 1].level);
   });
 
+  it('keeps warning levels ordered and G-limit / stall are thresholded in the physics core', () => {
+    expect(WARNINGS.find((w) => w.text === 'G LIMIT')?.level).toBe(1);
+    expect(WARNINGS.find((w) => w.text === 'STALL')?.level).toBe(3);
+  });
+
   it('returns active warnings highest priority first', () => {
     const mask = (1 << 5) | (1 << 0) | (1 << 12);
     expect(activeWarnings(mask).map((w) => w.text)).toEqual(['PULL UP', 'TERRAIN', 'G LIMIT']);
