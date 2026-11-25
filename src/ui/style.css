@@ -224,3 +224,11 @@ body.touch #tutorial p { font-size: 12px; line-height: 1.45; }
   .encyclopedia-entry { padding: 8px 5px; font-size: 9px; }
   .encyclopedia-model-wrap { height: 210px; }
 }
+
+/* Standalone model editor entry point */
+.editor-entry {
+  display: inline-flex; align-items: center; justify-content: center; padding: 14px 22px;
+  border: 1px solid var(--line); border-radius: 6px; color: #e8f5ec; background: var(--panel);
+  font: 600 15px/1 var(--font); text-decoration: none; transition: transform .12s ease, background .2s ease, border-color .2s ease;
+}
+.editor-entry:hover { border-color: var(--green); background: rgba(125,255,154,.1); transform: translateY(-1px); }
