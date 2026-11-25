@@ -8,10 +8,7 @@ type EquipmentId = string;
 type Contact = { id: string; className: string };
 type VisualEffect = { age: number; lane: number; equipment: EquipmentId; x: number; y: number; vx: number; vy: number };
 type TerrainMark = { x: number; age: number; radius: number };
-type MissileVisual = { age: number; id: string; targetIndex: number; endX: number; endY: number };
-type MissilePulse = { age: number; x: number; y: number; color: string };
 import weaponCatalog from './weapons.json';
-import missileCatalog from './missiles.json';
 
 const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: number; cooldown: number; color: string; life: number }> = Object.fromEntries(
   weaponCatalog.map((weapon) => [weapon.id, {
@@ -23,8 +20,6 @@ const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: nu
     life: weapon.life,
   }]),
 );
-const MISSILES = Object.fromEntries(missileCatalog.map((missile) => [missile.id, missile]));
-type MissileId = string;
 const CONTACTS: Contact[] = [
   { id: 'ECHO-01', className: 'DRONE' },
   { id: 'ECHO-02', className: 'DRONE' },
@@ -38,8 +33,6 @@ export class ArcadeProjectileSystem {
   private readonly status: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
   private readonly active: VisualEffect[] = [];
-  private readonly activeMissiles: MissileVisual[] = [];
-  private readonly missilePulses: MissilePulse[] = [];
   /** Persistent arcade crater decals; these are presentation marks, not a physical heightfield. */
   private readonly terrainMarks: TerrainMark[] = [];
   private equipment: EquipmentId = 'nova17';
@@ -52,10 +45,6 @@ export class ArcadeProjectileSystem {
   private focused = false;
   private lastPanelSignature = '';
   private autopilotEnabled = false;
-  private selectedMissile: MissileId = missileCatalog[0].id as MissileId;
-  private missileAmmo: Record<string, number> = Object.fromEntries(missileCatalog.map((m) => [m.id, m.capacity]));
-  private missileCooldowns: Record<string, number> = Object.fromEntries(missileCatalog.map((m) => [m.id, 0]));
-  private focusProgress = 0;
 
   constructor() {
     const initial = document.body.dataset.equipment as EquipmentId | undefined;
@@ -69,8 +58,7 @@ export class ArcadeProjectileSystem {
       <div class="dashboard-heading"><span>COCKPIT / STORES</span><span>SIM</span></div>
       <div class="dashboard-readout" id="dashboard-readout"></div>
       <div class="dashboard-controls">
-        <button type="button" data-fire>發射裝備</button>
-        <button type="button" data-missile-fire>發射導彈</button>
+        <button type="button" data-fire>發射展示</button>
         <button type="button" data-autopilot>自動駕駛：OFF</button>
       </div>
       <div class="dashboard-note">虛構街機物理 · 地表破壞為持續視覺印記</div>
@@ -79,16 +67,13 @@ export class ArcadeProjectileSystem {
     this.status.id = 'contact-status';
     this.status.innerHTML = `
       <div class="combat-head"><span>CONTACT DISPLAY</span><span>SIM / TRAINING</span></div>
-      <div class="combat-section"><small>MISSILE CATALOG / 導彈配置</small><select data-missile-select aria-label="選擇虛構導彈"></select></div>
-      <div class="combat-section"><small>ARCADE TRAINING CONTACTS</small><div class="contact-actions">
+      <div class="combat-section"><small>TRAINING CONTACTS</small><div class="contact-actions">
         <button type="button" data-contact="0">ECHO-01</button>
         <button type="button" data-contact="1">ECHO-02</button>
         <button type="button" data-contact="2">ECHO-03</button>
       </div></div>
-      <div class="combat-focus"><span id="contact-name">ECHO-01 · DRONE</span><button type="button" id="focus-state" data-focus="toggle">FOCUS</button></div>
-      <div class="guidance-track"><i id="guidance-progress"></i></div>
-      <div id="guidance-readout" class="guidance-readout">ARCADE ASSIST / STANDBY</div>
-      <div class="combat-hint">純介面進度與預設動畫路徑；不使用真實感測、追蹤或武器導引</div>
+      <div class="combat-focus"><span id="contact-name">ECHO-01 · DRONE</span><button type="button" id="focus-state" data-focus="toggle">NO FOCUS</button></div>
+      <div class="combat-hint">接觸點僅供介面操作練習，不含感測或追蹤</div>
     `;
     this.reticle = document.createElement('div');
     this.reticle.id = 'view-reticle';
@@ -103,7 +88,6 @@ export class ArcadeProjectileSystem {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
       if (target.hasAttribute('data-fire')) this.launch();
-      if (target.hasAttribute('data-missile-fire')) this.launchMissile();
       if (target.hasAttribute('data-autopilot')) window.dispatchEvent(new Event('cfs:autopilot-toggle'));
     });
     this.status.addEventListener('click', (event) => {
@@ -112,18 +96,6 @@ export class ArcadeProjectileSystem {
       if (target.dataset.contact) this.selectContact(Number(target.dataset.contact));
       if (target.dataset.focus) this.toggleFocus();
     });
-    const missileSelect = this.status.querySelector<HTMLSelectElement>('[data-missile-select]');
-    if (missileSelect) {
-      for (const missile of missileCatalog) missileSelect.add(new Option(missile.name, String(missile.id)));
-      missileSelect.value = this.selectedMissile;
-      missileSelect.addEventListener('change', () => {
-        if (MISSILES[missileSelect.value]) this.selectedMissile = missileSelect.value as MissileId;
-        this.focused = false;
-        this.focusProgress = 0;
-        this.renderPanel();
-      });
-    }
-    window.addEventListener('cfs:missile-launch', () => this.launchMissile());
     window.addEventListener('cfs:equipment-select', (event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail?.id as EquipmentId | undefined;
       if (id && EQUIPMENT[id]) {
@@ -147,16 +119,9 @@ export class ArcadeProjectileSystem {
   private selectContact(index: number): void {
     this.contactIndex = (index + CONTACTS.length) % CONTACTS.length;
     this.focused = false;
-    this.focusProgress = 0;
-    this.status.dataset.lockBlocked = 'false';
     this.renderPanel();
   }
-  private toggleFocus(): void {
-    this.focused = !this.focused;
-    if (!this.focused) this.focusProgress = 0;
-    this.status.dataset.lockBlocked = 'false';
-    this.renderPanel();
-  }
+  private toggleFocus(): void { this.focused = !this.focused; this.renderPanel(); }
 
   private launch(): void {
     const spec = EQUIPMENT[this.equipment];
@@ -174,46 +139,11 @@ export class ArcadeProjectileSystem {
     this.renderPanel();
   }
 
-  private launchMissile(): void {
-    const spec = MISSILES[this.selectedMissile];
-    if (!spec || this.missileAmmo[this.selectedMissile] <= 0 || this.missileCooldowns[this.selectedMissile] > 0) {
-      this.flash = 0.16;
-      return;
-    }
-    if (spec.lockRequired && this.focusProgress < 1) {
-      this.status.dataset.lockBlocked = 'true';
-      this.flash = 0.16;
-      this.renderPanel();
-      return;
-    }
-    // Screen-space authored path to fixed UI anchors only. No world coordinates,
-    // sensor data, homing, steering law, target state or physical interception.
-    const anchors = [0.3, 0.5, 0.7];
-    this.activeMissiles.push({
-      age: 0,
-      id: this.selectedMissile,
-      targetIndex: this.contactIndex,
-      endX: spec.lockRequired ? anchors[this.contactIndex] : 0.5,
-      endY: spec.lockRequired ? 0.27 : 0.42,
-    });
-    this.missileAmmo[this.selectedMissile] -= 1;
-    this.missileCooldowns[this.selectedMissile] = spec.cooldown;
-    this.focused = false;
-    this.focusProgress = 0;
-    this.status.dataset.lockBlocked = 'false';
-    this.flash = 0.12;
-    this.lastPanelSignature = '';
-    this.renderPanel();
-  }
-
   private renderPanel(): void {
     const spec = EQUIPMENT[this.equipment];
     const remaining = this.ammo[this.equipment];
     const state = this.cooldowns[this.equipment] > 0 ? 'RECHARGING' : remaining > 0 ? 'READY' : 'EMPTY';
-    const missile = MISSILES[this.selectedMissile];
-    const missileRemaining = this.missileAmmo[this.selectedMissile];
-    const missileState = this.missileCooldowns[this.selectedMissile] > 0 ? 'RECHARGING' : missileRemaining > 0 ? 'READY' : 'EMPTY';
-    const signature = [this.equipment, remaining, state, this.contactIndex, this.focused, this.focusProgress.toFixed(2), this.selectedMissile, missileRemaining, missileState].join('|');
+    const signature = [this.equipment, remaining, state, this.contactIndex, this.focused].join('|');
     if (signature !== this.lastPanelSignature) {
       this.lastPanelSignature = signature;
       const readout = this.panel.querySelector('#dashboard-readout');
@@ -224,18 +154,8 @@ export class ArcadeProjectileSystem {
       const name = this.status.querySelector('#contact-name');
       const focus = this.status.querySelector('#focus-state');
       if (name) name.textContent = `${contact.id} · ${contact.className}`;
-      if (focus) focus.textContent = this.focused ? 'FOCUS ACTIVE' : 'FOCUS';
-      const progress = this.status.querySelector<HTMLElement>('#guidance-progress');
-      const guidance = this.status.querySelector<HTMLElement>('#guidance-readout');
-      if (progress) progress.style.width = String(Math.round(this.focusProgress * 100)) + '%';
-      if (guidance) guidance.textContent = missile.lockRequired
-        ? 'ARCADE ASSIST · ' + Math.round(this.focusProgress * 100) + '% · ' + missileState + ' · ' + missileRemaining + '/' + missile.capacity
-        : 'AREA EFFECT · ' + missileState + ' · ' + missileRemaining + '/' + missile.capacity;
-      const selector = this.status.querySelector<HTMLSelectElement>('[data-missile-select]');
-      if (selector && selector.value !== this.selectedMissile) selector.value = this.selectedMissile;
+      if (focus) focus.textContent = this.focused ? 'FOCUS SELECTED' : 'NO FOCUS';
       this.status.dataset.focused = String(this.focused);
-      this.status.dataset.locked = String(this.focusProgress >= 1);
-      this.status.dataset.lockBlocked = this.status.dataset.lockBlocked || 'false';
       this.status.querySelectorAll<HTMLButtonElement>('[data-contact]').forEach((button) => {
         button.dataset.active = String(Number(button.dataset.contact) === this.contactIndex);
       });
@@ -250,14 +170,8 @@ export class ArcadeProjectileSystem {
       this.ammo = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, weapon.capacity]));
       this.cooldowns = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
       this.active.length = 0;
-      this.activeMissiles.length = 0;
-      this.missilePulses.length = 0;
       this.terrainMarks.length = 0;
-      this.missileAmmo = Object.fromEntries(missileCatalog.map((m) => [m.id, m.capacity]));
-      this.missileCooldowns = Object.fromEntries(missileCatalog.map((m) => [m.id, 0]));
       this.focused = false;
-      this.focusProgress = 0;
-      this.status.dataset.lockBlocked = 'false';
       this.contactIndex = 0;
       this.autopilotEnabled = false;
       this.lastPanelSignature = '';
@@ -267,8 +181,6 @@ export class ArcadeProjectileSystem {
     this.previousMode = mode;
     if (mode === 'flying') {
       for (const id of Object.keys(this.cooldowns) as EquipmentId[]) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
-      for (const id of Object.keys(this.missileCooldowns)) this.missileCooldowns[id] = Math.max(0, this.missileCooldowns[id] - dt);
-      if (this.focused) this.focusProgress = Math.min(1, this.focusProgress + dt * 0.72);
       for (const effect of this.active) {
         effect.age += dt;
         // Deliberately arcade-only screen-space kinematics: capped drift and a soft curve.
@@ -285,16 +197,6 @@ export class ArcadeProjectileSystem {
           this.active.splice(i, 1);
         }
       }
-      for (const missile of this.activeMissiles) missile.age += dt;
-      for (let i = this.activeMissiles.length - 1; i >= 0; i--) {
-        const missile = this.activeMissiles[i];
-        if (missile.age >= MISSILES[missile.id].life) {
-          this.missilePulses.push({ age: 0, x: missile.endX, y: missile.endY, color: MISSILES[missile.id].color });
-          this.activeMissiles.splice(i, 1);
-        }
-      }
-      for (const pulse of this.missilePulses) pulse.age += dt;
-      for (let i = this.missilePulses.length - 1; i >= 0; i--) if (this.missilePulses[i].age > 0.7) this.missilePulses.splice(i, 1);
       for (const mark of this.terrainMarks) mark.age += dt;
       for (let i = this.terrainMarks.length - 1; i >= 0; i--) if (this.terrainMarks[i].age > 45) this.terrainMarks.splice(i, 1);
       this.flash = Math.max(0, this.flash - dt);
@@ -374,50 +276,6 @@ export class ArcadeProjectileSystem {
       } else {
         ctx.beginPath(); ctx.moveTo(x, y + 34); ctx.lineTo(x, y - 8); ctx.stroke();
       }
-      ctx.restore();
-    }
-    // Scripted 2D Bézier paths to fixed display anchors; presentation only.
-    for (const missile of this.activeMissiles) {
-      const spec = MISSILES[missile.id];
-      const t = Math.min(1, missile.age / spec.life);
-      const startX = 0.5, startY = 0.78;
-      const controlX = (startX + missile.endX) * 0.5 + (missile.targetIndex - 1) * 0.12;
-      const controlY = 0.12;
-      const inv = 1 - t;
-      const x = inv * inv * startX + 2 * inv * t * controlX + t * t * missile.endX;
-      const y = inv * inv * startY + 2 * inv * t * controlY + t * t * missile.endY;
-      const alpha = Math.max(0, 1 - t) * 0.95;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = spec.color;
-      ctx.fillStyle = spec.color;
-      ctx.shadowColor = spec.color;
-      ctx.shadowBlur = 16;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(w * startX, h * startY);
-      ctx.quadraticCurveTo(w * controlX, h * controlY, w * missile.endX, h * missile.endY);
-      ctx.stroke();
-      ctx.translate(w * x, h * y);
-      const dx = 2 * inv * (controlX - startX) + 2 * t * (missile.endX - controlX);
-      const dy = 2 * inv * (controlY - startY) + 2 * t * (missile.endY - controlY);
-      ctx.rotate(Math.atan2(dy, dx) + Math.PI / 2);
-      ctx.beginPath();
-      ctx.moveTo(0, -12); ctx.lineTo(4, 5); ctx.lineTo(0, 10); ctx.lineTo(-4, 5); ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-    for (const pulse of this.missilePulses) {
-      const t = pulse.age / 0.7;
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, 1 - t);
-      ctx.strokeStyle = pulse.color;
-      ctx.shadowColor = pulse.color;
-      ctx.shadowBlur = 12;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(w * pulse.x, h * pulse.y, 5 + t * 28, 0, Math.PI * 2);
-      ctx.stroke();
       ctx.restore();
     }
     // Persistent ground-damage decals: darkened centre, broken rim and fading dust ring.
