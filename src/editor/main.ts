@@ -141,6 +141,7 @@ const renderModel = (): void => {
     $('empty-hint').removeAttribute('hidden');
   }
   $('model-name').textContent = config.name || 'Untitled Aircraft';
+  setValue('model-name-input', config.name || 'Untitled Aircraft');
   $('part-count').textContent = `${config.parts.length} PARTS`;
   $('selection-status').textContent = selectedPart() ? `SELECTED · ${selectedPart()!.id}` : '未選取零件';
 };
@@ -237,9 +238,20 @@ const commitEdit = (): void => {
   part.name = ($('part-name') as HTMLInputElement).value.trim() || part.id;
   part.shape = ($('part-shape') as HTMLSelectElement).value as AircraftPartShape;
   const parent = ($('part-parent') as HTMLSelectElement).value;
-  if (parent === part.id) {
-    notify('零件不能設定自己為父節點');
-    part.parent = undefined;
+  let ancestor = parent;
+  const visited = new Set<string>();
+  let createsCycle = false;
+  while (ancestor) {
+    if (ancestor === part.id || visited.has(ancestor)) {
+      createsCycle = true;
+      break;
+    }
+    visited.add(ancestor);
+    ancestor = config.parts.find((candidate) => candidate.id === ancestor)?.parent ?? '';
+  }
+  if (createsCycle) {
+    notify('此父節點會形成循環階層，已保留原設定');
+    setValue('part-parent', part.parent ?? '');
   } else {
     part.parent = parent || undefined;
   }
@@ -402,7 +414,7 @@ $('redo').addEventListener('click', () => {
 
 inspector.addEventListener('input', (event) => {
   const target = event.target as HTMLElement;
-  if (target instanceof HTMLInputElement && ['part-name', 'part-id'].includes(target.id)) return;
+  if (['part-name', 'part-id', 'part-vertices'].includes(target.id)) return;
   commitEdit();
 });
 inspector.addEventListener('change', () => {
@@ -416,6 +428,12 @@ $('part-metalness').addEventListener('input', () => $('metalness-value').textCon
 $('part-roughness').addEventListener('input', () => $('roughness-value').textContent = readNumber('part-roughness', .32).toFixed(2));
 $('part-opacity').addEventListener('input', () => $('opacity-value').textContent = readNumber('part-opacity', 1).toFixed(2));
 
+$('model-name-input').addEventListener('change', () => {
+  config.name = ($('model-name-input') as HTMLInputElement).value.trim() || 'Untitled Aircraft';
+  $('model-name').textContent = config.name;
+  saveHistory();
+  persist();
+});
 $('view-reset').addEventListener('click', () => { cameraYaw = .72; cameraPitch = .38; cameraDistance = 11; updateCamera(); });
 $('toggle-grid').addEventListener('click', () => { grid.visible = !grid.visible; $('toggle-grid').classList.toggle('active', grid.visible); });
 $('toggle-axes').addEventListener('click', () => { axes.visible = !axes.visible; $('toggle-axes').classList.toggle('active', axes.visible); });
