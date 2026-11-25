@@ -17,9 +17,10 @@ style.textContent = `
   #cockpit-dashboard button { flex:1; min-height:38px; border:1px solid rgba(125,255,154,.4); border-radius:3px; color:#e6fff0; background:rgba(125,255,154,.09); font:600 12px ui-monospace,Menlo,Consolas,monospace; cursor:pointer; touch-action:manipulation; }
   #cockpit-dashboard button[data-active="true"] { color:#06130a; background:#7dff9a; }
   #cockpit-dashboard button[data-fire] { color:#171006; background:#ffc56b; border-color:#ffc56b; }
+  #cockpit-dashboard button[data-missile-fire] { color:#06131a; background:#8feaff; border-color:#8feaff; }
   #cockpit-dashboard .dashboard-note { margin-top:6px; color:rgba(210,245,220,.45); font-size:9px; text-align:center; }
   #cockpit-dashboard[data-state="busy"] .dashboard-readout { color:#ffc56b; }
-  #contact-status { position:fixed; top:max(14px,env(safe-area-inset-top)); right:max(14px,env(safe-area-inset-right)); z-index:7; width:min(290px,calc(100vw - 28px)); box-sizing:border-box; padding:10px 12px; color:#d9f7e1; background:rgba(0,10,7,.78); border:1px solid rgba(125,255,154,.35); border-radius:5px; font:11px ui-monospace,Menlo,Consolas,monospace; letter-spacing:.04em; backdrop-filter:blur(7px); pointer-events:auto; }
+  #contact-status { position:fixed; top:max(14px,env(safe-area-inset-top)); right:max(14px,env(safe-area-inset-right)); z-index:7; width:min(340px,calc(100vw - 28px)); box-sizing:border-box; padding:10px 12px; color:#d9f7e1; background:rgba(0,10,7,.78); border:1px solid rgba(125,255,154,.35); border-radius:5px; font:11px ui-monospace,Menlo,Consolas,monospace; letter-spacing:.04em; backdrop-filter:blur(7px); pointer-events:auto; }
   #contact-status .combat-head,#contact-status .combat-focus { display:flex; justify-content:space-between; gap:10px; }
   #contact-status .combat-head { color:#7dff9a; font-size:10px; letter-spacing:.1em; }
   #contact-status .combat-section { margin-top:10px; }
@@ -30,12 +31,18 @@ style.textContent = `
   #contact-status .combat-focus { margin-top:10px; padding-top:8px; border-top:1px solid rgba(125,255,154,.2); }
   #contact-status #focus-state { color:#ffc56b; }
   #contact-status[data-focused="true"] #focus-state { color:#7dff9a; }
-  #contact-status .combat-hint { margin-top:8px; color:rgba(210,245,220,.48); font-size:9px; }
+  #contact-status .combat-hint { margin-top:8px; color:rgba(210,245,220,.48); font-size:9px; line-height:1.45; }
+  #contact-status [data-missile-select] { width:100%; box-sizing:border-box; padding:7px 8px; border:1px solid rgba(143,234,255,.4); border-radius:3px; color:#dffaff; background:#071a20; font:10px ui-monospace,Menlo,Consolas,monospace; }
+  #contact-status .guidance-track { height:5px; margin-top:9px; overflow:hidden; border:1px solid rgba(143,234,255,.25); background:rgba(0,0,0,.5); }
+  #contact-status .guidance-track i { display:block; width:0; height:100%; background:#8feaff; box-shadow:0 0 8px #8feaff; transition:width .08s linear; }
+  #contact-status .guidance-readout { margin-top:5px; color:#8feaff; font-size:9px; letter-spacing:.08em; }
+  #contact-status[data-locked="true"] .guidance-readout { color:#8affb1; }
+  #contact-status[data-lock-blocked="true"] .guidance-readout { color:#ffb36b; }
   #view-reticle { position:fixed; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; z-index:6; pointer-events:none; }
   #view-reticle i,#view-reticle b { position:absolute; display:block; background:rgba(255,255,255,.92); box-shadow:0 0 3px rgba(0,0,0,.9); }
   #view-reticle i { left:10px; top:2px; width:2px; height:18px; }
   #view-reticle b { left:2px; top:10px; width:18px; height:2px; }
-  body.touch #contact-status { top:max(8px,env(safe-area-inset-top)); right:max(8px,env(safe-area-inset-right)); width:min(250px,47vw); padding:7px 8px; }
+  body.touch #contact-status { top:max(8px,env(safe-area-inset-top)); right:max(8px,env(safe-area-inset-right)); width:min(300px,58vw); padding:7px 8px; }
   body.touch #contact-status .combat-hint { display:none; }
   body.touch #cockpit-dashboard { bottom:max(8px,env(safe-area-inset-bottom)); width:min(380px,calc(100vw - 20px)); padding:7px 9px; }
   body.touch #cockpit-dashboard button { min-height:42px; }
