@@ -38,6 +38,7 @@ export class ArcadeProjectileSystem {
   private previousMode = '';
   private lastTime = performance.now();
   private flash = 0;
+  private cannonFlash = 0;
   private contactIndex = 0;
   private focused = false;
   private lastPanelSignature = '';
@@ -94,6 +95,7 @@ export class ArcadeProjectileSystem {
       if (target.dataset.focus) this.toggleFocus();
     });
     window.addEventListener('cfs:missile-launch', () => this.launch());
+    window.addEventListener('cfs:cannon-trigger', () => this.triggerCannonPresentation());
     window.addEventListener('cfs:equipment-select', (event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail?.id as EquipmentId | undefined;
       if (id && EQUIPMENT[id]) {
@@ -120,6 +122,12 @@ export class ArcadeProjectileSystem {
     this.renderPanel();
   }
   private toggleFocus(): void { this.focused = !this.focused; this.renderPanel(); }
+
+  private triggerCannonPresentation(): void {
+    if (document.body.dataset.mode !== 'flying') return;
+    // Decorative reticle flash only. No rounds, projectile motion, aim ray, collision or damage.
+    this.cannonFlash = 0.11;
+  }
 
   private launch(): void {
     const spec = EQUIPMENT[this.equipment];
@@ -182,6 +190,7 @@ export class ArcadeProjectileSystem {
         if (this.active[i].age >= EQUIPMENT[this.active[i].equipment].life) this.active.splice(i, 1);
       }
       this.flash = Math.max(0, this.flash - dt);
+      this.cannonFlash = Math.max(0, this.cannonFlash - dt);
     }
     this.resizeAndDraw(mode);
     this.renderPanel();
@@ -262,6 +271,29 @@ export class ArcadeProjectileSystem {
         ctx.beginPath(); ctx.arc(x, y, radius * 0.55, 0, Math.PI * 2); ctx.stroke();
       } else {
         ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (this.cannonFlash > 0) {
+      const pulse = this.cannonFlash / 0.11;
+      const x = cx;
+      const y = cy + h * 0.20;
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.72;
+      ctx.strokeStyle = '#ffe7a3';
+      ctx.fillStyle = '#fff3c7';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ffc56b';
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(x, y, 8 + (1 - pulse) * 12, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 8; i++) {
+        const angle = i * Math.PI / 4;
+        ctx.beginPath();
+        ctx.moveTo(x + Math.cos(angle) * 5, y + Math.sin(angle) * 5);
+        ctx.lineTo(x + Math.cos(angle) * (15 + (1 - pulse) * 8), y + Math.sin(angle) * (15 + (1 - pulse) * 8));
+        ctx.stroke();
       }
       ctx.restore();
     }
