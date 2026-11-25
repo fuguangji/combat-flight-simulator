@@ -179,6 +179,7 @@ export function mountCockpitShell(): CockpitShell {
         <div class="cockpit-switches">
           <button type="button" data-action="fire" class="primary">STORE / 裝備</button>
           <button type="button" data-action="missile" class="primary">MISSILE / 導彈</button>
+          <button type="button" data-action="cannon" class="primary">CANNON / 機炮</button>
           <button type="button" data-action="autopilot" class="physical-toggle" aria-pressed="false"><span class="toggle-track"><i></i></span><span class="toggle-caption"><b>AUTO</b><small>自動駕駛</small></span><span class="switch-state">OFF</span></button>
           <button type="button" data-action="recenter">CENTER / 回正</button>
         </div>
@@ -205,9 +206,11 @@ export function mountCockpitShell(): CockpitShell {
 
   const fire = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-fire]')?.click();
   const missile = (): void => { window.dispatchEvent(new Event('cfs:missile-launch')); };
+  const cannon = (): void => { window.dispatchEvent(new Event('cfs:cannon-trigger')); };
   const ap = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-autopilot]')?.click();
   shell.querySelector('[data-action="fire"]')?.addEventListener('click', fire);
   shell.querySelector('[data-action="missile"]')?.addEventListener('click', missile);
+  shell.querySelector('[data-action="cannon"]')?.addEventListener('click', cannon);
   shell.querySelector('[data-action="autopilot"]')?.addEventListener('click', ap);
   shell.querySelector('[data-action="recenter"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:look-recenter')));
 
