@@ -204,7 +204,7 @@ export function mountCockpitShell(): CockpitShell {
   document.body.append(shell);
 
   const fire = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-fire]')?.click();
-  const missile = (): void => window.dispatchEvent(new Event('cfs:missile-launch'));
+  const missile = (): void => { window.dispatchEvent(new Event('cfs:missile-launch')); };
   const ap = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-autopilot]')?.click();
   shell.querySelector('[data-action="fire"]')?.addEventListener('click', fire);
   shell.querySelector('[data-action="missile"]')?.addEventListener('click', missile);
