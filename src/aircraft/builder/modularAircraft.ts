@@ -147,7 +147,7 @@ export function createProceduralAircraftConfig(id: number): AircraftVisualConfig
       id: `canard-${side}`, shape: 'polygon', plane: 'xz', depth: 0.1, position: [1.65, -0.02, 0], scale: [0.52, 1, 0.62], color: '#9aafa3',
       vertices: [[0.65, 0], [0.25, side * 1.1], [-0.42, side * 1.1], [-0.75, 0]],
     });
-    parts.push({
+    if (twinTail || side === 1) parts.push({
       id: `vertical-fin-${side}`, shape: 'polygon', plane: 'xy', depth: 0.12,
       position: [0, 0.15, twinTail ? side * 0.48 : 0], color: body,
       vertices: [[-2.5, 0.18], [-1.2, 1.5], [-0.75, 1.42], [-0.85, 0.12]],
