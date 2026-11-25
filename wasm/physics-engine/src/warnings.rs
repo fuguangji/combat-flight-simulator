@@ -109,14 +109,16 @@ pub fn evaluate(sim: &Sim, d: &Derived) -> (u32, u8, i32) {
     set(W_LOW_ALT, alt < 150.0);
 
     // Aerodynamic envelope
-    set(W_STALL, d.airspeed > 20.0 && d.alpha.abs() > p.alpha_stall);
+    set(W_STALL, d.airspeed > 30.0 && d.alpha.abs() > 1.02 * p.alpha_stall);
     set(W_AOA, d.stall_warning);
     set(W_OVERSPEED, d.dynamic_pressure > p.max_q || d.mach > p.max_mach);
     set(W_SPEED, d.dynamic_pressure > 0.9 * p.max_q || d.mach > 0.92 * p.max_mach);
 
     // Load factor
     set(W_OVER_G, d.load_factor > p.g_limit_pos + 0.5 || d.load_factor < p.g_limit_neg - 0.5);
-    set(W_G_LIMIT, d.g_limiting);
+    // Avoid flashing the limiter advisory for tiny predictive corrections near the envelope.
+    let near_g_limit = d.load_factor > 0.82 * p.g_limit_pos || d.load_factor < 0.82 * p.g_limit_neg;
+    set(W_G_LIMIT, d.g_limiting && near_g_limit);
 
     // Attitude near the ground
     let body_up = s.orientation.rotate(Vec3::new(0.0, 1.0, 0.0));
