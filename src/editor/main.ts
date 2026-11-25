@@ -307,7 +307,44 @@ const addPart = (shape: AircraftPartShape): void => {
   persist();
   selectPart(part.id);
 };
-const duplicateSelected = (mirror = false): void => {
+const addCannonVisual = (): void => {
+  const mountId = uniqueId('cannon-mount');
+  const barrelId = uniqueId('cannon-barrel');
+  config.parts.push(
+    {
+      id: mountId,
+      name: '機炮固定座（外觀）',
+      shape: 'box',
+      position: [2.95, -0.2, 0],
+      width: 0.38,
+      height: 0.18,
+      depth: 0.2,
+      color: '#35463f',
+      metalness: 0.82,
+      roughness: 0.34,
+    },
+    {
+      id: barrelId,
+      name: '機炮炮管（外觀）',
+      shape: 'cylinder',
+      position: [3.55, -0.2, 0],
+      rotation: [0, 0, -Math.PI / 2],
+      radiusTop: 0.055,
+      radiusBottom: 0.055,
+      height: 1.05,
+      radialSegments: 12,
+      color: '#77877f',
+      metalness: 0.92,
+      roughness: 0.25,
+    },
+  );
+  saveHistory();
+  persist();
+  selectPart(barrelId);
+  notify('已新增固定式機炮外觀；可再調整炮管與固定座');
+};
+
+const duplicateSelected = (mirror = false): void {
   const source = selectedPart();
   if (!source) return;
   const copyPart = clone(source);
@@ -385,6 +422,7 @@ $('file-input').addEventListener('change', async (event) => {
   (event.target as HTMLInputElement).value = '';
 });
 document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((button) => button.addEventListener('click', () => addPart(button.dataset.add as AircraftPartShape)));
+$('add-cannon').addEventListener('click', addCannonVisual);
 $('duplicate').addEventListener('click', () => duplicateSelected(false));
 $('mirror').addEventListener('click', () => duplicateSelected(true));
 $('delete').addEventListener('click', deleteSelected);
