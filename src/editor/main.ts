@@ -69,7 +69,6 @@ scene.add(modelRoot);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let dragging = false;
-let pointerStart = { x: 0, y: 0 };
 let lastPointer = { x: 0, y: 0 };
 let dragDistance = 0;
 
@@ -441,8 +440,7 @@ $('toggle-axes').addEventListener('click', () => { axes.visible = !axes.visible;
 canvas.addEventListener('pointerdown', (event) => {
   dragging = true;
   dragDistance = 0;
-  pointerStart = { x: event.clientX, y: event.clientY };
-  lastPointer = { ...pointerStart };
+  lastPointer = { x: event.clientX, y: event.clientY };
   canvas.setPointerCapture(event.pointerId);
 });
 canvas.addEventListener('pointermove', (event) => {
