@@ -747,6 +747,7 @@ async function boot(): Promise<void> {
       hud.draw(snap, aircraft, now, rig.last?.fovY, look);
     } else {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
+      if (touchMode) touch.update(Math.min(frameMs / 1000, 0.1));
       input.update(Math.min(frameMs / 1000, 0.1));
       const c = input.state;
       if (autopilot.enabled && lastSnap && mode === 'flying') {

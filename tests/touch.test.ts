@@ -1,32 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { STICK_DEADZONE, sliderValue, stickCurve, stickVector } from '../src/ui/touch';
+import { dpadTarget, rampAxis, sliderValue } from '../src/ui/touch';
 
-describe('virtual stick', () => {
-  it('has a dead zone, is odd-symmetric, monotonic and reaches exactly +-1', () => {
-    expect(stickCurve(0)).toBe(0);
-    expect(stickCurve(STICK_DEADZONE * 0.9)).toBe(0);
-    expect(stickCurve(1)).toBeCloseTo(1, 12);
-    expect(stickCurve(-1)).toBeCloseTo(-1, 12);
-    let prev = -Infinity;
-    for (let v = -1; v <= 1; v += 0.01) {
-      const c = stickCurve(v);
-      expect(c).toBeGreaterThanOrEqual(prev);
-      expect(Math.abs(c + stickCurve(-v))).toBeLessThan(1e-12);
-      prev = c;
-    }
+describe('direction buttons', () => {
+  const none = { up: false, down: false, left: false, right: false };
+  it('maps buttons to pitch / roll with the keyboard convention (down = nose up)', () => {
+    expect(dpadTarget(none)).toEqual({ pitch: 0, roll: 0 });
+    expect(dpadTarget({ ...none, down: true })).toEqual({ pitch: 1, roll: 0 });
+    expect(dpadTarget({ ...none, up: true })).toEqual({ pitch: -1, roll: 0 });
+    expect(dpadTarget({ ...none, right: true })).toEqual({ pitch: 0, roll: 1 });
+    expect(dpadTarget({ ...none, left: true })).toEqual({ pitch: 0, roll: -1 });
   });
-
-  it('is gentler than linear around the middle (fine control)', () => {
-    expect(stickCurve(0.5)).toBeLessThan(0.5);
+  it('opposite buttons cancel and diagonals combine', () => {
+    expect(dpadTarget({ up: true, down: true, left: false, right: false }).pitch).toBe(0);
+    expect(dpadTarget({ up: false, down: true, left: true, right: false })).toEqual({ pitch: 1, roll: -1 });
   });
-
-  it('clamps the finger to the stick radius and normalises', () => {
-    const inside = stickVector(30, -40, 100);
-    expect(inside.kx).toBeCloseTo(0.3);
-    expect(inside.ky).toBeCloseTo(-0.4);
-    const outside = stickVector(300, 400, 100);
-    expect(Math.hypot(outside.x, outside.y)).toBeCloseTo(100);
-    expect(Math.hypot(outside.kx, outside.ky)).toBeCloseTo(1);
+  it('ramps gradually toward a held button, saturates, and re-centres on release', () => {
+    let v = 0;
+    v = rampAxis(v, 1, 0.1);
+    expect(v).toBeGreaterThan(0);
+    expect(v).toBeLessThan(0.5);
+    for (let i = 0; i < 100; i++) v = rampAxis(v, 1, 0.1);
+    expect(v).toBe(1);
+    for (let i = 0; i < 100; i++) v = rampAxis(v, 0, 0.1);
+    expect(v).toBe(0);
+    expect(rampAxis(-0.5, -1, 1)).toBe(-1);
   });
 });
 

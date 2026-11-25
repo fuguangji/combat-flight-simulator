@@ -137,15 +137,15 @@ body.touch .foot { display: none; }
 #touch { position: fixed; inset: 0; z-index: 15; pointer-events: none; display: none; }
 body.touch[data-mode="flying"] #touch, body.touch[data-mode="crashed"] #touch { display: block; }
 #touch > * { pointer-events: auto; touch-action: none; }
-.t-stick {
-  position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom));
-  width: clamp(120px, 26vh, 170px); aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle, rgba(125, 255, 154, 0.10), rgba(125, 255, 154, 0.04) 70%); border: 2px solid var(--line);
+.t-dpad {
+  position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom));
+  width: clamp(150px, 36vh, 210px); aspect-ratio: 1; pointer-events: none;
 }
-.t-knob {
-  position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; margin: -21% 0 0 -21%; border-radius: 50%;
-  background: rgba(125, 255, 154, 0.35); border: 2px solid var(--green); pointer-events: none;
-}
+.t-dpad .t-btn { position: absolute; width: 36%; height: 36%; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; pointer-events: auto; touch-action: none; }
+.t-dpad .t-btn small { font: 600 9px var(--font); letter-spacing: .06em; opacity: .7; }
+.t-dpad .t-btn.on { background: rgba(125, 255, 154, 0.38); border-color: var(--green); }
+.t-up { left: 32%; top: 0; } .t-down { left: 32%; bottom: 0; }
+.t-left { left: 0; top: 32%; } .t-right { right: 0; top: 32%; }
 .t-throttle {
   position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom));
   width: 54px; height: clamp(130px, 40vh, 220px); border-radius: 27px; border: 2px solid var(--line);
@@ -154,7 +154,6 @@ body.touch[data-mode="flying"] #touch, body.touch[data-mode="crashed"] #touch { 
 .t-throttle .t-ab { position: absolute; left: 0; right: 0; top: 0; height: 15%; border-radius: 27px 27px 0 0; background: rgba(255, 122, 90, 0.28); pointer-events: none; }
 .t-throttle .t-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; border-radius: 0 0 25px 25px; background: rgba(125, 255, 154, 0.32); pointer-events: none; }
 .t-throttle .t-handle { position: absolute; left: -4px; right: -4px; bottom: calc(30% - 14px); height: 28px; border-radius: 14px; background: var(--green); opacity: 0.85; pointer-events: none; }
-.t-rudder { position: absolute; right: calc(max(18px, env(safe-area-inset-right)) + 80px); bottom: max(18px, env(safe-area-inset-bottom)); display: flex; gap: 12px; }
 .t-btn {
   width: 64px; height: 64px; padding: 0; border-radius: 50%; font-size: 22px; color: #e8f5ec;
   background: rgba(6, 12, 10, 0.45); border: 2px solid var(--line);
