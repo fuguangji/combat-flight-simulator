@@ -106,9 +106,22 @@ export function createModularAircraft(config: AircraftVisualConfig): THREE.Group
   const root = new THREE.Group();
   root.name = config.name ?? 'Aircraft';
   const nodes = new Map<string, THREE.Group>();
+  const partsById = new Map<string, AircraftVisualPart>();
   for (const part of config.parts) {
     if (!part.id || nodes.has(part.id)) throw new Error(`Aircraft visual part IDs must be unique: ${part.id}`);
     nodes.set(part.id, createAircraftPart(part));
+    partsById.set(part.id, part);
+  }
+  // Reject cyclic parent references before attaching nodes; otherwise a cycle can
+  // detach the entire aircraft from the root and silently produce an empty model.
+  for (const part of config.parts) {
+    const visited = new Set<string>([part.id]);
+    let parentId = part.parent;
+    while (parentId) {
+      if (visited.has(parentId)) throw new Error(`Circular aircraft part hierarchy involving "${part.id}"`);
+      visited.add(parentId);
+      parentId = partsById.get(parentId)?.parent;
+    }
   }
   for (const part of config.parts) {
     const node = nodes.get(part.id)!;
