@@ -15,8 +15,6 @@ type WeaponDefinition = {
   life: number;
 };
 
-type MissileDefinition = { id: string; name: string; category: string; role: string; description: string; effect: string; gameMode: string; gameplay: string; capacity: number; cooldown: number; color: string; life: number; lockRequired: boolean; };
-
 type Elements = {
   canvas: HTMLCanvasElement;
   list: HTMLElement;
@@ -38,7 +36,6 @@ export class EncyclopediaViewer {
   private readonly root = new THREE.Group();
   private readonly aircraft: AircraftDefinition[];
   private readonly weapons: WeaponDefinition[];
-  private readonly missiles: MissileDefinition[];
   private readonly visualConfigs: Record<string, unknown> = import.meta.glob('../aircraft/visuals/*.json', { eager: true, import: 'default' });
   private readonly elements: Elements;
   private active = false;
@@ -47,11 +44,10 @@ export class EncyclopediaViewer {
   private pointerX = 0;
   private pointerY = 0;
 
-  constructor(elements: Elements, aircraft: AircraftDefinition[], weapons: WeaponDefinition[], missiles: MissileDefinition[]) {
+  constructor(elements: Elements, aircraft: AircraftDefinition[], weapons: WeaponDefinition[]) {
     this.elements = elements;
     this.aircraft = aircraft;
     this.weapons = weapons;
-    this.missiles = missiles;
     this.renderer = new THREE.WebGLRenderer({ canvas: elements.canvas, antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -160,16 +156,16 @@ export class EncyclopediaViewer {
       const first = this.elements.list.querySelector<HTMLButtonElement>('button');
       if (first && this.weapons[0]) this.showWeapon(this.weapons[0], first);
     } else {
-      this.missiles.forEach((item, index) => {
+      this.weapons.forEach((item, index) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'encyclopedia-entry';
         button.textContent = `${String(index + 1).padStart(2, '0')}  ${item.name}`;
-        button.addEventListener('click', () => this.showMissile(item, button));
+        button.addEventListener('click', () => this.showWeapon(item, button));
         this.elements.list.append(button);
       });
       const first = this.elements.list.querySelector<HTMLButtonElement>('button');
-      if (first && this.missiles[0]) this.showMissile(this.missiles[0], first);
+      if (first && this.weapons[0]) this.showWeapon(this.weapons[0], first);
     }
   }
 
@@ -225,48 +221,6 @@ export class EncyclopediaViewer {
       `演出時間 ${item.life.toFixed(2)} s`,
     ].join('　·　');
     this.replaceModel(this.buildEnergyPod(item.color, item.id));
-  }
-
-  private showMissile(item: MissileDefinition, button: HTMLButtonElement): void {
-    this.selectEntry(button);
-    this.elements.title.textContent = item.name;
-    this.elements.description.textContent = item.role + '。 ' + item.description + ' ' + item.gameplay + ' 本項目為完全虛構的街機遊戲道具；焦點只是介面狀態，不代表現實感測、追蹤或武器導引。';
-    this.elements.specs.textContent = [
-      item.category,
-      '視覺效果 ' + item.effect,
-      '遊戲模式 ' + item.gameMode,
-      '需要介面焦點 ' + (item.lockRequired ? '是' : '否'),
-      '遊戲額度 ' + item.capacity,
-      '冷卻 ' + item.cooldown.toFixed(1) + ' s',
-      '演出時間 ' + item.life.toFixed(2) + ' s',
-    ].join('　·　');
-    this.replaceModel(this.buildMissileModel(item.color, item.id));
-  }
-
-  private buildMissileModel(colorText: string, id: string): THREE.Group {
-    const group = new THREE.Group();
-    const color = Number.parseInt(colorText.replace('#', ''), 16) || 0x8feaff;
-    const shell = this.material(0x506a70, 0.82, 0.24);
-    const glow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.0, metalness: 0.25, roughness: 0.18 });
-    const core = this.mesh(new THREE.CylinderGeometry(0.31, 0.38, 3.0, 20, 1), shell, group);
-    core.rotation.z = -Math.PI / 2;
-    const nose = this.mesh(new THREE.ConeGeometry(0.31, 0.86, 20), glow, group, [1.91, 0, 0]);
-    nose.rotation.z = -Math.PI / 2;
-    const tail = this.mesh(new THREE.SphereGeometry(0.34, 16, 10), glow, group, [-1.56, 0, 0]);
-    tail.scale.set(0.7, 0.9, 0.9);
-    for (const x of [-0.8, 0.1, 0.9]) {
-      const ring = this.mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 24), glow, group, [x, 0, 0]);
-      ring.rotation.y = Math.PI / 2;
-    }
-    // Ornamental crystal vanes: intentionally non-functional and non-dimensional.
-    for (let i = 0; i < 4; i++) {
-      const vane = this.mesh(new THREE.OctahedronGeometry(0.34, 0), glow, group, [-1.12, 0, 0]);
-      vane.scale.set(0.72, 0.18, 0.58);
-      vane.rotation.x = i * Math.PI / 2;
-      vane.rotation.y = 0.35;
-    }
-    group.userData.catalogId = id;
-    return group;
   }
 
   private material(color: number, metalness = 0.62, roughness = 0.32): THREE.MeshStandardMaterial {
