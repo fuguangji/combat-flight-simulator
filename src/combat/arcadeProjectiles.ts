@@ -9,6 +9,7 @@ type Contact = { id: string; className: string };
 type VisualEffect = { age: number; lane: number; equipment: EquipmentId; x: number; y: number; vx: number; vy: number };
 type TerrainMark = { x: number; age: number; radius: number };
 type MissileVisual = { age: number; id: string; targetIndex: number; endX: number; endY: number };
+type MissilePulse = { age: number; x: number; y: number; color: string };
 import weaponCatalog from './weapons.json';
 import missileCatalog from './missiles.json';
 
@@ -38,6 +39,7 @@ export class ArcadeProjectileSystem {
   private readonly reticle: HTMLDivElement;
   private readonly active: VisualEffect[] = [];
   private readonly activeMissiles: MissileVisual[] = [];
+  private readonly missilePulses: MissilePulse[] = [];
   /** Persistent arcade crater decals; these are presentation marks, not a physical heightfield. */
   private readonly terrainMarks: TerrainMark[] = [];
   private equipment: EquipmentId = 'nova17';
@@ -249,11 +251,13 @@ export class ArcadeProjectileSystem {
       this.cooldowns = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
       this.active.length = 0;
       this.activeMissiles.length = 0;
+      this.missilePulses.length = 0;
       this.terrainMarks.length = 0;
       this.missileAmmo = Object.fromEntries(missileCatalog.map((m) => [m.id, m.capacity]));
       this.missileCooldowns = Object.fromEntries(missileCatalog.map((m) => [m.id, 0]));
       this.focused = false;
       this.focusProgress = 0;
+      this.status.dataset.lockBlocked = 'false';
       this.contactIndex = 0;
       this.autopilotEnabled = false;
       this.lastPanelSignature = '';
@@ -285,10 +289,12 @@ export class ArcadeProjectileSystem {
       for (let i = this.activeMissiles.length - 1; i >= 0; i--) {
         const missile = this.activeMissiles[i];
         if (missile.age >= MISSILES[missile.id].life) {
-          this.terrainMarks.push({ x: missile.endX, age: 0, radius: 7 });
+          this.missilePulses.push({ age: 0, x: missile.endX, y: missile.endY, color: MISSILES[missile.id].color });
           this.activeMissiles.splice(i, 1);
         }
       }
+      for (const pulse of this.missilePulses) pulse.age += dt;
+      for (let i = this.missilePulses.length - 1; i >= 0; i--) if (this.missilePulses[i].age > 0.7) this.missilePulses.splice(i, 1);
       for (const mark of this.terrainMarks) mark.age += dt;
       for (let i = this.terrainMarks.length - 1; i >= 0; i--) if (this.terrainMarks[i].age > 45) this.terrainMarks.splice(i, 1);
       this.flash = Math.max(0, this.flash - dt);
@@ -399,6 +405,19 @@ export class ArcadeProjectileSystem {
       ctx.beginPath();
       ctx.moveTo(0, -12); ctx.lineTo(4, 5); ctx.lineTo(0, 10); ctx.lineTo(-4, 5); ctx.closePath();
       ctx.fill();
+      ctx.restore();
+    }
+    for (const pulse of this.missilePulses) {
+      const t = pulse.age / 0.7;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - t);
+      ctx.strokeStyle = pulse.color;
+      ctx.shadowColor = pulse.color;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(w * pulse.x, h * pulse.y, 5 + t * 28, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.restore();
     }
     // Persistent ground-damage decals: darkened centre, broken rim and fading dust ring.
