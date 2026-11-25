@@ -8,7 +8,9 @@ type EquipmentId = string;
 type Contact = { id: string; className: string };
 type VisualEffect = { age: number; lane: number; equipment: EquipmentId; x: number; y: number; vx: number; vy: number };
 type TerrainMark = { x: number; age: number; radius: number };
+type MissileVisual = { age: number; id: string; targetIndex: number; endX: number; endY: number };
 import weaponCatalog from './weapons.json';
+import missileCatalog from './missiles.json';
 
 const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: number; cooldown: number; color: string; life: number }> = Object.fromEntries(
   weaponCatalog.map((weapon) => [weapon.id, {
@@ -20,6 +22,8 @@ const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: nu
     life: weapon.life,
   }]),
 );
+const MISSILES = Object.fromEntries(missileCatalog.map((missile) => [missile.id, missile]));
+type MissileId = keyof typeof MISSILES;
 const CONTACTS: Contact[] = [
   { id: 'ECHO-01', className: 'DRONE' },
   { id: 'ECHO-02', className: 'DRONE' },
@@ -33,6 +37,7 @@ export class ArcadeProjectileSystem {
   private readonly status: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
   private readonly active: VisualEffect[] = [];
+  private readonly activeMissiles: MissileVisual[] = [];
   /** Persistent arcade crater decals; these are presentation marks, not a physical heightfield. */
   private readonly terrainMarks: TerrainMark[] = [];
   private equipment: EquipmentId = 'nova17';
@@ -45,6 +50,10 @@ export class ArcadeProjectileSystem {
   private focused = false;
   private lastPanelSignature = '';
   private autopilotEnabled = false;
+  private selectedMissile: MissileId = missileCatalog[0].id as MissileId;
+  private missileAmmo: Record<string, number> = Object.fromEntries(missileCatalog.map((m) => [m.id, m.capacity]));
+  private missileCooldowns: Record<string, number> = Object.fromEntries(missileCatalog.map((m) => [m.id, 0]));
+  private focusProgress = 0;
 
   constructor() {
     const initial = document.body.dataset.equipment as EquipmentId | undefined;
@@ -58,7 +67,8 @@ export class ArcadeProjectileSystem {
       <div class="dashboard-heading"><span>COCKPIT / STORES</span><span>SIM</span></div>
       <div class="dashboard-readout" id="dashboard-readout"></div>
       <div class="dashboard-controls">
-        <button type="button" data-fire>發射展示</button>
+        <button type="button" data-fire>發射裝備</button>
+        <button type="button" data-missile-fire>發射導彈</button>
         <button type="button" data-autopilot>自動駕駛：OFF</button>
       </div>
       <div class="dashboard-note">虛構街機物理 · 地表破壞為持續視覺印記</div>
@@ -67,13 +77,16 @@ export class ArcadeProjectileSystem {
     this.status.id = 'contact-status';
     this.status.innerHTML = `
       <div class="combat-head"><span>CONTACT DISPLAY</span><span>SIM / TRAINING</span></div>
-      <div class="combat-section"><small>TRAINING CONTACTS</small><div class="contact-actions">
+      <div class="combat-section"><small>MISSILE CATALOG / 導彈配置</small><select data-missile-select aria-label="選擇虛構導彈"></select></div>
+      <div class="combat-section"><small>ARCADE TRAINING CONTACTS</small><div class="contact-actions">
         <button type="button" data-contact="0">ECHO-01</button>
         <button type="button" data-contact="1">ECHO-02</button>
         <button type="button" data-contact="2">ECHO-03</button>
       </div></div>
-      <div class="combat-focus"><span id="contact-name">ECHO-01 · DRONE</span><button type="button" id="focus-state" data-focus="toggle">NO FOCUS</button></div>
-      <div class="combat-hint">接觸點僅供介面操作練習，不含感測或追蹤</div>
+      <div class="combat-focus"><span id="contact-name">ECHO-01 · DRONE</span><button type="button" id="focus-state" data-focus="toggle">FOCUS</button></div>
+      <div class="guidance-track"><i id="guidance-progress"></i></div>
+      <div id="guidance-readout" class="guidance-readout">ARCADE ASSIST / STANDBY</div>
+      <div class="combat-hint">純介面進度與預設動畫路徑；不使用真實感測、追蹤或武器導引</div>
     `;
     this.reticle = document.createElement('div');
     this.reticle.id = 'view-reticle';
@@ -88,6 +101,7 @@ export class ArcadeProjectileSystem {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
       if (target.hasAttribute('data-fire')) this.launch();
+      if (target.hasAttribute('data-missile-fire')) this.launchMissile();
       if (target.hasAttribute('data-autopilot')) window.dispatchEvent(new Event('cfs:autopilot-toggle'));
     });
     this.status.addEventListener('click', (event) => {
@@ -96,6 +110,18 @@ export class ArcadeProjectileSystem {
       if (target.dataset.contact) this.selectContact(Number(target.dataset.contact));
       if (target.dataset.focus) this.toggleFocus();
     });
+    const missileSelect = this.status.querySelector<HTMLSelectElement>('[data-missile-select]');
+    if (missileSelect) {
+      for (const missile of missileCatalog) missileSelect.add(new Option(missile.name, missile.id));
+      missileSelect.value = this.selectedMissile;
+      missileSelect.addEventListener('change', () => {
+        if (MISSILES[missileSelect.value]) this.selectedMissile = missileSelect.value as MissileId;
+        this.focused = false;
+        this.focusProgress = 0;
+        this.renderPanel();
+      });
+    }
+    window.addEventListener('cfs:missile-launch', () => this.launchMissile());
     window.addEventListener('cfs:equipment-select', (event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail?.id as EquipmentId | undefined;
       if (id && EQUIPMENT[id]) {
@@ -119,9 +145,14 @@ export class ArcadeProjectileSystem {
   private selectContact(index: number): void {
     this.contactIndex = (index + CONTACTS.length) % CONTACTS.length;
     this.focused = false;
+    this.focusProgress = 0;
     this.renderPanel();
   }
-  private toggleFocus(): void { this.focused = !this.focused; this.renderPanel(); }
+  private toggleFocus(): void {
+    this.focused = !this.focused;
+    if (!this.focused) this.focusProgress = 0;
+    this.renderPanel();
+  }
 
   private launch(): void {
     const spec = EQUIPMENT[this.equipment];
