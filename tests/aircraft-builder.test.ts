@@ -16,7 +16,7 @@ describe('modular aircraft geometry builder', () => {
     expect(model.children).toHaveLength(1);
     expect(model.children[0].name).toBe('root-wing');
     expect(model.children[0].children[0].name).toBe('root-wing:mesh');
-    expect(model.children[0].children[0].geometry.getAttribute('position').count).toBeGreaterThan(0);
+    expect((model.children[0].children[0] as import('three').Mesh).geometry.getAttribute('position').count).toBeGreaterThan(0);
     expect(model.children[0].children[0].children).toHaveLength(0);
   });
 
