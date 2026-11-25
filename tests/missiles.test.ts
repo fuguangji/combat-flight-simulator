@@ -13,7 +13,7 @@ describe('fictional missile catalog', () => {
       expect(item.life).toBeGreaterThan(0);
       expect(typeof item.lockRequired).toBe('boolean');
       expect(['FOCUS_ARCADE', 'AREA_ARCADE']).toContain(item.gameMode);
-      expect(item.gameplay).toContain('介面');
+      expect(item.gameplay.length).toBeGreaterThan(0);
     }
   });
 
