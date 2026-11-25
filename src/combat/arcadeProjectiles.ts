@@ -146,11 +146,13 @@ export class ArcadeProjectileSystem {
     this.contactIndex = (index + CONTACTS.length) % CONTACTS.length;
     this.focused = false;
     this.focusProgress = 0;
+    this.status.dataset.lockBlocked = 'false';
     this.renderPanel();
   }
   private toggleFocus(): void {
     this.focused = !this.focused;
     if (!this.focused) this.focusProgress = 0;
+    this.status.dataset.lockBlocked = 'false';
     this.renderPanel();
   }
 
