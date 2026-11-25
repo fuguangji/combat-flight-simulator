@@ -117,8 +117,13 @@ export class ArcadeProjectileSystem {
     this.contactIndex = (index + CONTACTS.length) % CONTACTS.length;
     this.focused = false;
     this.renderPanel();
+    window.dispatchEvent(new CustomEvent('cfs:contact-select', { detail: { index: this.contactIndex } }));
   }
-  private toggleFocus(): void { this.focused = !this.focused; this.renderPanel(); }
+  private toggleFocus(): void {
+    this.focused = !this.focused;
+    this.renderPanel();
+    window.dispatchEvent(new CustomEvent('cfs:contact-focus', { detail: { focused: this.focused } }));
+  }
 
   private launch(): void {
     const spec = EQUIPMENT[this.equipment];
@@ -133,6 +138,7 @@ export class ArcadeProjectileSystem {
     this.flash = 0.12;
     this.lastPanelSignature = '';
     this.renderPanel();
+    window.dispatchEvent(new CustomEvent('cfs:equipment-fire', { detail: { id: this.equipment } }));
   }
 
   private renderPanel(): void {

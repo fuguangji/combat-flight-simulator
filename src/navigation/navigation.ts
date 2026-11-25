@@ -10,9 +10,11 @@ const BIOME_COLOUR: Record<Biome, string> = {
   ridge: 'rgba(130,145,135,.34)',
   snow: 'rgba(225,232,232,.50)',
 };
+/** Where the first waypoint is, so listeners that start later still know it. */
+export const INITIAL_WAYPOINT = { x: 12000, z: -18000 } as const;
 export class NavigationDisplay {
   private readonly root: HTMLDivElement;
-  private waypoint = { x: 12000, z: -18000 };
+  private waypoint: { x: number; z: number } = { ...INITIAL_WAYPOINT };
   /** Only picks the next waypoint; the terrain itself is fixed so the map matches what is rendered. */
   private waypointSeed = 1337;
   private readonly els = new Map<string, HTMLElement>();
@@ -43,11 +45,17 @@ export class NavigationDisplay {
       const angle = ((this.waypointSeed % 360) * Math.PI) / 180;
       const radius = 8000 + (this.waypointSeed % 12000);
       this.waypoint = { x: Math.sin(angle) * radius, z: -Math.cos(angle) * radius };
+      this.publishWaypoint(true);
     });
     window.addEventListener('cfs:flight-snapshot', (event) => this.update((event as CustomEvent<NavigationSnapshot>).detail));
     this.drawMap(0, 0, 0);
+    this.publishWaypoint(false);
     // the map was not being drawn while hidden: catch up as soon as it is shown again
     window.addEventListener('cfs:panel-toggle', () => { this.lastMapKey = ''; });
+  }
+  /** Lets the tutorial (and anything else) follow the active waypoint. */
+  private publishWaypoint(changed: boolean): void {
+    window.dispatchEvent(new CustomEvent('cfs:waypoint', { detail: { x: this.waypoint.x, z: this.waypoint.z, changed } }));
   }
   private drawMap(x: number, z: number, heading: number): void {
     const canvas = this.root.querySelector('canvas');

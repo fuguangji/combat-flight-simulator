@@ -4,7 +4,7 @@ import weaponCatalog from './combat/weapons.json';
 import { detectCapabilities } from './core/capabilities';
 import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { mountCockpitShell } from './cockpit/cockpitShell';
-import { NavigationDisplay } from './navigation/navigation';
+import { INITIAL_WAYPOINT, NavigationDisplay } from './navigation/navigation';
 import { Hud } from './cockpit/hud';
 import { PanelToggles } from './ui/panelToggles';
 import { PhysicsClient, type ControlInput } from './physics/PhysicsClient';
@@ -15,7 +15,7 @@ import type { Backend } from './rendering/Renderer';
 import { activeWarnings } from './physics/warnings';
 import { attractCamera } from './ui/attract';
 import { WarningAudio } from './ui/audio';
-import { TUTORIAL_STEPS, Tutorial } from './ui/tutorial';
+import { TUTORIAL_CHAPTERS, Tutorial, chapterSteps, type TutorialView } from './ui/tutorial';
 import { FreeLook } from './ui/look';
 import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
@@ -55,6 +55,9 @@ const tutorialTitleEl = $<HTMLElement>('tutorial-title');
 const tutorialHintEl = $<HTMLElement>('tutorial-hint');
 const tutorialBarEl = $<HTMLElement>('tutorial-bar');
 const tutorialCautionEl = $<HTMLElement>('tutorial-caution');
+const tutorialChapterEl = $<HTMLElement>('tutorial-chapter');
+const tutorialBodyEl = $<HTMLElement>('tutorial-body');
+const tutorialNextBtn = $<HTMLButtonElement>('tutorial-next');
 
 function fail(message: string): void {
   errorEl.hidden = false;
@@ -97,6 +100,8 @@ async function boot(): Promise<void> {
 
   const hangarPage = $<HTMLElement>('hangar-page');
   const equipmentPage = $<HTMLElement>('equipment-page');
+  const tutorialPage = $<HTMLElement>('tutorial-page');
+  const tutorialGrid = $<HTMLDivElement>('tutorial-grid');
   const hangarGrid = $<HTMLDivElement>('hangar-grid');
   const equipmentGrid = $<HTMLDivElement>('equipment-grid');
   const encyclopediaPage = $<HTMLElement>('encyclopedia-page');
@@ -232,7 +237,7 @@ async function boot(): Promise<void> {
   };
 
   const openSubpage = (page: HTMLElement): void => {
-    for (const candidate of [hangarPage, equipmentPage, encyclopediaPage]) candidate.hidden = candidate !== page;
+    for (const candidate of [hangarPage, equipmentPage, encyclopediaPage, tutorialPage]) candidate.hidden = candidate !== page;
     menuPanel.classList.add('subpage-open');
     encyclopedia.setActive(page === encyclopediaPage);
     setHangarPreviewActive(page === hangarPage);
@@ -240,6 +245,7 @@ async function boot(): Promise<void> {
   const closeSubpage = (): void => {
     hangarPage.hidden = true;
     equipmentPage.hidden = true;
+    tutorialPage.hidden = true;
     encyclopediaPage.hidden = true;
     encyclopedia.setActive(false);
     setHangarPreviewActive(false);
@@ -462,7 +468,7 @@ async function boot(): Promise<void> {
   const cockpit = mountCockpitShell();
   new PanelToggles();
   new NavigationDisplay();
-  window.addEventListener('cfs:look-recenter', () => look.recenter());
+  window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
   const touchMode = isTouchDevice();
   document.body.classList.toggle('touch', touchMode);
   const touch = new TouchControls(document.body);
@@ -471,11 +477,12 @@ async function boot(): Promise<void> {
   if (touchMode) {
     input.touch = touch.axes;
     touch.onThrottle = (v) => input.setThrottle(v);
-    touch.onRecenter = () => look.recenter();
+    touch.onRecenter = () => { tutorial.note('recenter'); look.recenter(); };
     touch.onPause = () => pauseFlight();
     tutorialEl.style.pointerEvents = 'auto';
     $<HTMLElement>('tutorial-skip').textContent = '點此略過';
-    tutorialEl.addEventListener('click', () => {
+    tutorialEl.addEventListener('click', (e) => {
+      if (e.target instanceof HTMLButtonElement) return;
       if (tutorialOn && mode === 'flying') tutorial.skip();
     });
   }
@@ -491,8 +498,32 @@ async function boot(): Promise<void> {
       /* unsupported (iOS Safari): the rotate hint still covers portrait */
     }
   };
+  let lastWaypoint: { x: number; z: number } | null = { ...INITIAL_WAYPOINT };
+  const tutorialFlags: Record<string, boolean> = {
+    map: document.body.dataset.showMap === '1',
+    nav: document.body.dataset.showNav === '1',
+    radar: document.body.dataset.showRadar === '1',
+    autopilot: false,
+  };
+  const setTutorialFlag = (flag: 'map' | 'nav' | 'radar' | 'autopilot', on: boolean): void => {
+    tutorialFlags[flag] = on;
+    tutorial.setFlag(flag, on);
+  };
+  const doneChapters = new Set<string>(((): string[] => {
+    try { return JSON.parse(localStorage.getItem('cfs.tutorial.done') ?? '[]') as string[]; } catch { return []; }
+  })());
+  let tutorialChapter = 0;
+  const makeTutorial = (chapter: number): Tutorial => {
+    const t = new Tutorial(chapterSteps(TUTORIAL_CHAPTERS[chapter], { afterburner: aircraft.hasAfterburner, touch: touchMode }));
+    t.setWaypoint(lastWaypoint);
+    for (const [flag, on] of Object.entries(tutorialFlags)) t.setFlag(flag as 'map' | 'nav' | 'radar' | 'autopilot', on);
+    return t;
+  };
   let tutorial = new Tutorial();
   let tutorialOn = false;
+  let tutorialView: TutorialView | null = null;
+  /** True while the tutorial (not the pilot) has the autopilot engaged for a reading page. */
+  let tutorialHoldsAutopilot = false;
   let lastSent: ControlInput = { ...input.state, throttle: -1 }; // force first send
 
   // ---- flight bookkeeping -------------------------------------------------------------------
@@ -526,6 +557,54 @@ async function boot(): Promise<void> {
     publishAutopilotState();
   });
 
+  /** "Next page" on a reading step, or "next chapter" once the chapter is finished. */
+  const advanceTutorial = (): void => {
+    if (!tutorialOn || mode !== 'flying' || !tutorialView) return;
+    if (tutorialView.kind === 'read') tutorial.acknowledge();
+    else if (tutorialView.done && tutorialChapter < TUTORIAL_CHAPTERS.length - 1) {
+      tutorialChapter++;
+      tutorial = makeTutorial(tutorialChapter);
+      tutorialView = null;
+    }
+  };
+  const renderTutorial = (v: TutorialView): void => {
+    const chapter = TUTORIAL_CHAPTERS[tutorialChapter];
+    tutorialView = v;
+    tutorialChapterEl.textContent = `第 ${tutorialChapter + 1} 章 · ${chapter.title}`;
+    tutorialStepEl.textContent = v.done ? '完成' : `${v.index + 1} / ${v.total}`;
+    tutorialTitleEl.textContent = v.title;
+    tutorialHintEl.textContent = touchMode ? v.touchHint : v.hint;
+    tutorialBodyEl.hidden = v.body.length === 0;
+    const sig = v.body.join('|');
+    if (tutorialBodyEl.dataset.sig !== sig) {
+      tutorialBodyEl.dataset.sig = sig;
+      tutorialBodyEl.replaceChildren(...v.body.map((line) => Object.assign(document.createElement('li'), { textContent: line })));
+    }
+    tutorialBarEl.style.width = `${(v.progress * 100).toFixed(0)}%`;
+    tutorialCautionEl.hidden = v.caution === null;
+    if (v.caution) tutorialCautionEl.textContent = v.caution;
+    const hasNext = tutorialChapter < TUTORIAL_CHAPTERS.length - 1;
+    tutorialNextBtn.hidden = !(v.kind === 'read' || (v.done && hasNext));
+    tutorialNextBtn.textContent = v.kind === 'read' ? '下一頁 ▶（Enter）' : `下一章：${TUTORIAL_CHAPTERS[tutorialChapter + 1]?.title ?? ''} ▶`;
+    if (v.done && !doneChapters.has(chapter.id)) {
+      doneChapters.add(chapter.id);
+      try { localStorage.setItem('cfs.tutorial.done', JSON.stringify([...doneChapters])); } catch { /* storage optional */ }
+      renderTutorialPage();
+    }
+    // reading pages run on autopilot so the aircraft stays safe while the pilot reads
+    if (lastSnap && v.wantsAutopilot && !autopilot.enabled) {
+      const a = attitudeFromQuat(lastSnap.orientation);
+      autopilot.targetAltitude = Math.max(1500, lastSnap.altitude);
+      autopilot.targetHeading = a.heading;
+      autopilot.enabled = true;
+      tutorialHoldsAutopilot = true;
+      publishAutopilotState();
+    } else if (!v.wantsAutopilot && tutorialHoldsAutopilot) {
+      tutorialHoldsAutopilot = false;
+      disengageAutopilot();
+    }
+  };
+
   const showOverlay = (which: 'menu' | 'pause' | 'crash' | null): void => {
     menuEl.hidden = which !== 'menu';
     pauseEl.hidden = which !== 'pause';
@@ -553,7 +632,9 @@ async function boot(): Promise<void> {
     rig.reset();
     look.reset();
     touch.reset();
-    tutorial = new Tutorial(aircraft.hasAfterburner ? TUTORIAL_STEPS : TUTORIAL_STEPS.filter((st) => st.id !== 'afterburner'));
+    tutorial = makeTutorial(tutorialChapter);
+    tutorialView = null;
+    tutorialHoldsAutopilot = false;
     tutorialEl.hidden = !tutorialOn;
     lastSnap = null;
     frozenSnap = null;
@@ -572,8 +653,9 @@ async function boot(): Promise<void> {
     void withFade(beginFlight);
   };
 
-  const startTutorial = (): void => {
+  const startTutorial = (chapter = 0): void => {
     if (mode !== 'menu') return;
+    tutorialChapter = chapter;
     tutorialOn = true;
     void withFade(beginFlight);
   };
@@ -634,10 +716,31 @@ async function boot(): Promise<void> {
     enterImmersive();
     startFlight();
   });
-  tutorialBtn.addEventListener('click', () => {
-    enterImmersive();
-    startTutorial();
-  });
+  tutorialBtn.addEventListener('click', () => openSubpage(tutorialPage));
+  const renderTutorialPage = (): void => {
+    tutorialGrid.replaceChildren();
+    TUTORIAL_CHAPTERS.forEach((chapter, i) => {
+      const card = document.createElement('article');
+      card.className = 'selection-card';
+      const title = document.createElement('h3');
+      title.textContent = `第 ${i + 1} 章　${chapter.title}${doneChapters.has(chapter.id) ? '　✓' : ''}`;
+      const desc = document.createElement('p');
+      desc.textContent = chapter.summary;
+      const note = document.createElement('small');
+      note.textContent = `${chapter.en} · ${chapterSteps(chapter, { afterburner: aircraft.hasAfterburner, touch: touchMode }).length} 個步驟`;
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = i === 0 ? 'primary' : 'ghost';
+      go.textContent = doneChapters.has(chapter.id) ? '再練一次' : '開始本章';
+      go.addEventListener('click', () => {
+        enterImmersive();
+        startTutorial(i);
+      });
+      card.append(title, desc, note, go);
+      tutorialGrid.append(card);
+    });
+  };
+  renderTutorialPage();
   $<HTMLButtonElement>('btn-resume').addEventListener('click', resumeFlight);
   $<HTMLButtonElement>('btn-restart-pause').addEventListener('click', startFlight);
   $<HTMLButtonElement>('btn-home-pause').addEventListener('click', goHome);
@@ -686,6 +789,7 @@ async function boot(): Promise<void> {
     if (dragging) look.move(e.movementX, e.movementY);
   });
   input.onRecenter = () => {
+    tutorial.note('recenter');
     if (canLook()) look.recenter();
   };
   input.onSkip = () => {
@@ -697,9 +801,31 @@ async function boot(): Promise<void> {
     else if (mode === 'paused') resumeFlight();
   };
   input.onConfirm = () => {
-    if (mode === 'menu' || mode === 'crashed') startFlight();
+    if (tutorialOn && mode === 'flying' && tutorialView && (tutorialView.kind === 'read' || tutorialView.done)) advanceTutorial();
+    else if (mode === 'menu' || mode === 'crashed') startFlight();
     else if (mode === 'paused') resumeFlight();
   };
+
+  // ---- tutorial feeds: UI events and switch states -------------------------------------------
+  window.addEventListener('cfs:waypoint', (e) => {
+    const d = (e as CustomEvent<{ x: number; z: number; changed: boolean }>).detail;
+    lastWaypoint = { x: d.x, z: d.z };
+    tutorial.setWaypoint(lastWaypoint);
+    if (d.changed) tutorial.note('waypoint');
+  });
+  window.addEventListener('cfs:panel-toggle', (e) => {
+    const d = (e as CustomEvent<{ panel: 'map' | 'nav' | 'radar'; on: boolean }>).detail;
+    setTutorialFlag(d.panel, d.on);
+  });
+  window.addEventListener('cfs:autopilot-state', (e) => {
+    setTutorialFlag('autopilot', Boolean((e as CustomEvent<{ enabled?: boolean }>).detail?.enabled));
+  });
+  window.addEventListener('cfs:contact-select', () => tutorial.note('contact'));
+  window.addEventListener('cfs:contact-focus', (e) => {
+    if ((e as CustomEvent<{ focused: boolean }>).detail?.focused) tutorial.note('focus');
+  });
+  window.addEventListener('cfs:equipment-fire', () => tutorial.note('fire'));
+  tutorialNextBtn.addEventListener('click', () => advanceTutorial());
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pauseFlight(); // the wall clock would otherwise run on without the sim
@@ -796,13 +922,8 @@ async function boot(): Promise<void> {
           crashedAtMs = now;
         }
         if (tutorialOn && mode === 'flying') {
-          const v = tutorial.update(snap);
-          tutorialStepEl.textContent = v.done ? '完成' : `${v.index + 1} / ${v.total}`;
-          tutorialTitleEl.textContent = v.title;
-          tutorialHintEl.textContent = v.hint;
-          tutorialBarEl.style.width = `${(v.progress * 100).toFixed(0)}%`;
-          tutorialCautionEl.hidden = v.caution === null;
-          if (v.caution) tutorialCautionEl.textContent = v.caution;
+          renderTutorial(tutorial.update(snap));
+          if (look.active) tutorial.note('look');
         }
         audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
         look.update(frameMs / 1000);

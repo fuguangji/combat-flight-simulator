@@ -38,6 +38,11 @@
           <div id="hangar-grid" class="selection-grid"></div>
           <button type="button" class="ghost page-back" data-page-back>返回主頁 / BACK</button>
         </section>
+        <section id="tutorial-page" class="selection-page" hidden>
+          <div class="page-heading"><p class="eyebrow">FLIGHT SCHOOL</p><h2>新手教學 / TUTORIAL</h2><p>三個章節循序漸進，可單獨挑選。每章都在飛行中進行，完成一個步驟才會進入下一個。</p></div>
+          <div id="tutorial-grid" class="selection-grid"></div>
+          <button type="button" class="ghost page-back" data-page-back>返回主頁 / BACK</button>
+        </section>
         <section id="equipment-page" class="selection-page" hidden>
           <div class="page-heading"><p class="eyebrow">MISSION CONFIGURATION</p><h2>裝備設定 / LOADOUT</h2><p>選擇本次飛行的虛構任務裝備。所有發射效果均為畫面呈現，不含真實導引或命中功能。</p></div>
           <div id="equipment-grid" class="selection-grid"></div>
@@ -98,11 +103,13 @@
 
     <!-- 新手教學 -->
     <aside id="tutorial" hidden aria-live="polite">
-      <div class="t-head"><span id="tutorial-step">1 / 10</span><span class="t-skip" id="tutorial-skip">按 <kbd>N</kbd> 略過此步</span></div>
+      <div class="t-head"><span id="tutorial-chapter"></span><span id="tutorial-step">1 / 10</span><span class="t-skip" id="tutorial-skip">按 <kbd>N</kbd> 略過此步</span></div>
       <strong id="tutorial-title"></strong>
       <p id="tutorial-hint"></p>
+      <ul id="tutorial-body" hidden></ul>
       <div class="t-bar"><i id="tutorial-bar"></i></div>
       <p id="tutorial-caution" hidden></p>
+      <button type="button" id="tutorial-next" class="primary" hidden>下一頁 ▶</button>
     </aside>
 
     <!-- 暫停 -->

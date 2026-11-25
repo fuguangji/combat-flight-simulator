@@ -106,13 +106,20 @@ kbd {
 
 /* ---- tutorial ---- */
 #tutorial {
-  position: fixed; left: clamp(12px, 3vw, 40px); top: 64px; z-index: 20; width: min(340px, calc(100vw - 24px));
+  position: fixed; left: auto; right: clamp(12px, 2vw, 28px); top: max(14px, env(safe-area-inset-top)); z-index: 20; width: min(380px, calc(100vw - 24px));
+  max-height: calc(100vh - 28px); overflow-y: auto;
   padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(6px);
   color: #e8f5ec; pointer-events: none;
 }
 #tutorial .t-head { display: flex; justify-content: space-between; font: 11px ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.12em; color: var(--green-dim); }
 #tutorial strong { display: block; margin: 6px 0 4px; font-size: 16px; color: var(--green); }
 #tutorial p { margin: 0; font-size: 13px; line-height: 1.6; color: rgba(232, 245, 236, 0.85); }
+#tutorial #tutorial-chapter { color: #ffc56b; }
+#tutorial ul { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.6; color: rgba(232, 245, 236, 0.82); }
+#tutorial ul li { margin: 3px 0; }
+#tutorial #tutorial-next { display: block; width: 100%; margin-top: 10px; padding: 9px 12px; font-size: 12px; pointer-events: auto; }
+#tutorial #tutorial-next[hidden] { display: none; }
+body[data-show-radar="1"] #tutorial { top: 238px; max-height: calc(100vh - 252px); }
 #tutorial .t-bar { height: 3px; margin-top: 10px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
 #tutorial .t-bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width 0.1s linear; }
 #tutorial #tutorial-caution { margin-top: 8px; color: #ffc233; font-weight: 600; }
@@ -163,7 +170,8 @@ body.touch[data-mode="flying"] #touch, body.touch[data-mode="crashed"] #touch { 
 .t-top { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); display: flex; gap: 10px; }
 
 /* tutorial panel on touch: compact, top right, tap to skip */
-body.touch #tutorial { left: auto; right: 12px; top: 64px; width: min(300px, 40vw); padding: 8px 10px; }
+body.touch #tutorial { left: auto; right: 12px; top: 64px; width: min(320px, 42vw); padding: 8px 10px; max-height: calc(100vh - 76px); }
+body.touch[data-show-radar="1"] #tutorial { top: 230px; max-height: calc(100vh - 242px); }
 body.touch #tutorial p { font-size: 12px; line-height: 1.45; }
 
 /* portrait hint (flying only) */
