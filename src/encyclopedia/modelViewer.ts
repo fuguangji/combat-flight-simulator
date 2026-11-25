@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { AircraftDefinition } from '../aircraft/registry';
+import { createModularAircraft, createProceduralAircraftConfig, type AircraftVisualConfig } from '../aircraft/builder/modularAircraft';
 
 type WeaponDefinition = {
   id: string;
@@ -38,6 +39,7 @@ export class EncyclopediaViewer {
   private readonly aircraft: AircraftDefinition[];
   private readonly weapons: WeaponDefinition[];
   private readonly missiles: MissileDefinition[];
+  private readonly visualConfigs: Record<string, unknown> = import.meta.glob('../aircraft/visuals/*.json', { eager: true, import: 'default' });
   private readonly elements: Elements;
   private active = false;
   private resizeObserver: ResizeObserver | null = null;
@@ -208,7 +210,7 @@ export class EncyclopediaViewer {
       `升限 ${s.ceilingM.toLocaleString()} m`,
       `作戰半徑 ${s.rangeKm.toLocaleString()} km`,
     ].join('　·　');
-    this.replaceModel(this.buildAircraft(item.id));
+    this.replaceModel(this.buildAircraft(item));
   }
 
   private showWeapon(item: WeaponDefinition, button: HTMLButtonElement): void {
