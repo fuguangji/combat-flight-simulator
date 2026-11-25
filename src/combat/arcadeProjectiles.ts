@@ -6,7 +6,8 @@
  */
 type EquipmentId = string;
 type Contact = { id: string; className: string };
-type VisualEffect = { age: number; lane: number; equipment: EquipmentId };
+type VisualEffect = { age: number; lane: number; equipment: EquipmentId; x: number; y: number; vx: number; vy: number };
+type TerrainMark = { x: number; age: number; radius: number };
 import weaponCatalog from './weapons.json';
 
 const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: number; cooldown: number; color: string; life: number }> = Object.fromEntries(
@@ -32,6 +33,8 @@ export class ArcadeProjectileSystem {
   private readonly status: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
   private readonly active: VisualEffect[] = [];
+  /** Persistent arcade crater decals; these are presentation marks, not a physical heightfield. */
+  private readonly terrainMarks: TerrainMark[] = [];
   private equipment: EquipmentId = 'nova17';
   private ammo: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, weapon.capacity]));
   private cooldowns: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
@@ -58,7 +61,7 @@ export class ArcadeProjectileSystem {
         <button type="button" data-fire>發射展示</button>
         <button type="button" data-autopilot>自動駕駛：OFF</button>
       </div>
-      <div class="dashboard-note">僅為虛構畫面效果 · 裝備於設定頁配置</div>
+      <div class="dashboard-note">虛構街機物理 · 地表破壞為持續視覺印記</div>
     `;
     this.status = document.createElement('div');
     this.status.id = 'contact-status';
@@ -127,7 +130,8 @@ export class ArcadeProjectileSystem {
       return;
     }
     // Decorative screen-space animation only; it never travels toward a target.
-    this.active.push({ age: 0, lane: (this.active.length % 2 ? -1 : 1) * 0.018, equipment: this.equipment });
+    const lane = (this.active.length % 2 ? -1 : 1) * 0.018;
+    this.active.push({ age: 0, lane, equipment: this.equipment, x: 0.5 + lane, y: 0.72, vx: lane * 0.32, vy: -0.78 });
     this.ammo[this.equipment] -= 1;
     this.cooldowns[this.equipment] = spec.cooldown;
     this.flash = 0.12;
@@ -166,6 +170,7 @@ export class ArcadeProjectileSystem {
       this.ammo = { pulse: 8, arc: 5, prism: 3, nova: 4, lumen: 6 };
       this.cooldowns = { pulse: 0, arc: 0, prism: 0, nova: 0, lumen: 0 };
       this.active.length = 0;
+      this.terrainMarks.length = 0;
       this.focused = false;
       this.contactIndex = 0;
       this.autopilotEnabled = false;
@@ -176,10 +181,24 @@ export class ArcadeProjectileSystem {
     this.previousMode = mode;
     if (mode === 'flying') {
       for (const id of Object.keys(this.cooldowns) as EquipmentId[]) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
-      for (const effect of this.active) effect.age += dt;
-      for (let i = this.active.length - 1; i >= 0; i--) {
-        if (this.active[i].age >= EQUIPMENT[this.active[i].equipment].life) this.active.splice(i, 1);
+      for (const effect of this.active) {
+        effect.age += dt;
+        // Deliberately arcade-only screen-space kinematics: capped drift and a soft curve.
+        // No target selection, homing, sensor input or real-world propulsion model.
+        effect.x += effect.vx * dt;
+        effect.y += effect.vy * dt;
+        effect.vy += 0.16 * dt;
+        effect.vx *= Math.exp(-0.18 * dt);
       }
+      for (let i = this.active.length - 1; i >= 0; i--) {
+        const effect = this.active[i];
+        if (effect.age >= EQUIPMENT[effect.equipment].life || effect.y < 0.06 || effect.x < 0.04 || effect.x > 0.96) {
+          this.terrainMarks.push({ x: Math.max(0.08, Math.min(0.92, effect.x)), age: 0, radius: 8 + (effect.equipment === 'ironhammer20' ? 12 : 0) });
+          this.active.splice(i, 1);
+        }
+      }
+      for (const mark of this.terrainMarks) mark.age += dt;
+      for (let i = this.terrainMarks.length - 1; i >= 0; i--) if (this.terrainMarks[i].age > 45) this.terrainMarks.splice(i, 1);
       this.flash = Math.max(0, this.flash - dt);
     }
     this.resizeAndDraw(mode);
@@ -210,8 +229,8 @@ export class ArcadeProjectileSystem {
     for (const effect of this.active) {
       const spec = EQUIPMENT[effect.equipment];
       const t = Math.min(1, effect.age / spec.life);
-      const y = h * (0.72 - t * 0.64);
-      const x = cx + effect.lane * w * (0.2 + t);
+      const y = h * effect.y;
+      const x = w * effect.x;
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - t) * 0.9;
       ctx.strokeStyle = spec.color;
@@ -220,7 +239,10 @@ export class ArcadeProjectileSystem {
       ctx.shadowColor = spec.color;
       ctx.shadowBlur = effect.equipment === 'prism' || effect.equipment === 'nova' ? 18 : 12;
       if (effect.equipment === 'arc') {
-        ctx.beginPath(); ctx.moveTo(x, y + 26); ctx.lineTo(x - 7, y + 10); ctx.lineTo(x + 6, y - 2); ctx.lineTo(x - 4, y - 18); ctx.stroke();
+        // Stylised capsule silhouette with a luminous exhaust; no realistic internal geometry.
+        ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(effect.vy, effect.vx) + Math.PI / 2);
+        ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(6, 8); ctx.lineTo(0, 15); ctx.lineTo(-6, 8); ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(0, 30 + Math.sin(effect.age * 24) * 4); ctx.stroke(); ctx.restore();
       } else if (effect.equipment === 'prism') {
         ctx.beginPath(); ctx.moveTo(x, y - 18); ctx.lineTo(x + 9, y); ctx.lineTo(x, y + 18); ctx.lineTo(x - 9, y); ctx.closePath(); ctx.stroke();
         ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
@@ -254,6 +276,17 @@ export class ArcadeProjectileSystem {
       } else {
         ctx.beginPath(); ctx.moveTo(x, y + 34); ctx.lineTo(x, y - 8); ctx.stroke();
       }
+      ctx.restore();
+    }
+    // Persistent ground-damage decals: darkened centre, broken rim and fading dust ring.
+    for (const mark of this.terrainMarks) {
+      const alpha = Math.max(0, 1 - mark.age / 45) * 0.72;
+      const mx = mark.x * w;
+      const my = h * 0.88;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(12,18,14,.78)'; ctx.strokeStyle = 'rgba(202,177,126,.8)';
+      ctx.beginPath(); ctx.ellipse(mx, my, mark.radius * 1.8, mark.radius * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(220,205,166,.5)'; ctx.beginPath(); ctx.ellipse(mx, my, mark.radius * (2.2 + mark.age * 0.01), mark.radius * (0.9 + mark.age * 0.004), 0, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
     if (this.flash > 0) {
