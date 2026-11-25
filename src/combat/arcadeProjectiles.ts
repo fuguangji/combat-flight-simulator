@@ -167,8 +167,8 @@ export class ArcadeProjectileSystem {
     this.lastTime = now;
     const mode = document.body.dataset.mode ?? '';
     if (mode === 'menu' && this.previousMode !== 'menu') {
-      this.ammo = { pulse: 8, arc: 5, prism: 3, nova: 4, lumen: 6 };
-      this.cooldowns = { pulse: 0, arc: 0, prism: 0, nova: 0, lumen: 0 };
+      this.ammo = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, weapon.capacity]));
+      this.cooldowns = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
       this.active.length = 0;
       this.terrainMarks.length = 0;
       this.focused = false;
