@@ -6,6 +6,7 @@ import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { mountCockpitShell } from './cockpit/cockpitShell';
 import { NavigationDisplay } from './navigation/navigation';
 import { Hud } from './cockpit/hud';
+import { PanelToggles } from './ui/panelToggles';
 import { PhysicsClient, type ControlInput } from './physics/PhysicsClient';
 import { CRASH_BUILDING, type AircraftSnapshot } from './physics/stateLayout';
 import { DynamicResolution } from './rendering/dynamicResolution';
@@ -459,6 +460,7 @@ async function boot(): Promise<void> {
   const audio = new WarningAudio();
   const look = new FreeLook();
   const cockpit = mountCockpitShell();
+  new PanelToggles();
   new NavigationDisplay();
   window.addEventListener('cfs:look-recenter', () => look.recenter());
   const touchMode = isTouchDevice();

@@ -21,19 +21,22 @@ export class NavigationDisplay {
   constructor() {
     const style = document.createElement('style');
     style.textContent = `
-      #navigation-display { position:fixed; z-index:6; left:max(12px,env(safe-area-inset-left)); top:max(12px,env(safe-area-inset-top)); width:min(245px,32vw); padding:9px 11px; box-sizing:border-box; border:1px solid rgba(125,255,154,.38); border-radius:5px; color:#d9f7e1; background:rgba(0,10,7,.76); backdrop-filter:blur(7px); font:10px ui-monospace,monospace; pointer-events:auto; }
+      #navigation-display { position:fixed; z-index:6; left:max(12px,env(safe-area-inset-left)); top:calc(max(10px,env(safe-area-inset-top)) + 40px); width:min(245px,32vw); padding:9px 11px; box-sizing:border-box; border:1px solid rgba(125,255,154,.38); border-radius:5px; color:#d9f7e1; background:rgba(0,10,7,.76); backdrop-filter:blur(7px); font:10px ui-monospace,monospace; pointer-events:auto; }
       #navigation-display .nav-title { display:flex; justify-content:space-between; color:#8effae; letter-spacing:.1em; }
       #navigation-display canvas { display:block; width:100%; height:104px; margin:7px 0; border:1px solid rgba(125,255,154,.2); background:#07140f; }
       #navigation-display .nav-data { display:grid; grid-template-columns:1fr 1fr; gap:5px; color:#9fc5ab; }
       #navigation-display button { margin-top:7px; width:100%; padding:6px; border:1px solid rgba(125,255,154,.3); border-radius:3px; background:#10241a; color:#c9f4d5; font:10px ui-monospace,monospace; }
       body.touch #navigation-display { width:min(190px,39vw); padding:6px; font-size:8px; }
       body.touch #navigation-display canvas { height:72px; }
+      body[data-show-map="0"] #navigation-display .nav-map { display:none; }
+      body[data-show-nav="0"] #navigation-display .nav-info { display:none; }
+      body[data-show-map="0"][data-show-nav="0"] #navigation-display { display:none; }
       body[data-mode="menu"] #navigation-display,body[data-mode="loading"] #navigation-display,body[data-mode="paused"] #navigation-display { display:none; }
     `;
     document.head.append(style);
     this.root = document.createElement('div');
     this.root.id = 'navigation-display';
-    this.root.innerHTML = `<div class="nav-title"><span>NAV / 導航</span><span>PROC WORLD</span></div><canvas width="320" height="140"></canvas><div class="nav-data"><span id="nav-coord">X 0 / Z 0</span><span id="nav-heading">HDG 000°</span><span id="nav-alt">ALT 0 m</span><span id="nav-waypoint">WP 000 km</span></div><button type="button" id="nav-next">NEXT WAYPOINT / 下一航點</button>`;
+    this.root.innerHTML = `<div class="nav-title"><span>NAV / 導航</span><span>PROC WORLD</span></div><div class="nav-map"><canvas width="320" height="140"></canvas></div><div class="nav-info"><div class="nav-data"><span id="nav-coord">X 0 / Z 0</span><span id="nav-heading">HDG 000°</span><span id="nav-alt">ALT 0 m</span><span id="nav-waypoint">WP 000 km</span></div><button type="button" id="nav-next">NEXT WAYPOINT / 下一航點</button></div>`;
     document.body.append(this.root);
     this.root.querySelector('#nav-next')?.addEventListener('click', () => {
       this.waypointSeed = (this.waypointSeed + 7919) >>> 0;
@@ -43,6 +46,8 @@ export class NavigationDisplay {
     });
     window.addEventListener('cfs:flight-snapshot', (event) => this.update((event as CustomEvent<NavigationSnapshot>).detail));
     this.drawMap(0, 0, 0);
+    // the map was not being drawn while hidden: catch up as soon as it is shown again
+    window.addEventListener('cfs:panel-toggle', () => { this.lastMapKey = ''; });
   }
   private drawMap(x: number, z: number, heading: number): void {
     const canvas = this.root.querySelector('canvas');
@@ -86,7 +91,7 @@ export class NavigationDisplay {
     // The map needs ~200 terrain samples: redraw at 10 Hz and only when the picture would change.
     const now = performance.now();
     const key = `${Math.round(s.x / 40)}|${Math.round(s.z / 40)}|${Math.round(s.heading * 40)}|${this.waypoint.x}|${this.waypoint.z}`;
-    if (now - this.lastMapMs >= 100 && key !== this.lastMapKey) {
+    if (document.body.dataset.showMap !== '0' && now - this.lastMapMs >= 100 && key !== this.lastMapKey) {
       this.lastMapMs = now;
       this.lastMapKey = key;
       this.drawMap(s.x,s.z,s.heading);
