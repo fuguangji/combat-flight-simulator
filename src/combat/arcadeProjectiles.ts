@@ -246,8 +246,12 @@ export class ArcadeProjectileSystem {
       this.ammo = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, weapon.capacity]));
       this.cooldowns = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
       this.active.length = 0;
+      this.activeMissiles.length = 0;
       this.terrainMarks.length = 0;
+      this.missileAmmo = Object.fromEntries(missileCatalog.map((m) => [m.id, m.capacity]));
+      this.missileCooldowns = Object.fromEntries(missileCatalog.map((m) => [m.id, 0]));
       this.focused = false;
+      this.focusProgress = 0;
       this.contactIndex = 0;
       this.autopilotEnabled = false;
       this.lastPanelSignature = '';
@@ -257,6 +261,8 @@ export class ArcadeProjectileSystem {
     this.previousMode = mode;
     if (mode === 'flying') {
       for (const id of Object.keys(this.cooldowns) as EquipmentId[]) this.cooldowns[id] = Math.max(0, this.cooldowns[id] - dt);
+      for (const id of Object.keys(this.missileCooldowns)) this.missileCooldowns[id] = Math.max(0, this.missileCooldowns[id] - dt);
+      if (this.focused) this.focusProgress = Math.min(1, this.focusProgress + dt * 0.72);
       for (const effect of this.active) {
         effect.age += dt;
         // Deliberately arcade-only screen-space kinematics: capped drift and a soft curve.
@@ -271,6 +277,14 @@ export class ArcadeProjectileSystem {
         if (effect.age >= EQUIPMENT[effect.equipment].life || effect.y < 0.06 || effect.x < 0.04 || effect.x > 0.96) {
           this.terrainMarks.push({ x: Math.max(0.08, Math.min(0.92, effect.x)), age: 0, radius: 8 + (effect.equipment === 'ironhammer20' ? 12 : 0) });
           this.active.splice(i, 1);
+        }
+      }
+      for (const missile of this.activeMissiles) missile.age += dt;
+      for (let i = this.activeMissiles.length - 1; i >= 0; i--) {
+        const missile = this.activeMissiles[i];
+        if (missile.age >= MISSILES[missile.id].life) {
+          this.terrainMarks.push({ x: missile.endX, age: 0, radius: 7 });
+          this.activeMissiles.splice(i, 1);
         }
       }
       for (const mark of this.terrainMarks) mark.age += dt;
@@ -352,6 +366,37 @@ export class ArcadeProjectileSystem {
       } else {
         ctx.beginPath(); ctx.moveTo(x, y + 34); ctx.lineTo(x, y - 8); ctx.stroke();
       }
+      ctx.restore();
+    }
+    // Scripted 2D Bézier paths to fixed display anchors; presentation only.
+    for (const missile of this.activeMissiles) {
+      const spec = MISSILES[missile.id];
+      const t = Math.min(1, missile.age / spec.life);
+      const startX = 0.5, startY = 0.78;
+      const controlX = (startX + missile.endX) * 0.5 + (missile.targetIndex - 1) * 0.12;
+      const controlY = 0.12;
+      const inv = 1 - t;
+      const x = inv * inv * startX + 2 * inv * t * controlX + t * t * missile.endX;
+      const y = inv * inv * startY + 2 * inv * t * controlY + t * t * missile.endY;
+      const alpha = Math.max(0, 1 - t) * 0.95;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = spec.color;
+      ctx.fillStyle = spec.color;
+      ctx.shadowColor = spec.color;
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(w * startX, h * startY);
+      ctx.quadraticCurveTo(w * controlX, h * controlY, w * missile.endX, h * missile.endY);
+      ctx.stroke();
+      ctx.translate(w * x, h * y);
+      const dx = 2 * inv * (controlX - startX) + 2 * t * (missile.endX - controlX);
+      const dy = 2 * inv * (controlY - startY) + 2 * t * (missile.endY - controlY);
+      ctx.rotate(Math.atan2(dy, dx) + Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -12); ctx.lineTo(4, 5); ctx.lineTo(0, 10); ctx.lineTo(-4, 5); ctx.closePath();
+      ctx.fill();
       ctx.restore();
     }
     // Persistent ground-damage decals: darkened centre, broken rim and fading dust ring.
