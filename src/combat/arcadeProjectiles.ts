@@ -24,7 +24,7 @@ const EQUIPMENT: Record<EquipmentId, { name: string; short: string; capacity: nu
   }]),
 );
 const MISSILES = Object.fromEntries(missileCatalog.map((missile) => [missile.id, missile]));
-type MissileId = keyof typeof MISSILES;
+type MissileId = string;
 const CONTACTS: Contact[] = [
   { id: 'ECHO-01', className: 'DRONE' },
   { id: 'ECHO-02', className: 'DRONE' },
@@ -114,7 +114,7 @@ export class ArcadeProjectileSystem {
     });
     const missileSelect = this.status.querySelector<HTMLSelectElement>('[data-missile-select]');
     if (missileSelect) {
-      for (const missile of missileCatalog) missileSelect.add(new Option(missile.name, missile.id));
+      for (const missile of missileCatalog) missileSelect.add(new Option(missile.name, String(missile.id)));
       missileSelect.value = this.selectedMissile;
       missileSelect.addEventListener('change', () => {
         if (MISSILES[missileSelect.value]) this.selectedMissile = missileSelect.value as MissileId;
