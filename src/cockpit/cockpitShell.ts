@@ -92,7 +92,7 @@ export function mountCockpitShell(): CockpitShell {
     }
     .cockpit-switches {
       position:absolute; left:50%; top:64%; transform:translateX(-50%);
-      display:flex; gap:8px;
+      display:flex; flex-wrap:wrap; justify-content:center; gap:8px; max-width:min(92vw,760px);
     }
     .cockpit-switches button,.cockpit-config button {
       border:1px solid #597265; border-radius:4px; padding:8px 11px;
