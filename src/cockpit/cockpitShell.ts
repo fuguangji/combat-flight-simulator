@@ -182,6 +182,7 @@ export function mountCockpitShell(): CockpitShell {
           <button type="button" data-action="cannon" class="primary">CANNON / 機炮</button>
           <button type="button" data-action="autopilot" class="physical-toggle" aria-pressed="false"><span class="toggle-track"><i></i></span><span class="toggle-caption"><b>AUTO</b><small>自動駕駛</small></span><span class="switch-state">OFF</span></button>
           <button type="button" data-action="recenter">CENTER / 回正</button>
+          <button type="button" data-action="motion-demo">MOTION / 3D 測試</button>
         </div>
         <details class="cockpit-config">
           <summary>SETTINGS / 設定</summary>
@@ -213,6 +214,7 @@ export function mountCockpitShell(): CockpitShell {
   shell.querySelector('[data-action="cannon"]')?.addEventListener('click', cannon);
   shell.querySelector('[data-action="autopilot"]')?.addEventListener('click', ap);
   shell.querySelector('[data-action="recenter"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:look-recenter')));
+  shell.querySelector('[data-action="motion-demo"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:motion-demo-toggle')));
 
   const readRange = (id: string): number => Number(shell.querySelector<HTMLInputElement>(`#${id}`)?.value ?? 0);
   const updateOutputs = (): void => {
