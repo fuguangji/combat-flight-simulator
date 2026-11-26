@@ -1,32 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { panelAngle } from '../src/cockpit/cockpitShell';
+import { PANEL_VARIANTS, headShift, variantFor } from '../src/cockpit/panelVariants';
+import { knobAngle, knobDrag, wrapValue } from '../src/cockpit/knob';
+import { aircraftRegistry } from '../src/aircraft/registry';
 
-const PERSPECTIVE = 1600;
-
-describe('panelAngle', () => {
-  it('is the identity when the 3D camera matches the CSS perspective', () => {
-    for (const a of [-1.2, -0.3, 0, 0.5, 1.1]) expect(panelAngle(a, PERSPECTIVE)).toBeCloseTo(a, 9);
+describe('panel variants', () => {
+  it('every aircraft has its own variant', () => {
+    for (const a of aircraftRegistry.list()) expect(PANEL_VARIANTS[a.key]).toBeDefined();
   });
-
-  it('is odd (left and right look the same) and zero at zero', () => {
-    expect(panelAngle(0, 700)).toBe(0);
-    expect(panelAngle(0.7, 700)).toBeCloseTo(-panelAngle(-0.7, 700), 12);
+  it('variants are visually distinct', () => {
+    const sig = Object.values(PANEL_VARIANTS).map((v) => `${v.layout}|${v.canopy}|${v.accent}|${v.dials}`);
+    expect(new Set(sig).size).toBe(sig.length);
   });
-
-  it('moves a point straight ahead by the same pixels as the 3D scene', () => {
-    // the scene shifts by pxPerTan * tan(angle); the panel by PERSPECTIVE * tan(cssAngle)
-    for (const pxPerTan of [500, 732, 1200, 2400]) {
-      for (const a of [0.1, 0.4, 0.9]) {
-        const panelPx = PERSPECTIVE * Math.tan(panelAngle(a, pxPerTan));
-        expect(panelPx).toBeCloseTo(pxPerTan * Math.tan(a), 6);
-      }
-    }
+  it('unknown keys fall back', () => expect(variantFor('nope').plate).toBe('GENERIC'));
+});
+describe('head shift', () => {
+  it('panel slides opposite to the look direction', () => {
+    expect(headShift(0.5, 0).x).toBeLessThan(0);
+    expect(headShift(-0.5, 0).x).toBeGreaterThan(0);
+    expect(headShift(0, 0.5).y).toBeGreaterThan(0);
+    expect(headShift(0, 0)).toEqual({ x: -0, y: 0 });
   });
-
-  it('stays finite and monotonic far behind the pilot', () => {
-    const a = panelAngle((150 * Math.PI) / 180, 732);
-    expect(Number.isFinite(a)).toBe(true);
-    expect(a).toBeGreaterThan(panelAngle(1, 732));
-    expect(a).toBeLessThan(Math.PI / 2);
+});
+describe('knob', () => {
+  it('angle spans the sweep', () => {
+    expect(knobAngle(0, 0, 10)).toBe(-135);
+    expect(knobAngle(10, 0, 10)).toBe(135);
+    expect(knobAngle(5, 0, 10)).toBe(0);
+  });
+  it('drag snaps and clamps', () => {
+    expect(knobDrag(500, 100, 500, 12000, 100)).toBe(6300);
+    expect(knobDrag(500, -50, 500, 12000, 100)).toBe(500);
+    expect(knobDrag(500, 9999, 500, 12000, 100)).toBe(12000);
+  });
+  it('wraps headings', () => {
+    expect(wrapValue(360, 0, 359)).toBe(0);
+    expect(wrapValue(-1, 0, 359)).toBe(359);
   });
 });

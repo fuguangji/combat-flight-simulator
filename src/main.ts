@@ -259,6 +259,7 @@ async function boot(): Promise<void> {
     setHangarPreviewModel(next);
     aircraftSelect.value = aircraft.key;
     physics.setAircraft(aircraft.toPhysicsArray());
+    window.dispatchEvent(new CustomEvent('cfs:aircraft', { detail: aircraft.key }));
     physics.pause();
     input.reset(aircraft.startThrottle);
     showAircraft();
@@ -466,6 +467,7 @@ async function boot(): Promise<void> {
   const audio = new WarningAudio();
   const look = new FreeLook();
   const cockpit = mountCockpitShell();
+  cockpit.setAircraft(aircraft.key);
   new PanelToggles();
   new NavigationDisplay();
   window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
