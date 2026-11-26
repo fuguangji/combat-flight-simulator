@@ -55,6 +55,7 @@ export function mountCockpitMotionDemo(): void {
   };
   const draw = (now: number): void => {
     if (!active) return;
+    if (document.body.dataset.mode !== 'flying' && document.body.dataset.mode !== 'crashed') { close(); return; }
     raf = requestAnimationFrame(draw);
     const dt = previous ? Math.min((now - previous) / 1000, 0.05) : 0;
     previous = now;
