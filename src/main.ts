@@ -20,6 +20,7 @@ import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
 import { EncyclopediaViewer } from './encyclopedia/modelViewer';
 import * as THREE from 'three';
+import { mountCockpitMotionDemo } from './scene/cockpitMotionDemo';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
 
@@ -459,6 +460,7 @@ async function boot(): Promise<void> {
   const audio = new WarningAudio();
   const look = new FreeLook();
   const cockpit = mountCockpitShell();
+  mountCockpitMotionDemo();
   new NavigationDisplay();
   window.addEventListener('cfs:look-recenter', () => look.recenter());
   const touchMode = isTouchDevice();
