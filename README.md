@@ -50,7 +50,8 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 | `src/core` | 設定常數、數學、固定步長累加器、能力偵測 |
 | `src/physics` | 快照格式、插值緩衝區、worker 用戶端 |
 | `src/rendering` | `Renderer` 介面、WebGPU / WebGL 2 後端、測試場景、動態解析度 |
-| `src/cockpit` | 駕駛艙攝影機、姿態計算、HUD、實體化座艙控制 |\n| `src/encyclopedia` | Three.js 程序化 3D 機型與虛構裝備圖鑑模型 |
+| `src/cockpit` | 駕駛艙攝影機、姿態計算、HUD、實體化座艙控制 |
+| `src/scene` | 通用 Three.js 場景物件運動、固定步長更新、軌跡與駕駛艙內的 3D 測試視窗 |\n| `src/encyclopedia` | Three.js 程序化 3D 機型與虛構裝備圖鑑模型 |
 | `src/aircraft` | 機型：`data/*.json`（駕駛艙＋物理參數）、`AircraftDefinition` / `AircraftRegistry`（驗證與註冊） |
 | `src/networking` | 多人協定草案與 `NetworkClient` 介面（第一版為離線實作） |
 | `docs/PHYSICS.md` | 座標系、方程式、參數單位與假設 |
@@ -66,7 +67,7 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 
 ## 驗證狀況（請先讀）
 
-已驗證完畢，成功部署。
+既有版本曾成功部署；**2026-11-26 新增的駕駛艙 3D 運動測試尚未取得本次 CI 建置結果，也尚未完成瀏覽器實機驗證**。請以 GitHub Actions 最新工作流程結果為準。
 
 ## 已知問題與限制
 
@@ -100,6 +101,7 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 | 10 雷達與目標資訊 | 初版訓練接觸清單與選取焦點 UI；尚無世界座標目標、雷達感測或追蹤 |
 | 11 空中對抗與任務模式 | 尚未實作對抗狀態、任務目標、完成條件及結算 |
 | 12 多機型 | 完成：JSON 機型定義＋註冊表、16 種機型、獨立機庫介紹與選擇頁 |
+| 13 通用 3D 場景運動 | 部分：`SceneMotionSystem` 已建立並接入駕駛艙測試視窗；目前為獨立場景，尚未整合至主飛行渲染器 |
 
 下一階段建議（以下均為遊戲內原創、虛構的互動機制）：① 將目前的裝備視覺原型擴充為完整遊戲互動，包括世界內的視覺呈現、回饋狀態與任務事件；② 建立 AI 航空器及空中對抗狀態；③ 建立雷達、目標選取 / 資訊追蹤介面與 MFD，必要時加入離屏感測器攝影機（OffscreenCanvas）；④ 建立任務框架、任務目標、勝負條件及結算；⑤ 完成 3D 駕駛艙、glTF + Meshopt 載入與地形分區；⑥ 加入第二種原創機型，驗證機型參數化設計；⑦ 地面接觸與起降；⑧ 再評估多人同步及地形互動。
 
@@ -254,3 +256,12 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 - 導彈演出採螢幕空間的預設二次曲線與固定 UI 錨點；額度、冷卻、焦點進度皆為街機遊戲規則。沒有世界座標、真實感測、追蹤、導引律、目標運動預測、碰撞或實體攔截。
 - 不需焦點的道具則播放固定區域演出。所有導彈額度在回到主選單後重置。
 - **安全與技術界線**：此功能只模擬 UI 進度與預設動畫，不是現實飛彈制導模型，也不應用於現實武器或航空系統。
+
+
+### 駕駛艙 3D 場景運動測試（2026-11-26）
+- 新增 `src/scene/SceneMotionSystem.ts`：通用 Three.js 場景物件運動管理器，可建立球體、設定初始位置／速度／加速度、使用固定時間步進更新、記錄歷史位置軌跡，並支援生命週期、單一物件移除與資源清理。
+- 模擬預設採 120 Hz 固定步長、最多 8 個子步；渲染幀率與模擬步進分離，並限制單次累積時間，避免分頁切換後補算過量。
+- 新增 `src/scene/cockpitMotionDemo.ts`：在飛行駕駛艙中按下 `MOTION / 3D 測試`，即可開啟獨立 Three.js 視窗；提供新增球體、暫停／繼續、重設與物件數讀值。視窗關閉時停止更新，僅在開啟期間繪製。
+- 測試場景使用無目標的等速球體與歷史軌跡，僅展示一般場景物件運動；與裝備按鈕、訓練接觸點及主飛行物理保持分離，不執行瞄準、追蹤、碰撞或命中判定。
+- 駕駛艙入口由 `src/cockpit/cockpitShell.ts` 發送事件，`src/main.ts` 負責掛載測試模組。主飛行渲染器與 Rust/WASM 飛行物理未更動。
+- **驗證狀況**：程式與 README 已提交至 `main`；尚未取得本次 GitHub Actions 結果，亦未完成瀏覽器實機測試。此測試視窗使用獨立 WebGL context，開啟時會額外占用少量 GPU 資源。
