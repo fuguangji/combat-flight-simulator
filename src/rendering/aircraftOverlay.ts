@@ -45,6 +45,7 @@ export class AircraftSceneOverlay {
 
   setAircraft(aircraft: AircraftDefinition): void {
     for (const child of [...this.root.children]) {
+      if (child.userData.shared) continue; // shared kit buffers
       child.traverse((object) => {
         const mesh = object as THREE.Mesh;
         mesh.geometry?.dispose();

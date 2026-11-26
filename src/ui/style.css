@@ -231,3 +231,9 @@ body.touch #tutorial p { font-size: 12px; line-height: 1.45; }
   .encyclopedia-entry { padding: 8px 5px; font-size: 9px; }
   .encyclopedia-model-wrap { height: 210px; }
 }
+
+.encyclopedia-extra { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 12px; align-items: center; }
+.encyclopedia-chart svg { width: 100%; height: auto; display: block; }
+.encyclopedia-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.encyclopedia-chip { padding: 4px 8px; border: 1px solid rgba(125,255,154,.3); border-radius: 12px; color: #bfe8cd; font: 10px ui-monospace, monospace; background: rgba(20,42,33,.6); }
+@media (max-width: 700px) { .encyclopedia-extra { grid-template-columns: 1fr; } }

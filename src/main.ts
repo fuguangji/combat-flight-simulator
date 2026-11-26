@@ -112,6 +112,8 @@ async function boot(): Promise<void> {
     description: $<HTMLElement>('encyclopedia-description'),
     specs: $<HTMLElement>('encyclopedia-specs'),
     category: $<HTMLSelectElement>('encyclopedia-category'),
+    chart: document.getElementById('encyclopedia-chart'),
+    parts: document.getElementById('encyclopedia-parts'),
   }, aircraftRegistry.list(), weaponCatalog);
   const menuPanel = menuEl.querySelector('.panel') as HTMLDivElement;
   const equipmentOptions = weaponCatalog.map((weapon) => ({

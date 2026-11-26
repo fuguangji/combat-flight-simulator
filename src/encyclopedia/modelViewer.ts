@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import type { AircraftDefinition } from '../aircraft/registry';
+import { aircraftAnchors, buildAircraftModel } from './aircraftModels';
+import type { Anchor } from './modelKit';
+import { buildWeaponModel, weaponAnchors } from './weaponModels';
 
 type WeaponDefinition = {
   id: string;
@@ -21,12 +24,15 @@ type Elements = {
   description: HTMLElement;
   specs: HTMLElement;
   category: HTMLSelectElement;
+  /** Optional: SVG chart and part chips under the model. */
+  chart?: HTMLElement | null;
+  parts?: HTMLElement | null;
 };
 
 /**
  * Self-contained procedural 3D encyclopedia viewer.
- * Aircraft are original game silhouettes; equipment is represented as fictional
- * energy-pod props, not functional or dimensionally accurate real-world weapons.
+ * Aircraft and equipment are original game models (see aircraftModels.ts / weaponModels.ts);
+ * none of them copies or approximates a real aircraft or weapon.
  */
 export class EncyclopediaViewer {
   private readonly renderer: THREE.WebGLRenderer;
@@ -163,6 +169,7 @@ export class EncyclopediaViewer {
 
   private replaceModel(model: THREE.Group): void {
     for (const child of [...this.root.children]) {
+      if (child.userData.shared) continue; // kit geometry / materials are reused by the next instance
       child.traverse((object) => {
         const mesh = object as THREE.Mesh;
         mesh.geometry?.dispose();
@@ -193,13 +200,15 @@ export class EncyclopediaViewer {
       `升限 ${s.ceilingM.toLocaleString()} m`,
       `作戰半徑 ${s.rangeKm.toLocaleString()} km`,
     ].join('　·　');
-    this.replaceModel(this.buildAircraft(item.id));
+    this.replaceModel(this.createAircraftModel(item.id));
+    if (this.elements.chart) this.elements.chart.innerHTML = this.aircraftChart(item);
+    this.showParts(aircraftAnchors(item.id, { hasAfterburner: item.hasAfterburner, thrustKN: item.specs.thrustKN }));
   }
 
   private showWeapon(item: WeaponDefinition, button: HTMLButtonElement): void {
     this.selectEntry(button);
     this.elements.title.textContent = item.name;
-    this.elements.description.textContent = `${item.role}。 ${item.description} 模型採原創科幻能量艙外觀，只用於遊戲圖鑑與視覺展示，不模擬現實武器結構或導引。`;
+    this.elements.description.textContent = `${item.role}。 ${item.description} 模型為本作原創的虛構外觀，只用於遊戲圖鑑與視覺展示，不對應任何現實裝備，也不模擬真實結構或導引。`;
     this.elements.specs.textContent = [
       item.category,
       `視覺效果 ${item.effect}`,
@@ -207,112 +216,68 @@ export class EncyclopediaViewer {
       `冷卻 ${item.cooldown.toFixed(1)} s`,
       `演出時間 ${item.life.toFixed(2)} s`,
     ].join('　·　');
-    this.replaceModel(this.buildEnergyPod(item.color, item.id));
-  }
-
-  private material(color: number, metalness = 0.62, roughness = 0.32): THREE.MeshStandardMaterial {
-    return new THREE.MeshStandardMaterial({ color, metalness, roughness });
-  }
-
-  private mesh(geometry: THREE.BufferGeometry, material: THREE.Material, parent: THREE.Group, position?: [number, number, number]): THREE.Mesh {
-    const object = new THREE.Mesh(geometry, material);
-    if (position) object.position.set(...position);
-    object.castShadow = true;
-    object.receiveShadow = true;
-    parent.add(object);
-    return object;
-  }
-
-  private wing(parent: THREE.Group, span: number, sweep: number, rear: number, color: number, side: 1 | -1): void {
-    const shape = new THREE.Shape();
-    shape.moveTo(1.05, 0);
-    shape.lineTo(0.55 - sweep, side * span);
-    shape.lineTo(-rear - sweep * 0.18, side * span * 0.96);
-    shape.lineTo(-1.42, 0);
-    shape.closePath();
-    const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: 0.035, bevelThickness: 0.025 });
-    geometry.rotateX(-Math.PI / 2);
-    geometry.computeVertexNormals();
-    this.mesh(geometry, this.material(color), parent, [0, -0.12, 0]);
+    this.replaceModel(buildWeaponModel(item.id, item.color));
+    if (this.elements.chart) this.elements.chart.innerHTML = this.weaponChart(item);
+    this.showParts(weaponAnchors(item.id, item.color));
   }
 
   /** Public factory so the encyclopedia and live scene use the exact same geometry. */
   createAircraftModel(id: number): THREE.Group {
-    return this.buildAircraft(id);
+    const def = this.aircraft.find((a) => a.id === id);
+    return buildAircraftModel(id, def ? { hasAfterburner: def.hasAfterburner, thrustKN: def.specs.thrustKN } : {});
   }
 
-  private buildAircraft(id: number): THREE.Group {
-    const group = new THREE.Group();
-    const palette = [0x738d83, 0x8d9b92, 0x586d78, 0x536b78, 0x899c88, 0x59666b, 0x7d8c95, 0x596c75];
-    const body = this.material(palette[id % palette.length], 0.72, 0.3);
-    const wingColor = palette[(id + 2) % palette.length];
-    const accent = this.material(0xb9d2c4, 0.8, 0.24);
-    const glass = new THREE.MeshPhysicalMaterial({ color: 0x4cae9b, metalness: 0.45, roughness: 0.12, transparent: true, opacity: 0.78, clearcoat: 1 });
-    const twin = id % 4 === 0 || id === 5 || id === 8 || id === 14;
-    const canard = id % 3 === 0 || id === 12;
-    const twinTail = id % 4 === 1 || id === 5 || id === 9 || id === 14;
-    const delta = id % 5 === 2 || id === 3 || id === 10;
-    const span = 2.5 + (id % 5) * 0.25;
-    const sweep = delta ? 1.35 : 0.35 + (id % 4) * 0.18;
-    const rear = delta ? 1.8 : 0.95 + (id % 3) * 0.2;
-
-    // Main fuselage, nose and rear fairing.
-    const fuselage = this.mesh(new THREE.CylinderGeometry(0.27, 0.39, 6.2, 20, 1), body, group, [0, 0, 0]);
-    fuselage.rotation.z = -Math.PI / 2;
-    const nose = this.mesh(new THREE.ConeGeometry(0.27, 1.35, 20), accent, group, [3.72, 0, 0]);
-    nose.rotation.z = -Math.PI / 2;
-    this.mesh(new THREE.ConeGeometry(0.31, 0.95, 20), body, group, [-3.45, 0, 0]).rotation.z = Math.PI / 2;
-
-    this.wing(group, span, sweep, rear, wingColor, 1);
-    this.wing(group, span, sweep, rear, wingColor, -1);
-
-    if (canard) {
-      this.wing(group, 1.1, 0.18, 0.42, 0x9aafa3, 1);
-      this.wing(group, 1.1, 0.18, 0.42, 0x9aafa3, -1);
-      group.children.slice(-2).forEach((part) => { part.position.x = 1.65; part.scale.set(0.52, 1, 0.62); });
+  private showParts(anchors: Anchor[]): void {
+    const host = this.elements.parts;
+    if (!host) return;
+    host.replaceChildren();
+    for (const a of anchors) {
+      const chip = document.createElement('span');
+      chip.className = 'encyclopedia-chip';
+      chip.textContent = `${a.label} · ${a.en}`;
+      host.append(chip);
     }
-
-    const canopy = this.mesh(new THREE.SphereGeometry(1, 20, 14), glass, group, [0.95, 0.3, 0]);
-    canopy.scale.set(1.18, 0.37, 0.47);
-
-    const finShape = new THREE.Shape();
-    finShape.moveTo(-2.5, 0.18); finShape.lineTo(-1.2, 1.5); finShape.lineTo(-0.75, 1.42); finShape.lineTo(-0.85, 0.12); finShape.closePath();
-    const finGeo = new THREE.ShapeGeometry(finShape);
-    this.mesh(finGeo, body, group, [0, 0.15, twinTail ? 0.48 : 0]);
-    if (twinTail) {
-      const second = this.mesh(finGeo.clone(), body, group, [0, 0.15, -0.48]);
-      second.rotation.y = Math.PI;
-    }
-
-    const engineCount = twin ? 2 : 1;
-    for (let i = 0; i < engineCount; i++) {
-      const z = twin ? (i === 0 ? -0.48 : 0.48) : 0;
-      const nozzle = this.mesh(new THREE.CylinderGeometry(0.19, 0.24, 0.8, 16), this.material(0x273c3a, 0.9, 0.24), group, [-2.75, -0.02, z]);
-      nozzle.rotation.z = Math.PI / 2;
-      const inner = this.mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.035, 16), this.material(0x6a9d8c, 0.5, 0.3), group, [-3.17, -0.02, z]);
-      inner.rotation.z = Math.PI / 2;
-    }
-    this.mesh(new THREE.BoxGeometry(1.05, 0.025, 0.04), accent, group, [-0.35, 0.27, 0]).rotation.z = -0.02;
-    group.scale.setScalar(1.05);
-    return group;
   }
 
-  private buildEnergyPod(colorText: string, id: string): THREE.Group {
-    const group = new THREE.Group();
-    const color = Number.parseInt(colorText.replace('#', ''), 16) || 0x73e8ca;
-    const shell = this.material(0x637b78, 0.78, 0.26);
-    const glow = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.8, metalness: 0.3, roughness: 0.2 });
-    const core = this.mesh(new THREE.CylinderGeometry(0.38, 0.38, 3.15, 24), shell, group, [0, 0, 0]);
-    core.rotation.z = -Math.PI / 2;
-    this.mesh(new THREE.SphereGeometry(0.39, 20, 12), glow, group, [1.62, 0, 0]).scale.set(1.2, 0.8, 0.8);
-    const rear = this.mesh(new THREE.CylinderGeometry(0.31, 0.34, 0.42, 20), this.material(0x263a39), group, [-1.78, 0, 0]);
-    rear.rotation.z = -Math.PI / 2;
-    for (const x of [-0.85, 0.05, 0.95]) {
-      const ring = this.mesh(new THREE.TorusGeometry(0.405, 0.045, 8, 24), glow, group, [x, 0, 0]);
-      ring.rotation.y = Math.PI / 2;
-    }
-    this.mesh(new THREE.BoxGeometry(0.48, 0.055, 0.055), glow, group, [-0.42, 0.39, 0]).rotation.z = 0.15;
-    group.userData.catalogId = id;
-    return group;
+  /** Radar chart of six normalised aircraft ratings (relative to the fleet maximum). */
+  private aircraftChart(item: AircraftDefinition): string {
+    const axes: Array<[string, (a: AircraftDefinition) => number]> = [
+      ['速度', (a) => a.maxMach],
+      ['機動', (a) => a.specs.gPositive],
+      ['航程', (a) => a.specs.rangeKm],
+      ['載荷', (a) => a.specs.payloadKg],
+      ['升限', (a) => a.specs.ceilingM],
+      ['推力', (a) => a.specs.thrustKN],
+    ];
+    const max = axes.map(([, f]) => Math.max(...this.aircraft.map(f), 1e-9));
+    const cx = 110, cy = 100, R = 72;
+    const pt = (i: number, v: number): string => {
+      const a = -Math.PI / 2 + (i / axes.length) * Math.PI * 2;
+      return `${(cx + Math.cos(a) * R * v).toFixed(1)},${(cy + Math.sin(a) * R * v).toFixed(1)}`;
+    };
+    const rings = [0.25, 0.5, 0.75, 1].map((k) => `<polygon points="${axes.map((_, i) => pt(i, k)).join(' ')}" fill="none" stroke="#2c4a3d" stroke-width="1"/>`).join('');
+    const spokes = axes.map((_, i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, 1).split(',')[0]}" y2="${pt(i, 1).split(',')[1]}" stroke="#2c4a3d"/>`).join('');
+    const values = axes.map(([, f], i) => Math.max(0.04, f(item) / max[i]));
+    const shape = `<polygon points="${values.map((v, i) => pt(i, v)).join(' ')}" fill="rgba(125,255,154,.22)" stroke="#8affb1" stroke-width="2"/>`;
+    const labels = axes.map(([name], i) => {
+      const [x, y] = pt(i, 1.2).split(',');
+      return `<text x="${x}" y="${y}" fill="#a9d1b7" font-size="10" text-anchor="middle" dominant-baseline="middle">${name}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 220 200" role="img" aria-label="${item.displayName} 能力雷達圖">${rings}${spokes}${shape}${labels}</svg>`;
+  }
+
+  /** Horizontal bars comparing a store with the rest of the catalogue. */
+  private weaponChart(item: WeaponDefinition): string {
+    const rows: Array<[string, number, number, string]> = [
+      ['展示額度', item.capacity, Math.max(...this.weapons.map((w) => w.capacity)), `${item.capacity}`],
+      ['回復速度', 1 / item.cooldown, Math.max(...this.weapons.map((w) => 1 / w.cooldown)), `${item.cooldown.toFixed(1)} s`],
+      ['演出長度', item.life, Math.max(...this.weapons.map((w) => w.life)), `${item.life.toFixed(2)} s`],
+    ];
+    const bars = rows.map(([name, v, m, label], i) => {
+      const y = 22 + i * 44;
+      const w = Math.max(6, (v / m) * 150);
+      return `<text x="4" y="${y}" fill="#a9d1b7" font-size="10">${name}</text><rect x="4" y="${y + 6}" width="150" height="10" rx="3" fill="#10241b"/><rect x="4" y="${y + 6}" width="${w.toFixed(1)}" height="10" rx="3" fill="${item.color}"/><text x="160" y="${y + 15}" fill="#d9ffe4" font-size="10">${label}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 220 160" role="img" aria-label="${item.name} 比較條">${bars}</svg>`;
   }
 }

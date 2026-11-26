@@ -66,6 +66,8 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 
 ## 驗證狀況（請先讀）
 
+> 2026-11-26 補充：本輪的 Three.js 模型（圖鑑、機庫預覽）只用模擬的 `three` 跑過建構流程（16 架 + 10 種裝備皆無例外、無 NaN），**尚未在真實 Three.js 下看過畫面**；WASM 未在本環境編譯（Rust 單元測試通過）；WebGPU 路徑未執行。請在本機 `npm run build:wasm && npm test && npm run dev` 後目視確認。
+
 已驗證完畢，成功部署。
 
 ## 已知問題與限制
@@ -114,6 +116,7 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 - **地圖／導航／雷達可開關**（M / V / B，記住設定）。
 - **新手教學三章**：基本操作、基本設定（導航、雷達、發射展示、自動駕駛）、基礎知識（HUD、失速與過載、警告、地形、降落）。
 - **機場與航艦**（`src/world/sites.ts` ↔ `wasm/physics-engine/src/sites.rs`，兩邊以測試比對）：兩座機場各一條 2.4 km 跑道（地面著色器繪製標線）、機庫與塔台；一艘不具攻擊性的航艦「海燕號」（船體、甲板標線、艦島）。接地下沉率 ≤ 5 m/s、滾轉 ≤ 10°、俯仰 −3°～18°、速度 ≤ 約 185 KT、航向偏差 ≤ 25° 才算降落成功，否則墜毀；船體側面與艦島是實心的。降落成功會顯示評級卡片。導航可用「機場・航艦」按鈕切換航點，地圖上有標記。
+- **圖鑑改版**：16 架飛機改用 `aircraftModels.ts` 的放樣機身／機翼／進氣口／座艙／掛架等細部模型（原先的簡陋模型已移除）；新增 `weaponModels.ts`，10 種裝備各有獨立的原創導彈／掛艙外形（不對應任何現實裝備）；詳情頁新增能力雷達圖（飛機）／比較條（裝備）與部位標籤。
 - 快照新增 `landed / landingKind / landingSink`（欄位 37–39），`WASM_API_VERSION` 升為 5。
 
 ### 效能、地形與 HUD（2026-11-24）
