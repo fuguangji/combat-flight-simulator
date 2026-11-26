@@ -8,7 +8,7 @@ function snap(time: number, x: number): AircraftSnapshot {
     crashed: false, airspeed: x, altitude: 0, mach: 0, alpha: 0, beta: 0, loadFactor: 1, throttle: 0,
     dynamicPressure: 0, stallWarning: false, crashKind: 0, crashTime: 0, impactTime: 99,
     warnMask: 0, warnLevel: 0, warnPrimary: -1, fuel: 3000, power: 0, afterburner: false, gLimiting: false,
-    thrust: 0, gAvailable: 9, elevator: 0,
+    thrust: 0, gAvailable: 9, elevator: 0, landed: false, landingKind: 0, landingSink: 0,
   };
 }
 

@@ -1,6 +1,6 @@
 import type { AircraftDefinition } from '../aircraft/registry';
 import { quatRotate, radToDeg, type Quat } from '../core/math';
-import { CRASH_BUILDING, type AircraftSnapshot } from '../physics/stateLayout';
+import { CRASH_BUILDING, LAND_DECK, type AircraftSnapshot } from '../physics/stateLayout';
 import { activeWarnings } from '../physics/warnings';
 import { attitudeFromQuat, bodyDirToView } from './camera';
 import { BANK_MARKS, severity, tapeTicks, wrapDeg, type Severity } from './hudMath';
@@ -336,12 +336,16 @@ export class Hud {
 
     // --- Warnings: master banner (highest priority) + stacked list of the rest
     const blink = Math.floor(nowMs / 250) % 2 === 0;
-    const list = s.crashed ? [] : activeWarnings(s.warnMask);
+    const list = s.crashed || s.landed ? [] : activeWarnings(s.warnMask);
     ctx.textAlign = 'center';
     if (s.crashed) {
       ctx.font = `bold ${26 * u}px system-ui, sans-serif`;
       ctx.fillStyle = WARN;
       this.text(s.crashKind === CRASH_BUILDING ? 'COLLISION' : 'CRASHED', cx, cy + 0.28 * h);
+    } else if (s.landed) {
+      ctx.font = `bold ${26 * u}px system-ui, sans-serif`;
+      ctx.fillStyle = GREEN;
+      this.text(s.landingKind === LAND_DECK ? 'TRAPPED' : 'LANDED', cx, cy + 0.28 * h);
     } else if (list.length > 0) {
       const top = list[0];
       const colour = top.level === 3 ? WARN : top.level === 2 ? CAUTION : GREEN;

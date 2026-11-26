@@ -35,11 +35,12 @@ const stepper = new FixedStepper(PHYSICS_DT, MAX_STEPS_PER_TICK, MAX_TICK_SECOND
  */
 function uploadScene(exports: PhysicsExports): void {
   const scene = buildTestScene();
-  const ptr = exports.sim_scene_alloc(scene.instances.length);
+  const floats = scene.collisionCount * 4; // render-only parts (the carrier) stay out of the box world
+  const ptr = exports.sim_scene_alloc(floats);
   // Re-create the view after the call: the allocation may have grown linear memory.
-  new Float32Array(exports.memory.buffer, ptr, scene.instances.length).set(scene.instances);
-  const accepted = exports.sim_scene_commit(scene.instanceCount);
-  if (accepted !== scene.instanceCount) throw new Error(`Collision world accepted ${accepted} of ${scene.instanceCount} buildings`);
+  new Float32Array(exports.memory.buffer, ptr, floats).set(scene.instances.subarray(0, floats));
+  const accepted = exports.sim_scene_commit(scene.collisionCount);
+  if (accepted !== scene.collisionCount) throw new Error(`Collision world accepted ${accepted} of ${scene.collisionCount} buildings`);
 }
 
 /** Install an aircraft from its flat parameter array; the collision scene is kept. */

@@ -1,3 +1,5 @@
+import { runwayGlsl, runwayWgsl } from '../world/sites';
+
 /**
  * GLSL / WGSL ports of `procedural.ts` plus the ground shading built on top of them.
  * Constants (frequencies, offsets, thresholds) must match the TypeScript sampler.
@@ -6,7 +8,7 @@
  * slope comes from screen-space derivatives of that height instead of four extra evaluations.
  */
 
-export const TERRAIN_GLSL = /* glsl */ `
+const TERRAIN_GLSL_BASE = /* glsl */ `
 const float SEA = -55.0;
 float tHash(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -43,7 +45,7 @@ float gridLine(vec2 p, float cell) {
   return 1.0 - min(min(d.x, d.y), 1.0);
 }
 /** Colour of the ground at world position w (rel = camera-relative xz, camY = camera height). */
-vec3 shadeGround(vec2 w, vec2 rel, float camY) {
+vec3 shadeGroundTerrain(vec2 w, vec2 rel, float camY) {
   float dist = length(vec3(rel.x, camY, rel.y));
   float h = terrainBase(w) + terrainFine(w);
 
@@ -96,7 +98,7 @@ vec3 shadeGround(vec2 w, vec2 rel, float camY) {
 }
 `;
 
-export const TERRAIN_WGSL = /* wgsl */ `
+const TERRAIN_WGSL_BASE = /* wgsl */ `
 const SEA: f32 = -55.0;
 fn tHash(p: vec2<f32>) -> f32 {
   var q = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
@@ -133,7 +135,7 @@ fn gridLine(p: vec2<f32>, cell: f32) -> f32 {
   return 1.0 - min(min(d.x, d.y), 1.0);
 }
 // Derivatives must be taken in uniform control flow, so they are computed up front, unconditionally.
-fn shadeGround(w: vec2<f32>, rel: vec2<f32>, camY: f32) -> vec3<f32> {
+fn shadeGroundTerrain(w: vec2<f32>, rel: vec2<f32>, camY: f32) -> vec3<f32> {
   let dist = length(vec3<f32>(rel.x, camY, rel.y));
   let h = terrainBase(w) + terrainFine(w);
 
@@ -180,5 +182,18 @@ fn shadeGround(w: vec2<f32>, rel: vec2<f32>, camY: f32) -> vec3<f32> {
   let glint = pow(max(dot(vec3<f32>(v.x, -v.y, v.z), vec3<f32>(0.50508, 0.80812, 0.30305)), 0.0), 220.0);
   wc += vec3<f32>(1.0, 0.95, 0.8) * glint * 0.9;
   return mix(land, wc, water);
+}
+`;
+
+/** Terrain plus painted airports (runways are generated from `world/sites.ts`). */
+export const TERRAIN_GLSL = TERRAIN_GLSL_BASE + runwayGlsl() + /* glsl */ `
+vec3 shadeGround(vec2 w, vec2 rel, float camY) {
+  return siteGround(w, shadeGroundTerrain(w, rel, camY));
+}
+`;
+
+export const TERRAIN_WGSL = TERRAIN_WGSL_BASE + runwayWgsl() + /* wgsl */ `
+fn shadeGround(w: vec2<f32>, rel: vec2<f32>, camY: f32) -> vec3<f32> {
+  return siteGround(w, shadeGroundTerrain(w, rel, camY));
 }
 `;

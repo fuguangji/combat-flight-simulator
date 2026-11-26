@@ -23,7 +23,7 @@ function snap(t: number, o: Partial<AircraftSnapshot> & { pitch?: number; roll?:
     crashed: false, airspeed: 180, altitude: 2000, mach: 0.5, alpha: 0.05, beta: 0, loadFactor: 1, throttle: 0.3,
     dynamicPressure: 0, stallWarning: false, crashKind: 0, crashTime: 0, impactTime: 99,
     warnMask: 0, warnLevel: 0, warnPrimary: -1, fuel: 3000, power: 0.3, afterburner: false, gLimiting: false,
-    thrust: 0, gAvailable: 9, elevator: 0, ...rest,
+    thrust: 0, gAvailable: 9, elevator: 0, landed: false, landingKind: 0, landingSink: 0, ...rest,
   };
 }
 

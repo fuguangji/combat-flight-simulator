@@ -99,9 +99,10 @@ describe.skipIf(!existsSync(wasmPath))('physics WASM module', () => {
     const w = await load();
     w.sim_init(0);
     const scene = buildTestScene();
-    const ptr = w.sim_scene_alloc(scene.instances.length);
-    new Float32Array(w.memory.buffer, ptr, scene.instances.length).set(scene.instances);
-    expect(w.sim_scene_commit(scene.instanceCount)).toBe(scene.instanceCount);
+    const floats = scene.collisionCount * 4;
+    const ptr = w.sim_scene_alloc(floats);
+    new Float32Array(w.memory.buffer, ptr, floats).set(scene.instances.subarray(0, floats));
+    expect(w.sim_scene_commit(scene.collisionCount)).toBe(scene.collisionCount);
     w.sim_init(0);
     w.sim_reset();
     // start (2 km, level, heading north) is above every building: clear path for the look-ahead window

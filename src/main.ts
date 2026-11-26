@@ -8,7 +8,7 @@ import { INITIAL_WAYPOINT, NavigationDisplay } from './navigation/navigation';
 import { Hud } from './cockpit/hud';
 import { PanelToggles } from './ui/panelToggles';
 import { PhysicsClient, type ControlInput } from './physics/PhysicsClient';
-import { CRASH_BUILDING, type AircraftSnapshot } from './physics/stateLayout';
+import { CRASH_BUILDING, LAND_DECK, type AircraftSnapshot } from './physics/stateLayout';
 import { DynamicResolution } from './rendering/dynamicResolution';
 import { createRenderer } from './rendering/createRenderer';
 import type { Backend } from './rendering/Renderer';
@@ -697,8 +697,20 @@ async function boot(): Promise<void> {
 
   const showCrashCard = (s: AircraftSnapshot): void => {
     const building = s.crashKind === CRASH_BUILDING;
-    crashTitleEl.textContent = building ? '撞上建築物' : '墜地';
     const row = (k: string, v: string): string => `<dt>${k}</dt><dd>${v}</dd>`;
+    if (s.landed) {
+      const grade = s.landingSink < 1.5 ? '優異 EXCELLENT' : s.landingSink < 3 ? '良好 GOOD' : '合格 PASS';
+      crashTitleEl.textContent = s.landingKind === LAND_DECK ? '降落成功 · 航艦甲板' : '降落成功 · 跑道';
+      crashStatsEl.innerHTML =
+        row('評級', grade) +
+        row('接地下沉率', `${s.landingSink.toFixed(1)} m/s`) +
+        row('接地速度', `${stats.preCrashKt.toFixed(0)} KT`) +
+        row('飛行時間', `${s.crashTime.toFixed(1)} s`) +
+        row('最大過載', `${stats.maxG.toFixed(1)} G`);
+      showOverlay('crash');
+      return;
+    }
+    crashTitleEl.textContent = building ? '撞上建築物' : '墜地';
     crashStatsEl.innerHTML =
       row('飛行時間', `${s.crashTime.toFixed(1)} s`) +
       row('撞擊速度', `${stats.preCrashKt.toFixed(0)} KT`) +
@@ -911,7 +923,7 @@ async function boot(): Promise<void> {
       snap = physics.sample(now) ?? lastSnap;
       if (snap) {
         lastSnap = snap;
-        if (!snap.crashed) {
+        if (!snap.crashed && !snap.landed) {
           const kt = snap.airspeed * MS_TO_KT;
           stats.maxKt = Math.max(stats.maxKt, kt);
           stats.preCrashKt = kt;
@@ -927,7 +939,7 @@ async function boot(): Promise<void> {
           renderTutorial(tutorial.update(snap));
           if (look.active) tutorial.note('look');
         }
-        audio.update(snap.crashed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
+        audio.update(snap.crashed || snap.landed ? null : (activeWarnings(snap.warnMask)[0] ?? null), now);
         look.update(frameMs / 1000);
         const attitude = attitudeFromQuat(snap.orientation);
         cockpit.setFlightReadout(snap.altitude, snap.airspeed * MS_TO_KT, attitude.heading);

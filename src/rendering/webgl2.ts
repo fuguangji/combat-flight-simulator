@@ -2,6 +2,7 @@ import { GLOBALS_BYTES, GLOBALS_FLOATS, packGlobals } from './globals';
 import type { CameraState, RenderStats, Renderer } from './Renderer';
 import { buildTestScene } from './scene';
 import { TERRAIN_GLSL } from '../terrain/terrainShader';
+import { CARRIER } from '../world/sites';
 
 const HEAD = /* glsl */ `#version 300 es
 precision highp float;
@@ -69,8 +70,14 @@ layout(location = 2) in vec4 aInst;
 out vec3 vNrm;
 out vec3 vRel;
 out float vTint;
+flat out float vKind;
 void main() {
-  vec3 world = vec3(aInst.x + aPos.x * aInst.z, aPos.y * aInst.w, aInst.y + aPos.z * aInst.z);
+  // A negative size marks a render-only ship part: fract(-size) * 4 is its kind, floor(-size) its footprint.
+  float sz = abs(aInst.z);
+  float kind = aInst.z < 0.0 ? floor(fract(sz) * 4.0 + 0.5) : 0.0;
+  float size = aInst.z < 0.0 ? floor(sz) : sz;
+  vKind = kind;
+  vec3 world = vec3(aInst.x + aPos.x * size, aPos.y * aInst.w, aInst.y + aPos.z * size);
   vec3 rel = world - uCamPos.xyz;
   vNrm = aNrm;
   vRel = rel;
@@ -81,11 +88,33 @@ const OBJ_FS = HEAD + COMMON_FS + /* glsl */ `
 in vec3 vNrm;
 in vec3 vRel;
 in float vTint;
+flat in float vKind;
 out vec4 outColor;
 void main() {
   vec3 n = normalize(vNrm);
   vec3 l = vec3(0.50508, 0.80812, 0.30305);
   vec3 base = mix(vec3(0.55, 0.56, 0.60), vec3(0.70, 0.62, 0.50), vTint);
+  if (vKind > 0.5) {
+    vec3 wp = vRel + uCamPos.xyz;
+    if (vKind < 1.5) {
+      if (n.y > 0.5) {
+        float dx = wp.x - ${CARRIER.cx.toFixed(1)};
+        float dz = wp.z - ${CARRIER.cz.toFixed(1)};
+        base = vec3(0.20, 0.21, 0.22);
+        float edge = step(${(CARRIER.halfWid - 1.5).toFixed(1)}, abs(dx));
+        float dash = step(abs(dx), 0.5) * step(fract(dz / 24.0), 0.55);
+        float lane = step(abs(abs(dx) - 14.0), 0.35) * step(fract(dz / 48.0), 0.7);
+        float mark = step(abs(abs(dz) - ${(CARRIER.halfLen - 22).toFixed(1)}), 1.2) * step(abs(dx), ${(CARRIER.halfWid - 3).toFixed(1)});
+        base = mix(base, vec3(0.92, 0.90, 0.80), max(max(edge, dash), max(lane, mark)));
+      } else {
+        base = wp.y < 4.0 ? vec3(0.42, 0.10, 0.09) : vec3(0.30, 0.34, 0.38);
+        base *= 0.8 + 0.2 * step(0.5, fract(wp.y / 6.0));
+      }
+    } else {
+      base = vec3(0.58, 0.60, 0.62);
+      base = mix(base, vec3(0.12, 0.16, 0.20), step(abs(fract(wp.y / 9.0) - 0.5), 0.12) * step(abs(n.y), 0.5));
+    }
+  }
   vec3 col = base * (0.35 + 0.65 * max(dot(n, l), 0.0));
   outColor = vec4(applyFog(col, length(vRel)), 1.0);
 }`;

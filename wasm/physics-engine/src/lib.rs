@@ -35,7 +35,9 @@
 //! | 34    | thrust (N)                                |
 //! | 35    | load factor currently available (g)      |
 //! | 36    | elevator position -1..1                   |
-//! | 37..39| reserved                                  |
+//! | 37    | landed (0/1)                              |
+//! | 38    | landing kind (0 none, 1 runway, 2 deck)   |
+//! | 39    | sink rate at touchdown (m/s)              |
 //!
 //! Scene upload (API v2): the host calls `sim_scene_alloc(4 * n)`, writes `n` instances
 //! (x, z, width, height as f32) at the returned address, then `sim_scene_commit(n)`.
@@ -45,6 +47,7 @@ pub mod atmosphere;
 pub mod collision;
 pub mod flight;
 pub mod math;
+pub mod sites;
 pub mod warnings;
 
 use aircraft::AircraftParams;
@@ -52,7 +55,7 @@ use collision::World;
 use flight::{Controls, Sim};
 
 pub const STATE_LEN: usize = 40;
-pub const API_VERSION: u32 = 4;
+pub const API_VERSION: u32 = 5;
 
 static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
@@ -108,6 +111,9 @@ pub fn write_snapshot(sim: &Sim, out: &mut [f64; STATE_LEN]) {
     out[34] = d.thrust;
     out[35] = d.g_avail;
     out[36] = s.elevator;
+    out[37] = if s.landed { 1.0 } else { 0.0 };
+    out[38] = s.landing_kind as f64;
+    out[39] = s.landing_sink;
 }
 
 #[no_mangle]

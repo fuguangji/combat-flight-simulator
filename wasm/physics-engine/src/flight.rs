@@ -11,6 +11,7 @@ use crate::aircraft::AircraftParams;
 use crate::atmosphere::{isa, G0, RHO0};
 use crate::collision::World;
 use crate::math::{Quat, Vec3};
+use crate::sites;
 use crate::warnings;
 
 pub const MAX_SUBSTEP: f64 = 1.0 / 120.0;
@@ -18,6 +19,9 @@ pub const MAX_SUBSTEP: f64 = 1.0 / 120.0;
 pub const CRASH_NONE: u8 = 0;
 pub const CRASH_GROUND: u8 = 1;
 pub const CRASH_BUILDING: u8 = 2;
+/// Internal contact kinds: a touchdown candidate that `substep` judges against the landing limits.
+const TOUCH_RUNWAY: u8 = 10;
+const TOUCH_DECK: u8 = 11;
 
 /// `Derived::impact_time` when the flight path is clear for the whole look-ahead window.
 pub const IMPACT_NONE: f64 = 99.0;
@@ -58,6 +62,11 @@ pub struct BodyState {
     pub crashed: bool,
     pub crash_kind: u8,
     pub crash_time: f64,
+    /// Set when the aircraft touched down within the limits (it then stays put). `landing_kind` is `sites::LAND_*`.
+    pub landed: bool,
+    pub landing_kind: u8,
+    /// Sink rate at touchdown (m/s, positive down).
+    pub landing_sink: f64,
     pub fuel: f64,     // kg
     pub power: f64,    // spooled throttle 0..1 (engine state)
     pub elevator: f64, // actual surface positions, -1..1
@@ -189,6 +198,9 @@ impl Sim {
                 crashed: false,
                 crash_kind: CRASH_NONE,
                 crash_time: 0.0,
+                landed: false,
+                landing_kind: sites::LAND_NONE,
+                landing_sink: 0.0,
                 fuel: 0.0,
                 power: 0.0,
                 elevator: 0.0,
@@ -227,6 +239,9 @@ impl Sim {
             crashed: false,
             crash_kind: CRASH_NONE,
             crash_time: 0.0,
+            landed: false,
+            landing_kind: sites::LAND_NONE,
+            landing_sink: 0.0,
             fuel: p.fuel_capacity,
             power: p.start_throttle,
             elevator: 0.0,
@@ -395,9 +410,21 @@ impl Sim {
             let local = Vec3::new(pt[0], pt[1], pt[2]);
             let pa = a.position + a.orientation.rotate(local);
             let pb = b.position + b.orientation.rotate(local);
-            if pb.y <= r {
+            // Carrier: solid hull below the deck, flat deck on top, island beside it.
+            if sites::on_deck(pb.x, pb.z, 0.0) && pb.y <= sites::CARRIER_DECK_Y + r {
+                let top = sites::CARRIER_DECK_Y + r;
+                if pa.y > top {
+                    consider(((pa.y - top) / (pa.y - pb.y)).clamp(0.0, 1.0), TOUCH_DECK);
+                } else {
+                    consider(0.0, CRASH_BUILDING); // flew into the hull
+                }
+            } else if pb.y <= r {
                 let t = if pa.y <= r { 0.0 } else { ((pa.y - r) / (pa.y - pb.y)).clamp(0.0, 1.0) };
-                consider(t, CRASH_GROUND);
+                let kind = if sites::on_runway(pb.x, pb.z, 0.0) { TOUCH_RUNWAY } else { CRASH_GROUND };
+                consider(t, kind);
+            }
+            if let Some(t) = sites::island_hit(pa, pb, r) {
+                consider(t, CRASH_BUILDING);
             }
             if let Some(t) = self.world.segment_hit(pa, pb, r) {
                 consider(t, CRASH_BUILDING);
@@ -420,7 +447,9 @@ impl Sim {
         let mut t = 0.0;
         while t < IMPACT_LOOKAHEAD {
             let next = s.position + s.velocity * (t + IMPACT_STEP);
-            if next.y <= m {
+            // An approach to a runway or the deck is not a terrain threat (the landing limits judge it).
+            let safe_zone = sites::on_runway(next.x, next.z, 60.0) || sites::on_deck(next.x, next.z, 40.0);
+            if next.y <= m && !safe_zone {
                 let f = if prev.y <= m { 0.0 } else { (prev.y - m) / (prev.y - next.y) };
                 return t + f * IMPACT_STEP;
             }
@@ -496,11 +525,33 @@ impl Sim {
         let mut next = BodyState { position, velocity, orientation, angular_velocity, fuel, ..st };
 
         if let Some((t, kind)) = self.find_contact(&st, &next) {
+            let sink = -next.velocity.y;
+            let fwd = next.orientation.rotate(Vec3::new(1.0, 0.0, 0.0));
+            let right = next.orientation.rotate(Vec3::new(0.0, 0.0, 1.0));
+            let up = next.orientation.rotate(Vec3::new(0.0, 1.0, 0.0));
+            let safe = sites::touchdown_ok(next.velocity, fwd, right, up);
             next.position = st.position + (next.position - st.position) * t;
             next.velocity = Vec3::ZERO;
             next.angular_velocity = Vec3::ZERO;
-            next.crashed = true;
-            next.crash_kind = kind;
+            match kind {
+                TOUCH_RUNWAY | TOUCH_DECK if safe => {
+                    next.landed = true;
+                    next.landing_kind = if kind == TOUCH_DECK { sites::LAND_DECK } else { sites::LAND_RUNWAY };
+                    next.landing_sink = sink.max(0.0);
+                }
+                TOUCH_RUNWAY => {
+                    next.crashed = true;
+                    next.crash_kind = CRASH_GROUND;
+                }
+                TOUCH_DECK => {
+                    next.crashed = true;
+                    next.crash_kind = CRASH_BUILDING;
+                }
+                _ => {
+                    next.crashed = true;
+                    next.crash_kind = kind;
+                }
+            }
         }
         self.state = next;
     }
@@ -509,15 +560,15 @@ impl Sim {
         if !(dt.is_finite() && dt > 0.0) {
             return;
         }
-        if !self.state.crashed {
+        if !self.state.crashed && !self.state.landed {
             let n = (dt / MAX_SUBSTEP).ceil().max(1.0) as usize;
             let h = dt / n as f64;
             let t_start = self.state.time;
             for i in 0..n {
                 self.substep(h);
                 self.state.time = t_start + (i + 1) as f64 * h;
-                if self.state.crashed {
-                    self.state.crash_time = self.state.time;
+                if self.state.crashed || self.state.landed {
+                    self.state.crash_time = self.state.time; // time of the crash or touchdown
                     break;
                 }
             }
@@ -632,6 +683,85 @@ mod tests {
         run(&mut lo, 5.0);
         run(&mut hi, 5.0);
         assert!(hi.derived.airspeed > lo.derived.airspeed);
+    }
+
+    /// Put the aircraft so its lowest hull point is `gap` m above `surface_y` at (x, z), flying
+    /// with the given velocity, then advance a single sub-step.
+    fn touch(s: &mut Sim, x: f64, z: f64, surface_y: f64, gap: f64, vel: Vec3) {
+        let r = s.params.hull_radius;
+        let low = s.params.hull.iter()
+            .map(|p| s.state.orientation.rotate(Vec3::new(p[0], p[1], p[2])).y)
+            .fold(f64::MAX, f64::min);
+        s.state.position = Vec3::new(x, surface_y + r + gap - low, z);
+        s.state.velocity = vel;
+        s.set_controls(Controls { throttle: 0.3, ..Controls::default() });
+        s.substep(MAX_SUBSTEP);
+    }
+
+    #[test]
+    fn gentle_touchdown_on_a_runway_is_a_landing() {
+        let mut s = fighter();
+        touch(&mut s, -5000.0, -3500.0, 0.0, 0.005, Vec3::new(0.0, -2.0, -70.0));
+        assert!(s.state.landed && !s.state.crashed);
+        assert_eq!(s.state.landing_kind, sites::LAND_RUNWAY);
+        assert!(s.state.landing_sink > 1.0 && s.state.landing_sink < 3.0);
+        assert_eq!(s.state.velocity.length(), 0.0);
+    }
+
+    #[test]
+    fn hard_or_fast_runway_contact_crashes() {
+        let mut hard = fighter();
+        touch(&mut hard, -5000.0, -3500.0, 0.0, 0.005, Vec3::new(0.0, -12.0, -70.0));
+        assert!(hard.state.crashed && !hard.state.landed);
+        assert_eq!(hard.state.crash_kind, CRASH_GROUND);
+        let mut fast = fighter();
+        touch(&mut fast, 4300.0, 2500.0, 0.0, 0.005, Vec3::new(0.0, -2.0, -160.0));
+        assert!(fast.state.crashed);
+    }
+
+    #[test]
+    fn same_touchdown_beside_the_runway_is_a_crash() {
+        let mut s = fighter();
+        touch(&mut s, -5000.0 + 200.0, -3500.0, 0.0, 0.005, Vec3::new(0.0, -2.0, -70.0));
+        assert!(s.state.crashed && !s.state.landed);
+        assert_eq!(s.state.crash_kind, CRASH_GROUND);
+    }
+
+    #[test]
+    fn carrier_deck_catches_a_gentle_touchdown() {
+        let mut s = fighter();
+        touch(&mut s, sites::CARRIER_CX, sites::CARRIER_CZ + 60.0, sites::CARRIER_DECK_Y, 0.005, Vec3::new(0.0, -2.5, -65.0));
+        assert!(s.state.landed, "state: {:?}", s.state.crash_kind);
+        assert_eq!(s.state.landing_kind, sites::LAND_DECK);
+        assert!(s.state.position.y > sites::CARRIER_DECK_Y - 0.5, "stays on the deck, y = {}", s.state.position.y);
+    }
+
+    #[test]
+    fn carrier_hull_and_island_are_solid_and_the_sea_is_not_a_runway() {
+        let mut hull = fighter();
+        touch(&mut hull, sites::CARRIER_CX + 20.0, sites::CARRIER_CZ, 10.0, 0.005, Vec3::new(0.0, -1.0, -65.0));
+        assert!(hull.state.crashed, "below deck level inside the footprint is the hull");
+        assert_eq!(hull.state.crash_kind, CRASH_BUILDING);
+        let mut island = fighter();
+        touch(&mut island, sites::CARRIER_CX + sites::ISLAND_X, sites::CARRIER_CZ + sites::ISLAND_Z, 30.0, 0.5, Vec3::new(0.0, -0.5, -65.0));
+        assert!(island.state.crashed && island.state.crash_kind == CRASH_BUILDING);
+        let mut sea = fighter();
+        touch(&mut sea, sites::CARRIER_CX + 200.0, sites::CARRIER_CZ, 0.0, 0.005, Vec3::new(0.0, -1.0, -65.0));
+        assert!(sea.state.crashed && sea.state.crash_kind == CRASH_GROUND);
+    }
+
+    #[test]
+    fn approach_to_a_runway_is_not_reported_as_terrain_impact() {
+        let mut s = fighter();
+        s.state.position = Vec3::new(-5000.0, 30.0, -3500.0 + 600.0);
+        s.state.velocity = Vec3::new(0.0, -6.0, -70.0);
+        s.refresh_derived();
+        assert_eq!(s.derived.impact_time, IMPACT_NONE);
+        let mut off = fighter();
+        off.state.position = Vec3::new(-5000.0 + 900.0, 30.0, -3500.0 + 600.0);
+        off.state.velocity = Vec3::new(0.0, -6.0, -70.0);
+        off.refresh_derived();
+        assert!(off.derived.impact_time < IMPACT_NONE);
     }
 
     #[test]

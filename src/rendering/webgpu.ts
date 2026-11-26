@@ -2,6 +2,7 @@ import { GLOBALS_BYTES, GLOBALS_FLOATS, packGlobals } from './globals';
 import type { CameraState, RenderStats, Renderer } from './Renderer';
 import { buildTestScene } from './scene';
 import { TERRAIN_WGSL } from '../terrain/terrainShader';
+import { CARRIER } from '../world/sites';
 
 const COMMON = /* wgsl */ `
 struct Globals {
@@ -77,21 +78,48 @@ struct VOut {
   @location(0) nrm: vec3<f32>,
   @location(1) rel: vec3<f32>,
   @location(2) tint: f32,
+  @location(3) @interpolate(flat) kind: f32,
 };
 @vertex fn vs(v: VIn) -> VOut {
-  let world = vec3<f32>(v.inst.x + v.pos.x * v.inst.z, v.pos.y * v.inst.w, v.inst.y + v.pos.z * v.inst.z);
+  // A negative size marks a render-only ship part: fract(-size) * 4 is its kind, floor(-size) its footprint.
+  let sz = abs(v.inst.z);
+  let kind = select(0.0, floor(fract(sz) * 4.0 + 0.5), v.inst.z < 0.0);
+  let size = select(sz, floor(sz), v.inst.z < 0.0);
+  let world = vec3<f32>(v.inst.x + v.pos.x * size, v.pos.y * v.inst.w, v.inst.y + v.pos.z * size);
   let rel = world - g.camPos.xyz;
   var o: VOut;
   o.clip = g.viewProj * vec4<f32>(rel, 1.0);
   o.nrm = v.nrm;
   o.rel = rel;
   o.tint = hash2(v.inst.xy);
+  o.kind = kind;
   return o;
 }
 @fragment fn fs(in: VOut) -> @location(0) vec4<f32> {
   let n = normalize(in.nrm);
   let l = vec3<f32>(0.50508, 0.80812, 0.30305);
-  let base = mix(vec3<f32>(0.55, 0.56, 0.60), vec3<f32>(0.70, 0.62, 0.50), in.tint);
+  var base = mix(vec3<f32>(0.55, 0.56, 0.60), vec3<f32>(0.70, 0.62, 0.50), in.tint);
+  if (in.kind > 0.5) {
+    let wp = in.rel + g.camPos.xyz;
+    if (in.kind < 1.5) {
+      if (n.y > 0.5) {
+        let dx = wp.x - ${CARRIER.cx.toFixed(1)};
+        let dz = wp.z - ${CARRIER.cz.toFixed(1)};
+        base = vec3<f32>(0.20, 0.21, 0.22);
+        let edge = step(${(CARRIER.halfWid - 1.5).toFixed(1)}, abs(dx));
+        let dash = step(abs(dx), 0.5) * step(fract(dz / 24.0), 0.55);
+        let lane = step(abs(abs(dx) - 14.0), 0.35) * step(fract(dz / 48.0), 0.7);
+        let mark = step(abs(abs(dz) - ${(CARRIER.halfLen - 22).toFixed(1)}), 1.2) * step(abs(dx), ${(CARRIER.halfWid - 3).toFixed(1)});
+        base = mix(base, vec3<f32>(0.92, 0.90, 0.80), max(max(edge, dash), max(lane, mark)));
+      } else {
+        base = select(vec3<f32>(0.30, 0.34, 0.38), vec3<f32>(0.42, 0.10, 0.09), wp.y < 4.0);
+        base = base * (0.8 + 0.2 * step(0.5, fract(wp.y / 6.0)));
+      }
+    } else {
+      base = vec3<f32>(0.58, 0.60, 0.62);
+      base = mix(base, vec3<f32>(0.12, 0.16, 0.20), step(abs(fract(wp.y / 9.0) - 0.5), 0.12) * step(abs(n.y), 0.5));
+    }
+  }
   let col = base * (0.35 + 0.65 * max(dot(n, l), 0.0));
   return vec4<f32>(applyFog(col, length(in.rel)), 1.0);
 }

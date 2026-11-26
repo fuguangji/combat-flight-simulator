@@ -32,11 +32,17 @@ export const S = {
   THRUST: 34, // N
   G_AVAIL: 35, // load factor the airframe can currently produce
   ELEVATOR: 36, // surface position -1..1
+  LANDED: 37, // touched down within the limits (0/1)
+  LAND_KIND: 38, // 0 none, 1 runway, 2 carrier deck
+  LAND_SINK: 39, // sink rate at touchdown, m/s
 } as const;
 
 export const CRASH_NONE = 0;
 export const CRASH_GROUND = 1;
 export const CRASH_BUILDING = 2;
+export const LAND_NONE = 0;
+export const LAND_RUNWAY = 1;
+export const LAND_DECK = 2;
 export const IMPACT_CLEAR = 99;
 
 export interface AircraftSnapshot {
@@ -69,6 +75,9 @@ export interface AircraftSnapshot {
   thrust: number; // N
   gAvailable: number; // g
   elevator: number; // -1..1
+  landed: boolean; // safe touchdown on a runway or deck; the aircraft then stays put
+  landingKind: number; // LAND_*
+  landingSink: number; // m/s at touchdown
 }
 
 export function decodeSnapshot(b: ArrayLike<number>): AircraftSnapshot {
@@ -101,6 +110,9 @@ export function decodeSnapshot(b: ArrayLike<number>): AircraftSnapshot {
     thrust: b[S.THRUST],
     gAvailable: b[S.G_AVAIL],
     elevator: b[S.ELEVATOR],
+    landed: b[S.LANDED] > 0.5,
+    landingKind: b[S.LAND_KIND],
+    landingSink: b[S.LAND_SINK],
   };
 }
 
@@ -128,7 +140,7 @@ function hermite(a: AircraftSnapshot, b: AircraftSnapshot, t: number): Vec3 {
  */
 export function interpolateSnapshots(a: AircraftSnapshot, b: AircraftSnapshot, t: number, smooth = false): AircraftSnapshot {
   const pick = t < 0.5 ? a : b;
-  const useHermite = smooth && !b.crashed && b.time > a.time;
+  const useHermite = smooth && !b.crashed && !b.landed && b.time > a.time;
   return {
     time: lerp(a.time, b.time, t),
     position: useHermite ? hermite(a, b, t) : lerpVec3(a.position, b.position, t),
@@ -159,12 +171,15 @@ export function interpolateSnapshots(a: AircraftSnapshot, b: AircraftSnapshot, t
     thrust: lerp(a.thrust, b.thrust, t),
     gAvailable: lerp(a.gAvailable, b.gAvailable, t),
     elevator: lerp(a.elevator, b.elevator, t),
+    landed: t >= 1 ? b.landed : a.landed,
+    landingKind: b.landingKind,
+    landingSink: b.landingSink,
   };
 }
 
 /** Dead-reckon the newest snapshot forward by `dt` seconds (used when a snapshot is late). */
 export function extrapolateSnapshot(s: AircraftSnapshot, dt: number): AircraftSnapshot {
-  if (s.crashed || dt <= 0) return s;
+  if (s.crashed || s.landed || dt <= 0) return s;
   return {
     ...s,
     time: s.time + dt,

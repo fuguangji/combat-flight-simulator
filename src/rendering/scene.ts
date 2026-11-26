@@ -1,4 +1,5 @@
 import { SEA_LEVEL, sampleTerrain } from '../terrain/procedural';
+import { airportBuildings, carrierParts, inAirportZone } from '../world/sites';
 
 /**
  * Phase-1 test scene: an instanced field of boxes ("towers" and "massifs") over a procedural
@@ -10,7 +11,12 @@ export interface TestScene {
   indices: Uint32Array;
   /** Per instance: x, z, width, height. */
   instances: Float32Array;
+  /** Everything that is drawn: random field + airport buildings + render-only carrier parts. */
   instanceCount: number;
+  /** The first `collisionCount` instances are solid boxes for the physics core (the rest is render-only). */
+  collisionCount: number;
+  /** Size of the random tower / massif field at the start of `instances`. */
+  fieldCount: number;
 }
 
 function mulberry32(seed: number): () => number {
@@ -43,7 +49,9 @@ export function buildTestScene(towers = 3600, massifs = 400, halfExtent = 25_000
 
   const rnd = mulberry32(1337);
   const count = towers + massifs;
-  const instances = new Float32Array(count * 4);
+  const airport = airportBuildings();
+  const carrier = carrierParts();
+  const instances = new Float32Array((count + airport.length + carrier.length) * 4);
   for (let i = 0; i < count; i++) {
     const big = i >= towers;
     // Re-roll the position (bounded, deterministic) until it lands on dry ground, so no tower
@@ -54,11 +62,20 @@ export function buildTestScene(towers = 3600, massifs = 400, halfExtent = 25_000
       x = (rnd() * 2 - 1) * halfExtent;
       z = (rnd() * 2 - 1) * halfExtent;
       const t = sampleTerrain(x, z);
-      if (t.biome !== 'water' && t.height > SEA_LEVEL + 15) break;
+      if (t.biome !== 'water' && t.height > SEA_LEVEL + 15 && !inAirportZone(x, z, 150)) break;
     }
     const w = big ? 400 + rnd() * 1100 : 25 + rnd() * rnd() * 160;
     const h = big ? 250 + rnd() * rnd() * 1300 : 15 + rnd() * rnd() * rnd() * 520;
     instances.set([x, z, w, h], i * 4);
   }
-  return { vertices, indices, instances, instanceCount: count };
+  airport.forEach((b, i) => instances.set(b, (count + i) * 4));
+  carrier.forEach((b, i) => instances.set(b, (count + airport.length + i) * 4));
+  return {
+    vertices,
+    indices,
+    instances,
+    instanceCount: count + airport.length + carrier.length,
+    collisionCount: count + airport.length,
+    fieldCount: count,
+  };
 }

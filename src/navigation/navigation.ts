@@ -1,4 +1,5 @@
 import { sampleTerrain, type Biome } from '../terrain/procedural';
+import { SITE_MARKERS } from '../world/sites';
 /** Lightweight flight navigation display and deterministic infinite-world coordinates. */
 export interface NavigationSnapshot { x: number; y: number; z: number; heading: number; speed: number; }
 const BIOME_COLOUR: Record<Biome, string> = {
@@ -17,6 +18,8 @@ export class NavigationDisplay {
   private waypoint: { x: number; z: number } = { ...INITIAL_WAYPOINT };
   /** Only picks the next waypoint; the terrain itself is fixed so the map matches what is rendered. */
   private waypointSeed = 1337;
+  private siteIndex = -1;
+  private waypointName = '';
   private readonly els = new Map<string, HTMLElement>();
   private lastMapMs = -Infinity;
   private lastMapKey = '';
@@ -38,13 +41,22 @@ export class NavigationDisplay {
     document.head.append(style);
     this.root = document.createElement('div');
     this.root.id = 'navigation-display';
-    this.root.innerHTML = `<div class="nav-title"><span>NAV / 導航</span><span>PROC WORLD</span></div><div class="nav-map"><canvas width="320" height="140"></canvas></div><div class="nav-info"><div class="nav-data"><span id="nav-coord">X 0 / Z 0</span><span id="nav-heading">HDG 000°</span><span id="nav-alt">ALT 0 m</span><span id="nav-waypoint">WP 000 km</span></div><button type="button" id="nav-next">NEXT WAYPOINT / 下一航點</button></div>`;
+    this.root.innerHTML = `<div class="nav-title"><span>NAV / 導航</span><span>PROC WORLD</span></div><div class="nav-map"><canvas width="320" height="140"></canvas></div><div class="nav-info"><div class="nav-data"><span id="nav-coord">X 0 / Z 0</span><span id="nav-heading">HDG 000°</span><span id="nav-alt">ALT 0 m</span><span id="nav-waypoint">WP 000 km</span></div><div class="nav-buttons"><button type="button" id="nav-next">NEXT WAYPOINT / 下一航點</button><button type="button" id="nav-site">AIRFIELD / 機場・航艦</button></div></div>`;
     document.body.append(this.root);
     this.root.querySelector('#nav-next')?.addEventListener('click', () => {
       this.waypointSeed = (this.waypointSeed + 7919) >>> 0;
       const angle = ((this.waypointSeed % 360) * Math.PI) / 180;
       const radius = 8000 + (this.waypointSeed % 12000);
       this.waypoint = { x: Math.sin(angle) * radius, z: -Math.cos(angle) * radius };
+      this.waypointName = '';
+      this.publishWaypoint(true);
+    });
+    // Cycle the waypoint through the airports and the carrier (landing sites).
+    this.root.querySelector('#nav-site')?.addEventListener('click', () => {
+      this.siteIndex = (this.siteIndex + 1) % SITE_MARKERS.length;
+      const site = SITE_MARKERS[this.siteIndex];
+      this.waypoint = { x: site.x, z: site.z };
+      this.waypointName = site.name;
       this.publishWaypoint(true);
     });
     window.addEventListener('cfs:flight-snapshot', (event) => this.update((event as CustomEvent<NavigationSnapshot>).detail));
@@ -79,13 +91,21 @@ export class NavigationDisplay {
       ctx.fillStyle='rgba(72,120,84,.18)';ctx.beginPath();ctx.ellipse(tx,ty,r*1.5,r,0,0,Math.PI*2);ctx.fill();
     }
     const cx=w/2,cy=h/2;
-    const dx=this.waypoint.x-x, dz=this.waypoint.z-z;
-    const angle=Math.atan2(dx,-dz)-heading;
-    const distance=Math.hypot(dx,dz);
-    const px=cx+Math.sin(angle)*Math.min(w*.42,distance/80000*w);
-    const py=cy-Math.cos(angle)*Math.min(h*.42,distance/80000*h);
+    // North-up map: 1200 m per 16 x 14 px tile, the same tiling as the terrain samples above.
+    const toMap=(wx:number,wz:number)=>({x:cx+(wx-x)/75,y:cy+(wz-z)/85.7});
+    for(const site of SITE_MARKERS){
+      const p=toMap(site.x,site.z);
+      if(p.x<-8||p.x>w+8||p.y<-8||p.y>h+8)continue;
+      ctx.fillStyle='#f4f7f2';ctx.strokeStyle='#0b1511';ctx.lineWidth=1.5;
+      if(site.kind==='airport'){ctx.save();ctx.translate(p.x,p.y);ctx.fillRect(-1.5,-7,3,14);ctx.fillRect(-5,-1.5,10,3);ctx.restore();}
+      else{ctx.beginPath();ctx.moveTo(p.x,p.y-6);ctx.lineTo(p.x+5,p.y);ctx.lineTo(p.x,p.y+6);ctx.lineTo(p.x-5,p.y);ctx.closePath();ctx.fill();ctx.stroke();}
+    }
+    const wp=toMap(this.waypoint.x,this.waypoint.z);
+    const px=Math.max(6,Math.min(w-6,wp.x)), py=Math.max(6,Math.min(h-6,wp.y));
     ctx.strokeStyle='#ffc56b';ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(px,py);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle='#a8ffc9';ctx.beginPath();ctx.moveTo(cx,cy-9);ctx.lineTo(cx-6,cy+7);ctx.lineTo(cx+6,cy+7);ctx.closePath();ctx.fill();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(heading);
+    ctx.fillStyle='#a8ffc9';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(-6,7);ctx.lineTo(6,7);ctx.closePath();ctx.fill();
+    ctx.restore();
     ctx.fillStyle='#ffc56b';ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
   }
   private update(s: NavigationSnapshot): void {
@@ -95,10 +115,10 @@ export class NavigationDisplay {
     set('nav-coord',`X ${Math.round(s.x)} / Z ${Math.round(s.z)}`);
     set('nav-heading',`HDG ${String(headingDeg).padStart(3,'0')}°`);
     set('nav-alt',`ALT ${Math.round(s.y).toLocaleString()} m`);
-    set('nav-waypoint',`WP ${distance.toFixed(1)} km`);
+    set('nav-waypoint',`WP ${distance.toFixed(1)} km${this.waypointName ? ` ${this.waypointName}` : ''}`);
     // The map needs ~200 terrain samples: redraw at 10 Hz and only when the picture would change.
     const now = performance.now();
-    const key = `${Math.round(s.x / 40)}|${Math.round(s.z / 40)}|${Math.round(s.heading * 40)}|${this.waypoint.x}|${this.waypoint.z}`;
+    const key = `${Math.round(s.x / 40)}|${Math.round(s.z / 40)}|${Math.round(s.heading * 40)}|${this.waypoint.x}|${this.waypoint.z}|${this.waypointName}`;
     if (document.body.dataset.showMap !== '0' && now - this.lastMapMs >= 100 && key !== this.lastMapKey) {
       this.lastMapMs = now;
       this.lastMapKey = key;

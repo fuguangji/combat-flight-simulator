@@ -59,9 +59,11 @@ describe('terrain sampler', () => {
 describe('test scene', () => {
   it('keeps the instance count and places no building on water', () => {
     const scene = buildTestScene();
-    expect(scene.instanceCount).toBe(4000);
+    expect(scene.fieldCount).toBe(4000);
+    expect(scene.instanceCount).toBeGreaterThan(scene.collisionCount);
+    expect(scene.collisionCount).toBeGreaterThan(scene.fieldCount);
     let wet = 0;
-    for (let i = 0; i < scene.instanceCount; i++) {
+    for (let i = 0; i < scene.fieldCount; i++) {
       if (isWater(scene.instances[i * 4], scene.instances[i * 4 + 1])) wet++;
     }
     // positions are re-rolled up to 12 times, so a stray instance is astronomically unlikely
