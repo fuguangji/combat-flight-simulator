@@ -4,6 +4,7 @@ import weaponCatalog from './combat/weapons.json';
 import { detectCapabilities } from './core/capabilities';
 import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { mountCockpitShell } from './cockpit/cockpitShell';
+import { AircraftView } from './cockpit/aircraftView';
 import { INITIAL_WAYPOINT, NavigationDisplay } from './navigation/navigation';
 import { Hud } from './cockpit/hud';
 import { PanelToggles } from './ui/panelToggles';
@@ -253,12 +254,14 @@ async function boot(): Promise<void> {
     setHangarPreviewActive(false);
     menuPanel.classList.remove('subpage-open');
   };
+  let aircraftView: AircraftView | null = null;
   const applyAircraftChoice = (key: string): void => {
     const next = aircraftRegistry.find(key);
     if (!next || next === aircraft) return;
     aircraft = next;
     hangarPreviewSelected = next;
     setHangarPreviewModel(next);
+    aircraftView?.setAircraft(next);
     aircraftSelect.value = aircraft.key;
     physics.setAircraft(aircraft.toPhysicsArray());
     window.dispatchEvent(new CustomEvent('cfs:aircraft', { detail: aircraft.key }));
@@ -470,6 +473,9 @@ async function boot(): Promise<void> {
   const look = new FreeLook();
   const cockpit = mountCockpitShell();
   cockpit.setAircraft(aircraft.key);
+  aircraftView = new AircraftView(stage);
+  aircraftView.setAircraft(aircraft);
+  aircraftView.setVisible(false);
   let visualGear = 0;
   let visualCanopy = 0;
   window.addEventListener('cfs:gear-toggle', () => { visualGear = visualGear < 0.5 ? 1 : 0; });
@@ -895,12 +901,15 @@ async function boot(): Promise<void> {
 
     if (mode === 'menu' || mode === 'loading') {
       audio.silence();
+      aircraftView?.setVisible(false);
       renderer.render(attractCamera(now));
       hud.draw(null, aircraft, now);
     } else if (mode === 'paused') {
       // frozen picture: same snapshot, same camera as the moment of pausing
       snap = frozenSnap;
+      aircraftView?.setVisible(true);
       if (rig.last) renderer.render(rig.last);
+      aircraftView?.render(look.yaw, look.pitch, stage.clientWidth, stage.clientHeight, Math.min(frameMs / 1000, 0.1));
       hud.draw(snap, aircraft, now, rig.last?.fovY, look);
     } else {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
@@ -920,15 +929,7 @@ async function boot(): Promise<void> {
         c.yaw = Math.max(-0.3, Math.min(0.3, headingError * autopilot.headingGain - lastSnap.angularVelocity[1] * autopilot.yawDamping));
         c.throttle = autopilot.throttle;
       }
-      cockpit.setAnimationControls({
-        pitch: c.pitch,
-        roll: c.roll,
-        yaw: c.yaw,
-        gear: visualGear,
-        flaps: 0,
-        canopy: visualCanopy,
-      });
-      cockpit.updateAnimations(Math.min(frameMs / 1000, 0.1));
+      aircraftView?.setControls({ pitch: c.pitch, roll: c.roll, yaw: c.yaw, gear: visualGear, flaps: 0, canopy: visualCanopy });
       if (touchMode && Math.abs(c.throttle - shownThrottle) > 1e-3) {
         shownThrottle = c.throttle;
         touch.setThrottle(c.throttle);
@@ -980,8 +981,9 @@ async function boot(): Promise<void> {
             camera: cam,
           },
         }));
-        cockpit.setHeadPose(look.yaw, look.pitch, cam.fovY);
+        aircraftView?.setVisible(true);
         renderer.render(cam);
+        aircraftView?.render(look.yaw, look.pitch, stage.clientWidth, stage.clientHeight, Math.min(frameMs / 1000, 0.1));
         hud.draw(snap, aircraft, now, cam.fovY, look);
         if (mode === 'crashed' && crashEl.hidden && !transitioning && now - crashedAtMs > CRASH_CARD_DELAY_MS) {
           showCrashCard(snap);
