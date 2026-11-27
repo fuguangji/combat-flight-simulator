@@ -89,7 +89,6 @@ export class AircraftView {
     if (this.disposed || !this.model) return;
     if (this.canvas.width !== Math.max(1, Math.floor(width * this.renderer.getPixelRatio())) ||
         this.canvas.height !== Math.max(1, Math.floor(height * this.renderer.getPixelRatio()))) this.resize();
-    const cp = Math.cos(pitch);
     // Free-look is deliberately unbounded: 360°, 720°, and looking directly behind all work.
     this.camera.position.set(0, 0, 0);
     this.camera.rotation.order = 'YXZ';
