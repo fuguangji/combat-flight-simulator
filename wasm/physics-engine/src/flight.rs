@@ -353,7 +353,7 @@ impl Sim {
         d.beta = beta;
         d.dynamic_pressure = q;
         d.load_factor = force.y / (mass * G0);
-        d.stall_warning = alpha.abs() > 0.85 * p.alpha_stall;
+        d.stall_warning = v > 30.0 && alpha.abs() > 0.93 * p.alpha_stall;
         let cl_max = lift_coefficient_m(p, p.alpha_stall, m);
         d.g_avail = p.g_limit_pos.min(qs * cl_max / (mass * G0));
         (force, moment, d)

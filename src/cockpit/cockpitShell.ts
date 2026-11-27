@@ -254,7 +254,10 @@ export function mountCockpitShell(): CockpitShell {
           <div class="cockpit-screen" data-title="TARGETS"></div>
           <div class="cockpit-switches">
             <button type="button" data-action="fire" class="primary">STORE / 裝備</button>
+            <button type="button" data-action="missile" class="primary">MISSILE / 導彈</button>
+            <button type="button" data-action="cannon" class="primary">CANNON / 機炮</button>
             <button type="button" data-action="recenter">CENTER / 回正</button>
+            <button type="button" data-action="motion-demo">MOTION / 3D 測試</button>
           </div>
         <details class="cockpit-config">
           <summary>SETTINGS / 設定</summary>
@@ -279,10 +282,15 @@ export function mountCockpitShell(): CockpitShell {
   document.body.append(shell);
 
   const fire = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-fire]')?.click();
+  const missile = (): void => { window.dispatchEvent(new Event('cfs:missile-launch')); };
+  const cannon = (): void => { window.dispatchEvent(new Event('cfs:cannon-trigger')); };
   const ap = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-autopilot]')?.click();
   shell.querySelector('[data-action="fire"]')?.addEventListener('click', fire);
+  shell.querySelector('[data-action="missile"]')?.addEventListener('click', missile);
+  shell.querySelector('[data-action="cannon"]')?.addEventListener('click', cannon);
   shell.querySelector('[data-action="autopilot"]')?.addEventListener('click', ap);
   shell.querySelector('[data-action="recenter"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:look-recenter')));
+  shell.querySelector('[data-action="motion-demo"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:motion-demo-toggle')));
 
   const KNOBS: Record<string, { min: number; max: number; step: number; wrap?: boolean; fmt: (v: number) => string }> = {
     'ap-alt': { min: 500, max: 12000, step: 100, fmt: (v) => `${v}m` },

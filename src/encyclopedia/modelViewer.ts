@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import type { AircraftDefinition } from '../aircraft/registry';
-import { aircraftAnchors, buildAircraftModel } from './aircraftModels';
 import type { Anchor } from './modelKit';
 import { buildWeaponModel, weaponAnchors } from './weaponModels';
+import { createModularAircraft, createProceduralAircraftConfig, type AircraftVisualConfig } from '../aircraft/builder/modularAircraft';
 
 type WeaponDefinition = {
   id: string;
@@ -41,6 +41,7 @@ export class EncyclopediaViewer {
   private readonly root = new THREE.Group();
   private readonly aircraft: AircraftDefinition[];
   private readonly weapons: WeaponDefinition[];
+  private readonly visualConfigs: Record<string, unknown> = import.meta.glob('../aircraft/visuals/*.json', { eager: true, import: 'default' });
   private readonly elements: Elements;
   private active = false;
   private resizeObserver: ResizeObserver | null = null;
@@ -73,7 +74,7 @@ export class EncyclopediaViewer {
     this.camera.lookAt(0, 0, 0);
 
     elements.category.addEventListener('change', () => {
-      this.setCategory(elements.category.value === 'equipment' ? 'equipment' : 'aircraft');
+      this.setCategory(elements.category.value === 'missiles' ? 'missiles' : elements.category.value === 'equipment' ? 'equipment' : 'aircraft');
     });
     elements.canvas.addEventListener('pointerdown', (event) => {
       this.dragging = true;
@@ -134,7 +135,7 @@ export class EncyclopediaViewer {
     this.renderer.render(this.scene, this.camera);
   };
 
-  private setCategory(category: 'aircraft' | 'equipment'): void {
+  private setCategory(category: 'aircraft' | 'equipment' | 'missiles'): void {
     this.elements.category.value = category;
     this.elements.list.replaceChildren();
     if (category === 'aircraft') {
@@ -148,6 +149,17 @@ export class EncyclopediaViewer {
       });
       const first = this.elements.list.querySelector<HTMLButtonElement>('button');
       if (first && this.aircraft[0]) this.showAircraft(this.aircraft[0], first);
+    } else if (category === 'equipment') {
+      this.weapons.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'encyclopedia-entry';
+        button.textContent = `${String(index + 1).padStart(2, '0')}  ${item.name}`;
+        button.addEventListener('click', () => this.showWeapon(item, button));
+        this.elements.list.append(button);
+      });
+      const first = this.elements.list.querySelector<HTMLButtonElement>('button');
+      if (first && this.weapons[0]) this.showWeapon(this.weapons[0], first);
     } else {
       this.weapons.forEach((item, index) => {
         const button = document.createElement('button');
@@ -200,9 +212,9 @@ export class EncyclopediaViewer {
       `升限 ${s.ceilingM.toLocaleString()} m`,
       `作戰半徑 ${s.rangeKm.toLocaleString()} km`,
     ].join('　·　');
-    this.replaceModel(this.createAircraftModel(item.id));
+    this.replaceModel(this.buildAircraft(item));
     if (this.elements.chart) this.elements.chart.innerHTML = this.aircraftChart(item);
-    this.showParts(aircraftAnchors(item.id, { hasAfterburner: item.hasAfterburner, thrustKN: item.specs.thrustKN }));
+    this.showParts([]);
   }
 
   private showWeapon(item: WeaponDefinition, button: HTMLButtonElement): void {
@@ -223,8 +235,18 @@ export class EncyclopediaViewer {
 
   /** Public factory so the encyclopedia and live scene use the exact same geometry. */
   createAircraftModel(id: number): THREE.Group {
-    const def = this.aircraft.find((a) => a.id === id);
-    return buildAircraftModel(id, def ? { hasAfterburner: def.hasAfterburner, thrustKN: def.specs.thrustKN } : {});
+    const item = this.aircraft.find((aircraft) => aircraft.id === id) ?? this.aircraft[0];
+    if (!item) throw new Error('No aircraft is registered');
+    return this.buildAircraft(item);
+  }
+
+  private buildAircraft(item: AircraftDefinition): THREE.Group {
+    const visualPath = Object.keys(this.visualConfigs).find((path) => path.endsWith(`/${item.key}.json`));
+    const custom = visualPath ? this.visualConfigs[visualPath] as AircraftVisualConfig : undefined;
+    const model = createModularAircraft(custom ?? createProceduralAircraftConfig(item.id));
+    model.scale.setScalar(1.05);
+    model.userData.aircraftKey = item.key;
+    return model;
   }
 
   private showParts(anchors: Anchor[]): void {

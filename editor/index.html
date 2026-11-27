@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#07110f" />
+  <title>Aircraft Visual Editor · Combat Flight Simulator</title>
+</head>
+<body>
+  <div class="editor-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">CFS</span><div><strong>AIRCRAFT VISUAL EDITOR</strong><small>MODULAR GEOMETRY WORKBENCH</small></div></div>
+      <div class="top-actions">
+        <a class="button subtle" href="../">返回飛行模擬器 ↗</a>
+        <button id="undo" class="subtle" title="復原">↶ 復原</button>
+        <button id="redo" class="subtle" title="重做">↷ 重做</button>
+        <button id="import" class="subtle">匯入 JSON</button>
+        <button id="export" class="primary">匯出 JSON</button>
+        <input id="file-input" type="file" accept=".json,application/json" hidden />
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="left-panel panel">
+        <div class="panel-heading"><div><span class="eyebrow">01 / ASSEMBLY</span><h1>模型組件</h1></div><span id="part-count" class="count">0 PARTS</span></div>
+        <div class="quick-tools">
+          <button data-add="box"><b>＋</b> 方塊</button>
+          <button data-add="cylinder"><b>＋</b> 圓柱</button>
+          <button data-add="cone"><b>＋</b> 圓錐</button>
+          <button data-add="sphere"><b>＋</b> 球體</button>
+          <button data-add="torus"><b>＋</b> 圓環</button>
+          <button data-add="polygon"><b>＋</b> 多邊形</button>
+          <button id="add-cannon" title="新增固定式機炮外觀零件"><b>＋</b> 機炮外觀</button>
+        </div>
+        <div class="tool-row">
+          <button id="duplicate">複製零件</button>
+          <button id="mirror">沿 Z 鏡像</button>
+          <button id="delete" class="danger">刪除</button>
+        </div>
+        <div id="parts-list" class="parts-list" aria-label="模型零件清單"></div>
+        <div class="panel-foot">
+          <button id="load-viper" class="wide">載入 Viper T21 範例</button>
+          <button id="clear-model" class="wide subtle">清空模型</button>
+        </div>
+      </aside>
+
+      <section class="viewport-panel">
+        <div class="viewport-toolbar">
+          <div><span class="eyebrow">02 / LIVE VIEWPORT</span><input id="model-name-input" class="model-name-input" type="text" value="Untitled Aircraft" aria-label="模型名稱" /></div>
+          <div class="view-actions">
+            <button id="view-reset" title="重設視角">重設視角</button>
+            <button id="toggle-grid" class="active">格線</button>
+            <button id="toggle-axes" class="active">座標軸</button>
+          </div>
+        </div>
+        <div id="viewport"><canvas id="preview" aria-label="可互動的 3D 模型預覽"></canvas>
+          <div class="viewport-hint">拖曳旋轉 · 滾輪縮放 · 點擊選取零件</div>
+          <div id="empty-hint" class="empty-hint" hidden>尚無模型零件<br /><small>從左側新增幾何形狀開始</small></div>
+        </div>
+        <div class="viewport-status"><span><i class="status-dot"></i> LIVE PREVIEW</span><span id="selection-status">未選取零件</span><span>Y-UP · X-FORWARD · Z-RIGHT</span></div>
+      </section>
+
+      <aside class="right-panel panel">
+        <div class="panel-heading"><div><span class="eyebrow">03 / INSPECTOR</span><h2>零件屬性</h2></div></div>
+        <div id="inspector-empty" class="inspector-empty">先從左側清單選取一個零件。<br /><small>所有變更都會即時反映在 3D 預覽。</small></div>
+        <form id="inspector" class="inspector" hidden>
+          <label>零件名稱<input id="part-name" type="text" autocomplete="off" /></label>
+          <label>零件 ID<input id="part-id" type="text" autocomplete="off" /></label>
+          <label>幾何類型<select id="part-shape"><option value="box">方塊 Box</option><option value="cylinder">圓柱 Cylinder</option><option value="cone">圓錐 Cone</option><option value="sphere">球體 Sphere</option><option value="torus">圓環 Torus</option><option value="polygon">多邊形 Polygon</option></select></label>
+          <label>父節點<select id="part-parent"><option value="">根節點</option></select></label>
+          <div class="section-label">TRANSFORM / 變換</div>
+          <div class="field-grid">
+            <label>位置 X<input id="pos-x" type="number" step="0.05" /></label><label>位置 Y<input id="pos-y" type="number" step="0.05" /></label><label>位置 Z<input id="pos-z" type="number" step="0.05" /></label>
+            <label>旋轉 X°<input id="rot-x" type="number" step="1" /></label><label>旋轉 Y°<input id="rot-y" type="number" step="1" /></label><label>旋轉 Z°<input id="rot-z" type="number" step="1" /></label>
+            <label>縮放 X<input id="scale-x" type="number" min="0.01" step="0.05" /></label><label>縮放 Y<input id="scale-y" type="number" min="0.01" step="0.05" /></label><label>縮放 Z<input id="scale-z" type="number" min="0.01" step="0.05" /></label>
+          </div>
+          <div class="section-label">GEOMETRY / 幾何尺寸</div>
+          <div class="field-grid">
+            <label>寬度<input id="dim-width" type="number" min="0.01" step="0.1" /></label><label>高度<input id="dim-height" type="number" min="0.01" step="0.1" /></label><label>深度<input id="dim-depth" type="number" min="0.01" step="0.1" /></label>
+            <label>半徑<input id="dim-radius" type="number" min="0.01" step="0.05" /></label><label>頂端半徑<input id="dim-radius-top" type="number" min="0" step="0.05" /></label><label>底端半徑<input id="dim-radius-bottom" type="number" min="0" step="0.05" /></label>
+            <label>圓環管徑<input id="dim-tube" type="number" min="0.01" step="0.01" /></label><label>分段數<input id="dim-segments" type="number" min="3" max="96" step="1" /></label>
+          </div>
+          <label class="polygon-field">頂點座標（JSON 二維陣列）<textarea id="part-vertices" rows="5" spellcheck="false"></textarea></label>
+          <div class="section-label">MATERIAL / 材質</div>
+          <div class="field-grid material-grid">
+            <label>顏色<input id="part-color" type="color" /></label>
+            <label>金屬度<input id="part-metalness" type="range" min="0" max="1" step="0.01" /><output id="metalness-value"></output></label>
+            <label>粗糙度<input id="part-roughness" type="range" min="0" max="1" step="0.01" /><output id="roughness-value"></output></label>
+            <label>透明度<input id="part-opacity" type="range" min="0.05" max="1" step="0.01" /><output id="opacity-value"></output></label>
+          </div>
+          <label class="check-line"><input id="part-visible" type="checkbox" /> 顯示此零件</label>
+        </form>
+        <div class="panel-foot inspector-foot"><p id="autosave-status">本機編輯暫存已啟用</p><p>匯出後將 JSON 放入 <code>src/aircraft/visuals/</code>，檔名使用機型 key。</p></div>
+      </aside>
+    </main>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <script type="module" src="/src/editor/main.ts"></script>
+</body>
+</html>
