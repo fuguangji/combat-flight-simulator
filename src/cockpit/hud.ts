@@ -23,6 +23,48 @@ export class Hud {
   compact = false;
   /** UI scale of the frame being drawn (used by the text / stroke helpers). */
   private u = 1;
+  private readonly orbLaunches: number[] = [];
+
+  /** Trigger a harmless screen-space sphere effect from the aircraft nose. */
+  launchOrb(nowMs = performance.now()): void {
+    if (this.orbLaunches.length >= 4) this.orbLaunches.shift();
+    this.orbLaunches.push(nowMs);
+  }
+
+  private drawOrbEffects(nowMs: number, cx: number, cy: number, h: number, u: number): void {
+    const { ctx } = this;
+    const duration = 1050;
+    for (let i = this.orbLaunches.length - 1; i >= 0; i--) {
+      const age = nowMs - this.orbLaunches[i];
+      if (age >= duration || age < 0) { if (age >= duration) this.orbLaunches.splice(i, 1); continue; }
+      const t = age / duration;
+      const ease = 1 - Math.pow(1 - t, 2);
+      const x = cx;
+      const y = cy + h * (0.12 - 0.29 * ease);
+      const radius = u * (17 * (1 - t) + 3.5 * t);
+      const alpha = Math.sin(Math.PI * t) * 0.92;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = 'rgba(125,255,210,.58)';
+      ctx.lineWidth = Math.max(1, radius * 0.28);
+      ctx.shadowColor = '#7dffd2';
+      ctx.shadowBlur = radius * 1.7;
+      ctx.beginPath();
+      ctx.moveTo(x, y + radius * 2.8);
+      ctx.lineTo(x, y + radius * 0.8);
+      ctx.stroke();
+      const sphere = ctx.createRadialGradient(x - radius * 0.34, y - radius * 0.42, radius * 0.08, x, y, radius);
+      sphere.addColorStop(0, '#f3fff9');
+      sphere.addColorStop(0.24, '#a9ffe0');
+      sphere.addColorStop(0.68, '#35bfa0');
+      sphere.addColorStop(1, 'rgba(9,75,68,.9)');
+      ctx.fillStyle = sphere;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
@@ -372,6 +414,7 @@ export class Hud {
         ctx.lineWidth = 1.5 * u;
       }
     }
+    this.drawOrbEffects(nowMs, cx, cy, h, u);
     ctx.fillStyle = GREEN;
   }
 
