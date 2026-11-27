@@ -35,6 +35,7 @@ export class CockpitVisualRenderer {
   }
 
   setConfig(input: AircraftVisualInput | null): void {
+    this.disposeModel();
     this.root.replaceChildren();
     this.componentElements.clear();
     this.partElements.clear();
@@ -46,7 +47,6 @@ export class CockpitVisualRenderer {
       return;
     }
 
-    const byId = new Map(this.config.components.map((component) => [component.id, component]));
     const children = new Map<string, AircraftVisualComponent[]>();
     for (const component of this.config.components) {
       if (!component.parent) continue;
@@ -98,12 +98,24 @@ export class CockpitVisualRenderer {
   }
 
   dispose(): void {
+    this.disposeModel();
     this.root.remove();
     this.componentElements.clear();
     this.partElements.clear();
     this.controller = null;
     this.model = null;
     this.config = null;
+  }
+
+  private disposeModel(): void {
+    this.model?.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      mesh.geometry?.dispose();
+      if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+      else if (mesh.material) mesh.material.dispose();
+    });
+    this.model = null;
+    this.controller = null;
   }
 
   private syncTransforms(): void {
