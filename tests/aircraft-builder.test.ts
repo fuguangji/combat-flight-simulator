@@ -71,7 +71,7 @@ describe('modular aircraft component hierarchy', () => {
 
   it('supports visibility and primitive dimensions for standalone geometry details', () => {
     const part = createAircraftPart({
-      id: 'engine', shape: 'cylinder', radiusTop: 0.2, radiusBottom: 0.3, height: 2,
+      id: 'engine', componentId: 'engine-component', shape: 'cylinder', radiusTop: 0.2, radiusBottom: 0.3, height: 2,
       position: [1, 2, 3], rotation: [0, 0, 1], scale: [2, 1, 1], visible: false,
     });
     expect(part.visible).toBe(false);
