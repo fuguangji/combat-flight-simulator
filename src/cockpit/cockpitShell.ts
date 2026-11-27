@@ -1,10 +1,7 @@
 /**
- * Airframe-fixed cockpit shell.
- *
- * The cockpit is a small CSS 3D scene, not a flat HUD layer. Head rotation is
- * applied as the inverse camera rotation around the pilot's eye point. Each
- * cockpit surface has a real depth offset, so it translates with perspective
- * parallax instead of simply spinning in place.
+ * Cockpit interaction overlay.
+ * Aircraft structure and cockpit hardware are rendered as editor-authored 3D meshes;
+ * this module contains only clickable controls and configuration UI.
  */
 import { variantFor } from './panelVariants';
 import { knobAngle, knobDrag, wrapValue } from './knob';
@@ -230,7 +227,35 @@ export function mountCockpitShell(): CockpitShell {
       .canopy-post.right {right:1%;}
     }
   `;
-  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    #cockpit-visual-model,.canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }\n  `;
+  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    #cockpit-visual-model,.canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }
+    #cockpit-console {
+      position:fixed !important; inset:auto 10px 10px !important;
+      width:auto !important; height:auto !important; transform:none !important;
+      display:flex !important; align-items:flex-end !important; justify-content:center !important;
+      pointer-events:none !important;
+    }
+    #cockpit-console > .cockpit-label,
+    #cockpit-console > #cockpit-flight-readout,
+    #cockpit-console > .cockpit-help,
+    #cockpit-console .bay-left,
+    #cockpit-console .bay-centre,
+    #cockpit-console .cockpit-screen { display:none !important; }
+    #cockpit-console .bay-right {
+      position:static !important; inset:auto !important; width:auto !important; height:auto !important;
+      display:flex !important; flex-direction:column !important; align-items:center !important;
+      gap:6px !important; padding:0 !important; margin:0 !important;
+      border:0 !important; background:transparent !important; box-shadow:none !important;
+      pointer-events:auto !important;
+    }
+    #cockpit-console .cockpit-switches {
+      display:flex !important; flex-wrap:wrap !important; justify-content:center !important; gap:5px !important;
+    }
+    #cockpit-console button {
+      min-height:30px; padding:6px 9px; font-size:9px;
+      background:rgba(5,15,12,.78); backdrop-filter:blur(8px);
+    }
+    #cockpit-console details { pointer-events:auto; background:rgba(5,15,12,.82); }
+  `;
   document.head.append(style);
 
   const shell = document.createElement('div');
@@ -280,7 +305,6 @@ export function mountCockpitShell(): CockpitShell {
       </section>
     </div>`;
   document.body.append(shell);
-  const visualRenderer = new CockpitVisualRenderer(shell.querySelector<HTMLElement>('#cockpit-airframe')!);
 
   const fire = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-fire]')?.click();
   const missile = (): void => { window.dispatchEvent(new Event('cfs:missile-launch')); };
