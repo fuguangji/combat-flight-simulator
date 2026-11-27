@@ -281,7 +281,6 @@ export function mountCockpitShell(): CockpitShell {
             <button type="button" data-action="recenter">CENTER / 回正</button>
             <button type="button" data-action="gear">GEAR / 起落架</button>
             <button type="button" data-action="canopy">CANOPY / 座艙罩</button>
-            <button type="button" data-action="orb">ORB / 球體演出</button>
           </div>
         <details class="cockpit-config">
           <summary>SETTINGS / 設定</summary>
@@ -317,7 +316,6 @@ export function mountCockpitShell(): CockpitShell {
   shell.querySelector('[data-action="recenter"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:look-recenter')));
   shell.querySelector('[data-action="gear"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:gear-toggle')));
   shell.querySelector('[data-action="canopy"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:canopy-toggle')));
-  shell.querySelector('[data-action="orb"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:orb-launch')));
 
   const KNOBS: Record<string, { min: number; max: number; step: number; wrap?: boolean; fmt: (v: number) => string }> = {
     'ap-alt': { min: 500, max: 12000, step: 100, fmt: (v) => `${v}m` },
