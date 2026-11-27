@@ -230,7 +230,8 @@ export function mountCockpitShell(): CockpitShell {
       .canopy-post.right {right:1%;}
     }
   `;
-  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    #cockpit-visual-model,.canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }\n  `;\n  document.head.append(style);
+  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    #cockpit-visual-model,.canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }\n  `;
+  document.head.append(style);
 
   const shell = document.createElement('div');
   shell.id = 'cockpit-shell';
@@ -405,7 +406,8 @@ export function mountCockpitShell(): CockpitShell {
       shell.dataset.layout = v.layout;
       shell.dataset.canopy = v.canopy;
       shell.dataset.seats = String(v.seats);
-      shell.dataset.customModel = 'true';\n      shell.style.setProperty('--cp-accent', v.accent);
+      shell.dataset.customModel = 'true';
+      shell.style.setProperty('--cp-accent', v.accent);
       shell.style.setProperty('--cp-body', v.body);
       shell.style.setProperty('--cp-trim', v.trim);
       const plate = shell.querySelector('#cockpit-plate');
