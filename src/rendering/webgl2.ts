@@ -19,7 +19,7 @@ const COMMON_FS = /* glsl */ `
 const vec3 HORIZON = vec3(0.72, 0.80, 0.88);
 const vec3 ZENITH = vec3(0.16, 0.36, 0.74);
 vec3 applyFog(vec3 c, float dist) {
-  float f = 1.0 - exp(-pow(dist / 30000.0, 1.6));
+  float f = 1.0 - exp(-pow(dist / 55000.0, 1.6));
   return mix(c, HORIZON, clamp(f, 0.0, 1.0));
 }
 float hash2(vec2 p) {
