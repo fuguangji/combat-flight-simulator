@@ -12,7 +12,7 @@ export interface AircraftVisualComponent {
 }
 export interface AircraftVisualPart {
   id: string;
-  componentId: string;
+  componentId?: string;
   name?: string;
   shape: AircraftPartShape;
   position?: Vec3Tuple;
