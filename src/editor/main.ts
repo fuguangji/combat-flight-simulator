@@ -464,7 +464,7 @@ const addCockpitInterior = (): void => {
     });
   }
 
-  const canopy = addComponentNode('canopy', '座艙罩', [-.35, .55, 0], { channel: 'canopy', axis: 'z', min: 0, max: 48 * radians });
+  const canopy = addComponentNode('cockpit-canopy', '座艙罩', [-.35, .55, 0], { channel: 'canopy', axis: 'z', min: 0, max: 48 * radians });
   config.components[config.components.length - 1].parent = interior;
   addDetail(canopy, 'canopy-glass', '座艙罩透明罩', 'sphere', {
     radius: 1, scale: [1.55, .68, .86], position: [.35, .12, 0], color: '#73b9c6',
