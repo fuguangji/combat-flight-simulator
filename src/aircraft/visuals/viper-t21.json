@@ -343,7 +343,7 @@
       ]
     },
     {
-      "id": "canopy",
+      "id": "cockpit-canopy",
       "name": "座艙罩",
       "parent": "cockpit-interior",
       "position": [
@@ -1271,7 +1271,7 @@
     },
     {
       "id": "canopy-glass",
-      "componentId": "canopy",
+      "componentId": "cockpit-canopy",
       "name": "座艙罩透明罩",
       "shape": "sphere",
       "color": "#73b9c6",
@@ -1292,7 +1292,7 @@
     },
     {
       "id": "canopy-frame",
-      "componentId": "canopy",
+      "componentId": "cockpit-canopy",
       "name": "座艙罩邊框",
       "shape": "torus",
       "color": "#657b80",
