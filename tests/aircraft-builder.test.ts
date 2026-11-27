@@ -98,6 +98,10 @@ describe('modular aircraft component hierarchy', () => {
     expect(config).not.toBeNull();
     expect(config?.version).toBe(2);
     expect(config?.components[0].id).toBe('aircraft-root');
+    expect(config?.aircraftKey).toBe('viper-t21');
+    expect(config?.components.some((component) => component.id === 'cockpit-interior')).toBe(true);
+    expect(config?.components.find((component) => component.id === 'control-stick')?.animation?.channel).toBe('pitch');
+    expect(config?.components.find((component) => component.id === 'canopy')?.animation?.channel).toBe('canopy');
     const loaded = loadAircraftVisual('viper-t21', 0);
     expect(loaded.config.version).toBe(2);
     expect(loaded.model.userData.aircraftKey).toBe('viper-t21');
