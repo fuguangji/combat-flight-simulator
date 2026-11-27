@@ -42,7 +42,8 @@ export class AircraftModelController {
       const node = this.nodes.get(component.id);
       if (!animation || !node) continue;
       const axis = animation.axis ?? 'x';
-      const min = animation.min ?? 0;
+      const isAxisControl = animation.channel === 'pitch' || animation.channel === 'roll' || animation.channel === 'yaw';
+      const min = animation.min ?? (isAxisControl ? -Math.PI / 4 : 0);
       const max = animation.max ?? Math.PI / 4;
       const base = node.rotation[axis];
       this.bindings.push({ node, axis, channel: animation.channel, min, max, base, current: base });
