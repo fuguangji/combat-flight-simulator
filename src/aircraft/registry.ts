@@ -13,7 +13,7 @@ import physicsKeys from './physics-keys.json';
 export const PHYSICS_KEYS: readonly string[] = physicsKeys;
 export const MAX_HULL_POINTS = 32;
 
-/** Shape of one aircraft JSON file. */
+/** Shape of one aircraft JSON file. Physics thrust values are N; specs.thrustKN is display-only kN. */
 export interface AircraftJson {
   id: number;
   key: string;
