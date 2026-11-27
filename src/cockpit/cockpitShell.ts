@@ -236,7 +236,7 @@ export function mountCockpitShell(): CockpitShell {
     }
     #cockpit-console > .cockpit-label,
     #cockpit-console > #cockpit-flight-readout,
-    #cockpit-console > .cockpit-help,
+    #cockpit-airframe > .cockpit-help,
     #cockpit-console .bay-left,
     #cockpit-console .bay-centre,
     #cockpit-console .cockpit-screen { display:none !important; }
