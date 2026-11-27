@@ -127,6 +127,7 @@ const notify = (message: string): void => {
 
 const renderModel = (): void => {
   disposeModel();
+  previewController = null;
   try {
     const model = createModularAircraft(config);
     model.traverse((object) => {
