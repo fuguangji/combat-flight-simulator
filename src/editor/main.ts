@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import viperSample from '../aircraft/visuals/viper-t21.json';
+import { AircraftModelController } from '../aircraft/builder/aircraftAnimation';
 import {
   createModularAircraft,
   normalizeAircraftVisualConfig,
@@ -33,6 +34,7 @@ const defaultConfig = (): AircraftVisualConfig => ({
   parts: [],
 });
 let config: AircraftVisualConfig = defaultConfig();
+let previewController: AircraftModelController | null = null;
 let selectedId: string | null = null;
 let selectedComponentId = 'aircraft-root';
 let history: AircraftVisualConfig[] = [];
@@ -139,6 +141,7 @@ const renderModel = (): void => {
       }
     });
     modelRoot.add(model);
+    previewController = new AircraftModelController(model, config.components);
     $('empty-hint').toggleAttribute('hidden', config.parts.length > 0);
   } catch (error) {
     notify(error instanceof Error ? error.message : '模型建立失敗');
@@ -224,6 +227,10 @@ const fillInspector = (): void => {
       setValue(`component-pos-${axis}`, position[index]);
       setValue(`component-rot-${axis}`, Number((rotation[index] * degrees).toFixed(2)));
     });
+    setValue('component-animation-channel', component.animation?.channel ?? '');
+    setValue('component-animation-axis', component.animation?.axis ?? 'x');
+    setValue('component-animation-min', Number(((component.animation?.min ?? 0) * degrees).toFixed(2)));
+    setValue('component-animation-max', Number(((component.animation?.max ?? Math.PI / 4) * degrees).toFixed(2)));
     return;
   }
   if (!part) return;
@@ -382,6 +389,92 @@ const addCannonVisual = (): void => {
   saveHistory(); persist(); selectComponent(component.id);
   notify('已新增機炮組件；現在可新增其幾何細節');
 };
+const addCockpitInterior = (): void => {
+  const parent = config.components.find((component) => component.id === selectedComponentId);
+  if (!parent) { notify('請先選取飛機本體或有效組件'); return; }
+  if (config.components.some((component) => component.id === 'cockpit-interior')) {
+    notify('模型中已存在座艙內飾組件'); return;
+  }
+  const addComponentNode = (id: string, name: string, position: [number, number, number], animation?: AircraftVisualComponent['animation']): string => {
+    const actualId = uniqueId(id);
+    config.components.push({ id: actualId, name, parent: parent.id, position, animation });
+    return actualId;
+  };
+  const addDetail = (componentId: string, id: string, name: string, shape: AircraftPartShape, values: Partial<AircraftVisualPart>): void => {
+    config.parts.push({
+      id: uniqueId(id), componentId, name, shape, color: '#303b42',
+      metalness: .42, roughness: .58, ...values,
+    });
+  };
+  const interior = addComponentNode('cockpit-interior', '座艙內飾', [0, 0, 0]);
+  const tub = addComponentNode('cockpit-tub', '座艙底槽', [0, 0, 0]);
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(tub, 'cockpit-floor', '座艙地板', 'box', { width: 2.8, height: .16, depth: 1.55, position: [-.2, -.22, 0], color: '#202a2e' });
+  addDetail(tub, 'cockpit-sidewall-left', '左側內壁', 'box', { width: 2.35, height: .62, depth: .12, position: [-.15, .12, -.7], color: '#39464b' });
+  addDetail(tub, 'cockpit-sidewall-right', '右側內壁', 'box', { width: 2.35, height: .62, depth: .12, position: [-.15, .12, .7], color: '#39464b' });
+
+  const panel = addComponentNode('instrument-panel', '儀表板', [.88, .48, 0]);
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(panel, 'instrument-panel-body', '儀表板本體', 'box', { width: .18, height: .72, depth: 1.48, rotation: [0, 0, -.16], color: '#151d22' });
+  for (const [side, z] of [['left', -.39], ['right', .39]] as const) {
+    addDetail(panel, `mfd-${side}`, side === 'left' ? '左多功能顯示器' : '右多功能顯示器', 'box', {
+      width: .055, height: .31, depth: .43, position: [-.105, .08, z], color: '#102d32',
+      metalness: .18, roughness: .22,
+    });
+  }
+  for (const z of [-.66, .66]) {
+    addDetail(panel, `panel-dial-${z}`, '圓形儀表', 'cylinder', {
+      radius: .105, height: .045, radialSegments: 24, position: [-.11, -.18, z], rotation: [0, 0, Math.PI / 2], color: '#aab5ad',
+    });
+  }
+  addDetail(panel, 'panel-center-display', '中央狀態顯示器', 'box', { width: .05, height: .2, depth: .25, position: [-.11, .34, 0], color: '#183c3d', metalness: .12 });
+
+  const hud = addComponentNode('hud', '抬頭顯示器', [1.22, .92, 0]);
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(hud, 'hud-combiner', 'HUD 透明反射片', 'box', { width: .025, height: .34, depth: .42, position: [0, .05, 0], color: '#76c9ad', opacity: .22, metalness: .05, roughness: .12 });
+  addDetail(hud, 'hud-frame', 'HUD 支架', 'box', { width: .12, height: .06, depth: .52, position: [-.04, -.15, 0], color: '#69777a' });
+
+  const seat = addComponentNode('pilot-seat', '飛行員座椅', [-.62, .02, 0]);
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(seat, 'seat-cushion', '座椅坐墊', 'box', { width: .82, height: .2, depth: .78, position: [0, .04, 0], color: '#303b3b' });
+  addDetail(seat, 'seat-back', '座椅靠背', 'box', { width: .2, height: .88, depth: .78, position: [-.28, .48, 0], rotation: [0, 0, -.12], color: '#263232' });
+  addDetail(seat, 'seat-headrest', '頭枕', 'box', { width: .2, height: .24, depth: .42, position: [-.39, .98, 0], color: '#45514d' });
+
+  const stick = addComponentNode('control-stick', '操縱桿', [.02, .02, 0], { channel: 'pitch', axis: 'z', min: -12 * radians, max: 12 * radians });
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(stick, 'stick-base', '操縱桿底座', 'cylinder', { radius: .14, height: .1, position: [0, .02, 0], color: '#64716b' });
+  addDetail(stick, 'stick-shaft', '操縱桿桿身', 'cylinder', { radius: .035, height: .48, position: [0, .27, 0], color: '#9aa49d' });
+  addDetail(stick, 'stick-grip', '操縱桿握把', 'box', { width: .14, height: .16, depth: .12, position: [0, .53, 0], color: '#222b2b' });
+
+  const throttle = addComponentNode('throttle-quadrant', '油門控制台', [.05, .04, .57]);
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(throttle, 'throttle-base', '油門底座', 'box', { width: .72, height: .22, depth: .34, color: '#252f32' });
+  addDetail(throttle, 'throttle-lever', '油門桿', 'cylinder', { radius: .035, height: .34, position: [0, .25, 0], rotation: [0, 0, -.2], color: '#aab4ad' });
+  addDetail(throttle, 'throttle-grip', '油門握把', 'sphere', { radius: .085, position: [-.035, .42, 0], color: '#3e514a' });
+
+  for (const [side, z] of [['left', -.69], ['right', .69]] as const) {
+    const consoleId = addComponentNode(`${side}-console`, side === 'left' ? '左側控制台' : '右側控制台', [-.05, .08, z]);
+    config.components[config.components.length - 1].parent = interior;
+    addDetail(consoleId, `${side}-console-base`, '側邊控制台', 'box', { width: 1.6, height: .2, depth: .28, color: '#303b3e' });
+    for (let i = 0; i < 4; i++) addDetail(consoleId, `${side}-switch-${i + 1}`, '實體開關', 'cylinder', {
+      radius: .035, height: .1, radialSegments: 10, position: [-.48 + i * .3, .13, 0], color: '#a8b5ac',
+    });
+  }
+
+  const canopy = addComponentNode('canopy', '座艙罩', [-.35, .55, 0], { channel: 'canopy', axis: 'z', min: 0, max: 48 * radians });
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(canopy, 'canopy-glass', '座艙罩透明罩', 'sphere', {
+    radius: 1, scale: [1.55, .68, .86], position: [.35, .12, 0], color: '#73b9c6',
+    opacity: .14, metalness: .08, roughness: .12,
+  });
+  addDetail(canopy, 'canopy-frame', '座艙罩邊框', 'torus', {
+    radius: .82, tube: .035, position: [.35, .1, 0], rotation: [Math.PI / 2, 0, 0], scale: [1.8, 1, 1], color: '#657b80',
+  });
+
+  saveHistory(); persist(); selectComponent(interior);
+  notify('已建立座艙內飾：儀表、MFD、HUD、操縱桿、油門、座椅、側台與座艙罩');
+};
+
 const duplicateSelected = (mirror = false): void => {
   const source = selectedPart();
   if (!source) return;
@@ -484,6 +577,8 @@ $('json-copy').addEventListener('click', () => {
 document.querySelectorAll<HTMLButtonElement>('[data-add-detail]').forEach((button) => button.addEventListener('click', () => addPart(button.dataset.addDetail as AircraftPartShape)));
 $('add-component').addEventListener('click', addComponent);
 $('add-cannon').addEventListener('click', addCannonVisual);
+$('add-cockpit').addEventListener('click', addCockpitInterior);
+
 $('duplicate').addEventListener('click', () => duplicateSelected(false));
 $('mirror').addEventListener('click', () => duplicateSelected(true));
 $('delete').addEventListener('click', deleteSelected);
@@ -549,6 +644,17 @@ const commitComponentEdit = (): void => {
   component.name = ($('component-name') as HTMLInputElement).value.trim() || component.id;
   component.position = ['x','y','z'].map((axis) => readNumber(`component-pos-${axis}`, 0)) as [number,number,number];
   component.rotation = ['x','y','z'].map((axis) => readNumber(`component-rot-${axis}`, 0) * radians) as [number,number,number];
+  const channel = ($('component-animation-channel') as HTMLSelectElement).value;
+  if (channel) {
+    component.animation = {
+      channel: channel as NonNullable<AircraftVisualComponent['animation']>['channel'],
+      axis: ($('component-animation-axis') as HTMLSelectElement).value as 'x' | 'y' | 'z',
+      min: readNumber('component-animation-min', 0) * radians,
+      max: readNumber('component-animation-max', 45) * radians,
+    };
+  } else {
+    delete component.animation;
+  }
   renderPartsList(); renderModel(); persist();
 };
 $('component-inspector').addEventListener('input', (event) => {
@@ -558,6 +664,9 @@ $('component-inspector').addEventListener('input', (event) => {
 $('component-inspector').addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
 $('component-name').addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
 $('component-id').addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
+['component-animation-channel', 'component-animation-axis', 'component-animation-min', 'component-animation-max'].forEach((id) => {
+  $(id).addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
+});
 
 $('model-name-input').addEventListener('change', () => {
   config.name = ($('model-name-input') as HTMLInputElement).value.trim() || 'Untitled Aircraft';
@@ -565,6 +674,21 @@ $('model-name-input').addEventListener('change', () => {
   persist();
 });
 $('view-reset').addEventListener('click', () => { cameraYaw = .72; cameraPitch = .38; cameraDistance = 11; updateCamera(); });
+const readAnimationSliders = (): void => {
+  previewController?.setControls({
+    pitch: readNumber('anim-pitch', 0), roll: readNumber('anim-roll', 0), yaw: readNumber('anim-yaw', 0),
+    gear: readNumber('anim-gear', 0), flaps: readNumber('anim-flaps', 0), canopy: readNumber('anim-canopy', 0),
+  });
+};
+['pitch', 'roll', 'yaw', 'gear', 'flaps', 'canopy'].forEach((channel) => {
+  $(`anim-${channel}`).addEventListener('input', readAnimationSliders);
+});
+$('animation-reset').addEventListener('click', () => {
+  ['pitch', 'roll', 'yaw', 'gear', 'flaps', 'canopy'].forEach((channel) => setValue(`anim-${channel}`, 0));
+  previewController?.reset();
+  readAnimationSliders();
+});
+
 $('toggle-grid').addEventListener('click', () => { grid.visible = !grid.visible; $('toggle-grid').classList.toggle('active', grid.visible); });
 $('toggle-axes').addEventListener('click', () => { axes.visible = !axes.visible; $('toggle-axes').classList.toggle('active', axes.visible); });
 
@@ -617,8 +741,12 @@ const resize = (): void => {
 };
 new ResizeObserver(resize).observe(viewport);
 window.addEventListener('resize', resize);
+let previousFrame = performance.now();
 const animate = (): void => {
   requestAnimationFrame(animate);
+  const now = performance.now();
+  previewController?.update(Math.min((now - previousFrame) / 1000, 0.1));
+  previousFrame = now;
   renderer.render(scene, camera);
 };
 resize();
