@@ -12,7 +12,7 @@ export interface AircraftVisualComponent {
 }
 export interface AircraftVisualPart {
   id: string;
-  componentId?: string;
+  componentId: string;
   name?: string;
   shape: AircraftPartShape;
   position?: Vec3Tuple;
@@ -212,7 +212,7 @@ export function createProceduralAircraftConfig(id: number): LegacyAircraftVisual
   const span = 2.5 + (id % 5) * 0.25;
   const sweep = delta ? 1.35 : 0.35 + (id % 4) * 0.18;
   const rear = delta ? 1.8 : 0.95 + (id % 3) * 0.2;
-  const parts: AircraftVisualPart[] = [
+  const parts: LegacyAircraftVisualPart[] = [
     { id: 'fuselage', shape: 'cylinder', radiusTop: 0.27, radiusBottom: 0.39, height: 6.2, radialSegments: 20, rotation: [0, 0, -Math.PI / 2], color: body },
     { id: 'nose', shape: 'cone', radius: 0.27, height: 1.35, radialSegments: 20, position: [3.72, 0, 0], rotation: [0, 0, -Math.PI / 2], color: '#b9d2c4' },
     { id: 'rear-fairing', shape: 'cone', radius: 0.31, height: 0.95, radialSegments: 20, position: [-3.45, 0, 0], rotation: [0, 0, Math.PI / 2], color: body },
@@ -238,5 +238,5 @@ export function createProceduralAircraftConfig(id: number): LegacyAircraftVisual
       parts.push({ id: `engine-inner-${side}`, shape: 'cylinder', radius: 0.13, height: 0.035, radialSegments: 16, position: [-3.17, -0.02, twinEngine ? side * 0.48 : 0], rotation: [0, 0, Math.PI / 2], color: '#6a9d8c' });
     }
   }
-  return { version: 1, name: `Aircraft-${id}`, parts: parts as LegacyAircraftVisualPart[] };
+  return { version: 1, name: `Aircraft-${id}`, parts };
 }
