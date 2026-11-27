@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { AircraftDefinition } from '../aircraft/registry';
 import type { Anchor } from './modelKit';
 import { buildWeaponModel, weaponAnchors } from './weaponModels';
-import { createModularAircraft, createProceduralAircraftConfig, type AircraftVisualInput } from '../aircraft/builder/modularAircraft';
+import { loadAircraftVisual } from '../aircraft/builder/visualRepository';
 
 type WeaponDefinition = {
   id: string;
@@ -41,7 +41,6 @@ export class EncyclopediaViewer {
   private readonly root = new THREE.Group();
   private readonly aircraft: AircraftDefinition[];
   private readonly weapons: WeaponDefinition[];
-  private readonly visualConfigs: Record<string, unknown> = import.meta.glob('../aircraft/visuals/*.json', { eager: true, import: 'default' });
   private readonly elements: Elements;
   private active = false;
   private resizeObserver: ResizeObserver | null = null;
@@ -241,30 +240,19 @@ export class EncyclopediaViewer {
   }
 
   private buildAircraft(item: AircraftDefinition): THREE.Group {
-    const visualPath = Object.keys(this.visualConfigs).find((path) => path.endsWith(`/${item.key}.json`));
-    const custom = visualPath ? this.visualConfigs[visualPath] as AircraftVisualInput : undefined;
-    let model: THREE.Group;
-    if (custom) {
-      try {
-        // The editor exports this exact schema. The builder also migrates legacy v1 assets.
-        model = createModularAircraft(custom);
-        model.userData.visualSource = visualPath;
-        model.userData.visualSchemaVersion = custom.version;
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        // A broken optional art asset must never prevent the aircraft/game UI from starting.
-        console.warn(`[AircraftVisual] ${item.key} 視覺資料載入失敗，已使用程序模型：${reason}`);
-        model = createModularAircraft(createProceduralAircraftConfig(item.id));
-        model.userData.visualLoadError = reason;
-        model.userData.visualSource = 'procedural-fallback';
+    try {
+      const loaded = loadAircraftVisual(item.key, item.id);
+      if (loaded.migratedFromLegacy) {
+        console.info(`[AircraftVisual] ${item.key} 已由 V1 遷移為標準 V2`);
       }
-    } else {
-      model = createModularAircraft(createProceduralAircraftConfig(item.id));
-      model.userData.visualSource = 'procedural-fallback';
+      return loaded.model;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn(`[AircraftVisual] ${item.key} 視覺資料載入失敗，已使用程序模型：${reason}`);
+      const fallback = loadAircraftVisual('__missing_visual__', item.id).model;
+      fallback.userData.visualLoadError = reason;
+      return fallback;
     }
-    model.scale.setScalar(1.05);
-    model.userData.aircraftKey = item.key;
-    return model;
   }
 
   private showParts(anchors: Anchor[]): void {
