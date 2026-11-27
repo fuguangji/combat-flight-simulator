@@ -63,6 +63,7 @@ export class AircraftView {
     this.model = loaded.model;
     this.model.name = `${definition.key}:runtime-airframe`;
     // Convert body-frame (forward, up, right) into Three.js (right, up, backward).
+    this.model.scale.setScalar(1); // eyeOffset and geometry now share the exact aircraft metre scale.
     this.model.rotation.set(0, Math.PI / 2, 0);
     this.model.position.set(-definition.eyeOffset[2], -definition.eyeOffset[1], definition.eyeOffset[0]);
     this.model.traverse((object) => {
@@ -91,8 +92,8 @@ export class AircraftView {
     const cp = Math.cos(pitch);
     // Free-look is deliberately unbounded: 360°, 720°, and looking directly behind all work.
     this.camera.position.set(0, 0, 0);
-    this.camera.up.set(0, 1, 0);
-    this.camera.lookAt(Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp);
+    this.camera.rotation.order = 'YXZ';
+    this.camera.rotation.set(pitch, -yaw, 0, 'YXZ');
     this.camera.updateMatrixWorld(true);
     this.controller?.update(deltaSeconds);
     this.renderer.render(this.scene, this.camera);
