@@ -276,10 +276,9 @@ requestAnimationFrame (60+ Hz)             setInterval(5 ms) + FixedStepper (30 
 - **安全與技術界線**：此功能只模擬 UI 進度與預設動畫，不是現實飛彈制導模型，也不應用於現實武器或航空系統。
 
 
-### 駕駛艙 3D 場景運動測試（2026-11-26）
-- 新增 `src/scene/SceneMotionSystem.ts`：通用 Three.js 場景物件運動管理器，可建立球體、設定初始位置／速度／加速度、使用固定時間步進更新、記錄歷史位置軌跡，並支援生命週期、單一物件移除與資源清理。
-- 模擬預設採 120 Hz 固定步長、最多 8 個子步；渲染幀率與模擬步進分離，並限制單次累積時間，避免分頁切換後補算過量。
-- 新增 `src/scene/cockpitMotionDemo.ts`：在飛行駕駛艙中按下 `MOTION / 3D 測試`，即可開啟獨立 Three.js 視窗；提供新增球體、暫停／繼續、重設與物件數讀值。視窗關閉時停止更新，僅在開啟期間繪製。
-- 測試場景使用無目標的等速球體與歷史軌跡，僅展示一般場景物件運動；與裝備按鈕、訓練接觸點及主飛行物理保持分離，不執行瞄準、追蹤、碰撞或命中判定。
-- 駕駛艙入口由 `src/cockpit/cockpitShell.ts` 發送事件，`src/main.ts` 負責掛載測試模組。主飛行渲染器與 Rust/WASM 飛行物理未更動。
-- **驗證狀況**：程式與 README 已提交至 `main`；尚未取得本次 GitHub Actions 結果，亦未完成瀏覽器實機測試。此測試視窗使用獨立 WebGL context，開啟時會額外占用少量 GPU 資源。
+### 駕駛艙球體視覺演出（2026-11-27）
+- 移除獨立的 3D 場景運動測試面板與其獨立 WebGL context，駕駛艙不再顯示 MOTION / 3D 測試入口。
+- 移除舊的 `src/scene/cockpitMotionDemo.ts` 與 `src/scene/SceneMotionSystem.ts`。
+- 改由駕駛艙的 `ORB / 球體演出` 按鈕觸發 HUD 球體視覺效果。球體從畫面中央偏下方出現，向視野前方移動並逐漸縮小，具有球面明暗與短暫光跡。
+- 此效果完全在既有 HUD Canvas 以 2D 繪製，不建立第二個 WebGL context，不修改飛行物理、飛機狀態或主渲染器；不含目標、碰撞、命中、傷害或導引邏輯。
+- **驗證狀況**：程式已提交至 `main`；需以本次 GitHub Actions 與瀏覽器實測確認建置及顯示結果。
