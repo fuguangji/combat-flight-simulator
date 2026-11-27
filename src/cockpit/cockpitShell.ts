@@ -208,26 +208,12 @@ export function mountCockpitShell(): CockpitShell {
     body.touch .knob { width:30px; } body.touch .ap-module { padding:3px 6px 4px; }
     body.touch .cockpit-switches button { padding:5px 5px; font-size:8px; }
     body.touch .cockpit-config summary { padding:5px; font-size:8px; }
-    #cockpit-visual-model {
-      position:absolute; inset:0; z-index:2; pointer-events:none;
-      transform-style:preserve-3d; perspective:1600px; overflow:visible;
-    }
-    .cockpit-model-component {
-      position:absolute; left:50%; top:56%; width:0; height:0;
-      transform-style:preserve-3d; transform-origin:0 0 0;
-    }
-    .cockpit-model-part {
-      position:absolute; left:0; top:0; display:block; transform-origin:50% 50% 0;
-      backface-visibility:hidden; border:1px solid rgba(210,230,220,.2);
-      box-sizing:border-box; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));
-    }
-    #cockpit-visual-model[hidden] { display:none; }
     @media(max-width:560px) {
       .canopy-post.left {left:1%;}
       .canopy-post.right {right:1%;}
     }
   `;
-  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    #cockpit-visual-model,.canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }
+  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    .canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }
     #cockpit-console {
       position:fixed !important; inset:auto 10px 10px !important;
       width:auto !important; height:auto !important; transform:none !important;
