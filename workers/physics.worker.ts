@@ -77,8 +77,12 @@ function tick(): void {
 }
 
 async function init(wasmUrl: string, params: ArrayLike<number>, initialState?: PhysicsInitialState): Promise<void> {
-  const response = await fetch(wasmUrl);
-  if (!response.ok) throw new Error(`Could not load ${wasmUrl} (HTTP ${response.status})`);
+  // The public WASM filename is stable across deployments. Version the URL and bypass
+  // the browser cache so a cached binary cannot outlive the TypeScript/WASM API contract.
+  const versionedWasmUrl = new URL(wasmUrl);
+  versionedWasmUrl.searchParams.set('api', String(WASM_API_VERSION));
+  const response = await fetch(versionedWasmUrl, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Could not load ${versionedWasmUrl.href} (HTTP ${response.status})`);
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), {});
   const exports = instance.exports as unknown as PhysicsExports;
   if (exports.sim_api_version() !== WASM_API_VERSION) {
