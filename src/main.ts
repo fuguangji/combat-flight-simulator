@@ -909,7 +909,7 @@ async function boot(): Promise<void> {
       snap = frozenSnap;
       aircraftView?.setVisible(true);
       if (rig.last) renderer.render(rig.last);
-      aircraftView?.render(look.yaw, look.pitch, stage.clientWidth, stage.clientHeight, Math.min(frameMs / 1000, 0.1));
+      aircraftView?.render(look.yaw, look.pitch, stage.clientWidth, stage.clientHeight, Math.min(frameMs / 1000, 0.1), rig.last?.fovY);
       hud.draw(snap, aircraft, now, rig.last?.fovY, look);
     } else {
       // flying or crashed: the simulation keeps running (the wreck just stops moving)
@@ -983,7 +983,7 @@ async function boot(): Promise<void> {
         }));
         aircraftView?.setVisible(true);
         renderer.render(cam);
-        aircraftView?.render(look.yaw, look.pitch, stage.clientWidth, stage.clientHeight, Math.min(frameMs / 1000, 0.1));
+        aircraftView?.render(look.yaw, look.pitch, stage.clientWidth, stage.clientHeight, Math.min(frameMs / 1000, 0.1), cam.fovY);
         hud.draw(snap, aircraft, now, cam.fovY, look);
         if (mode === 'crashed' && crashEl.hidden && !transitioning && now - crashedAtMs > CRASH_CARD_DELAY_MS) {
           showCrashCard(snap);
