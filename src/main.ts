@@ -15,7 +15,7 @@ import type { Backend } from './rendering/Renderer';
 import { activeWarnings } from './physics/warnings';
 import { attractCamera } from './ui/attract';
 import { WarningAudio } from './ui/audio';
-import { TUTORIAL_CHAPTERS, Tutorial, chapterSteps, type TutorialView } from './ui/tutorial';
+import { TUTORIAL_CHAPTERS, Tutorial, chapterSteps, type TutorialFlag, type TutorialView } from './ui/tutorial';
 import { FreeLook } from './ui/look';
 import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
@@ -504,13 +504,14 @@ async function boot(): Promise<void> {
     }
   };
   let lastWaypoint: { x: number; z: number } | null = { ...INITIAL_WAYPOINT };
-  const tutorialFlags: Record<string, boolean> = {
+  const tutorialFlags: Record<TutorialFlag, boolean> = {
     map: document.body.dataset.showMap === '1',
     nav: document.body.dataset.showNav === '1',
     radar: document.body.dataset.showRadar === '1',
     autopilot: false,
+    landingGuide: false,
   };
-  const setTutorialFlag = (flag: 'map' | 'nav' | 'radar' | 'autopilot', on: boolean): void => {
+  const setTutorialFlag = (flag: TutorialFlag, on: boolean): void => {
     tutorialFlags[flag] = on;
     tutorial.setFlag(flag, on);
   };
@@ -521,7 +522,7 @@ async function boot(): Promise<void> {
   const makeTutorial = (chapter: number): Tutorial => {
     const t = new Tutorial(chapterSteps(TUTORIAL_CHAPTERS[chapter], { afterburner: aircraft.hasAfterburner, touch: touchMode }));
     t.setWaypoint(lastWaypoint);
-    for (const [flag, on] of Object.entries(tutorialFlags)) t.setFlag(flag as 'map' | 'nav' | 'radar' | 'autopilot', on);
+    for (const [flag, on] of Object.entries(tutorialFlags)) t.setFlag(flag as TutorialFlag, on);
     return t;
   };
   let tutorial = new Tutorial();
@@ -843,6 +844,10 @@ async function boot(): Promise<void> {
     if ((e as CustomEvent<{ focused: boolean }>).detail?.focused) tutorial.note('focus');
   });
   window.addEventListener('cfs:equipment-fire', () => tutorial.note('fire'));
+  window.addEventListener('cfs:landing-site-select', () => tutorial.note('landing-site'));
+  window.addEventListener('cfs:landing-approach-state', (e) => {
+    setTutorialFlag('landingGuide', Boolean((e as CustomEvent<{ active?: boolean }>).detail?.active));
+  });
   tutorialNextBtn.addEventListener('click', () => advanceTutorial());
 
   document.addEventListener('visibilitychange', () => {
@@ -955,6 +960,7 @@ async function boot(): Promise<void> {
             z: snap.position[2],
             heading: attitude.heading,
             speed: snap.airspeed,
+            verticalSpeed: snap.velocity[1],
             snapshot: snap,
             camera: cam,
           },

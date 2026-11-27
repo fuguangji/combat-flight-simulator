@@ -6,9 +6,9 @@ import { radToDeg } from '../core/math';
 const WARN_AOA_BIT = 7;
 
 /** One-shot things the pilot can do outside the flight model; reported by main.ts. */
-export type TutorialEvent = 'look' | 'recenter' | 'waypoint' | 'contact' | 'focus' | 'fire';
+export type TutorialEvent = 'look' | 'recenter' | 'waypoint' | 'contact' | 'focus' | 'fire' | 'landing-site';
 /** Switches that are either on or off right now. */
-export type TutorialFlag = 'map' | 'nav' | 'radar' | 'autopilot';
+export type TutorialFlag = 'map' | 'nav' | 'radar' | 'autopilot' | 'landingGuide';
 
 export interface TutorialContext {
   s: AircraftSnapshot;
@@ -202,33 +202,61 @@ const SETUP: readonly TutorialStep[] = [
     hold: 2,
   },
   {
+    id: 'radar-concepts',
+    kind: 'read',
+    title: '雷達與目標',
+    hint: '雷達顯示訓練目標與降落信標；閱讀後會實際選取、鎖定及使用裝備。',
+    body: [
+      '接觸點分空中與地面／海面目標；雷達範圍和靈敏度可在駕駛艙設定。',
+      '選取目標後按「鎖定」；空對空、空對地裝備必須搭配相符類別，並在有效雷達範圍內才能發射。',
+      '按 F 或駕駛艙按鈕發射目前裝備，按住 G 使用機砲；這些是遊戲訓練效果，不代表真實武器操作。',
+      '機場和航艦會以降落信標顯示在雷達；點選信標即可啟用進場導引。',
+    ],
+    test: never,
+    hold: 0,
+  },
+  {
     id: 'radar-on',
     title: '開啟雷達',
-    hint: '按 B，或點「雷達」鈕，右上角會出現接觸目標清單（ECHO-01 ~ 03）。',
-    touchHint: '點「雷達」鈕，右上角會出現接觸目標清單（ECHO-01 ~ 03）。',
+    hint: '按 B，或點「雷達」鈕；右上角會顯示空中／地面訓練目標與機場／航艦信標。',
+    touchHint: '點「雷達」鈕；右上角會顯示空中／地面訓練目標與機場／航艦信標。',
     test: ({ flags }) => flags.has('radar'),
     hold: 0.4,
   },
   {
     id: 'contact',
     title: '選取目標',
-    hint: '在雷達清單點選一個接觸目標（例如 ECHO-02）。',
+    hint: '在雷達清單點選一個空中或地面／海面接觸目標。',
     test: ({ seen }) => seen.has('contact'),
     hold: 0,
   },
   {
     id: 'focus',
-    title: '導引焦點',
-    hint: '點「NO FOCUS」切換成「FOCUS」，把導引資訊集中在該目標。這是遊戲化的目標追蹤介面，不含真實的導引運算。',
+    title: '鎖定目標',
+    hint: '按目標旁的「鎖定」；鎖定有效且裝備用途相符時，才可發射。',
     test: ({ seen }) => seen.has('focus'),
     hold: 0,
   },
   {
     id: 'fire',
-    title: '發射展示',
-    hint: '在駕駛艙面板按「發射展示」，觸發目前配置的虛構裝備效果；每種裝備有各自的額度與冷卻。要換裝備請回主頁的「裝備設定」。',
+    title: '使用裝備',
+    hint: '按 F 或駕駛艙的導彈按鈕使用目前裝備；按住 G 使用機砲。裝備有彈藥與冷卻，換裝請回主頁「裝備設定」。',
     test: ({ seen }) => seen.has('fire'),
     hold: 0,
+  },
+  {
+    id: 'landing-site',
+    title: '選取降落信標',
+    hint: '在雷達右上角的 LANDING BEACONS 區，點選任一機場或 PETREL 航艦信標。',
+    test: ({ seen }) => seen.has('landing-site'),
+    hold: 0,
+  },
+  {
+    id: 'landing-guide',
+    title: '跟隨進場導引',
+    hint: '信標會自動啟用導引。導航面板顯示進場線、跑道中線偏差 LOC、下滑道 G/S 與修正建議；HUD 也會顯示精簡提示。',
+    test: ({ flags }) => flags.has('landingGuide'),
+    hold: 0.5,
   },
   {
     id: 'autopilot-on',
@@ -338,6 +366,7 @@ const KNOWLEDGE: readonly TutorialStep[] = [
       '進場要點：收油門、保持機翼水平、機頭對準跑道中線，維持小角度下滑。',
       '安全接地條件：下沉率不超過 5 m/s、傾斜不超過 10°、速度不超過約 185 KT；超過就視為墜毀。',
       '接地後飛機自動滑行減速；母艦甲板有攔阻索，滑行距離很短。滑出甲板邊緣會落海。',
+      '從雷達選取降落信標會啟用進場導引；LOC 顯示左右偏差，G/S 顯示相對 3° 下滑道的高度，並提供航向、速度及修正建議。',
     ],
     test: never,
     hold: 0,
@@ -369,7 +398,7 @@ const KNOWLEDGE: readonly TutorialStep[] = [
 
 export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
   { id: 'controls', title: '基本操作', en: 'CONTROLS', summary: '按鍵與觸控：俯仰、滾轉、方向舵、油門、後燃器、環顧。', steps: CONTROLS },
-  { id: 'setup', title: '基本設定', en: 'SETUP', summary: '地圖與導航、設定航點、雷達選取目標、發射展示與自動駕駛。', steps: SETUP },
+  { id: 'setup', title: '基本設定', en: 'SETUP', summary: '地圖與導航、雷達目標類別與鎖定、進場信標、裝備與自動駕駛。', steps: SETUP },
   { id: 'knowledge', title: '基礎知識', en: 'KNOWLEDGE', summary: 'HUD 讀數、失速與過載、警告、地形與降落基礎，並實作警告改出。', steps: KNOWLEDGE },
 ];
 

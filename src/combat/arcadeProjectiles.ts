@@ -2,6 +2,7 @@ import { quatRotate, type Vec3 } from '../core/math';
 import type { CameraState } from '../rendering/Renderer';
 import type { AircraftSnapshot } from '../physics/stateLayout';
 import { CombatSimulation, distanceBetween, type CombatContact, type CombatTargetKind } from './simulation';
+import { SITE_MARKERS } from '../world/sites';
 import weaponCatalog from './weapons.json';
 
 type EquipmentId = string;
@@ -31,6 +32,7 @@ export class ArcadeProjectileSystem {
   private cooldowns: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
   private selectedTargetId: string | null = null;
   private focused = false;
+  private landingSiteId: string | null = null;
   private initialized = false;
   private lastMode = '';
   private lastSimTime = 0;
@@ -49,6 +51,7 @@ export class ArcadeProjectileSystem {
   private radarRange = 20_000;
   private radarSensitivity = 0.5;
   private autopilotEnabled = false;
+  private landingApproachActive = false;
 
   constructor() {
     const initial = document.body.dataset.equipment as EquipmentId | undefined;
@@ -73,8 +76,9 @@ export class ArcadeProjectileSystem {
       <div class="combat-head"><span>TRAINING RADAR</span><span id="radar-readout">20 KM</span></div>
       <canvas id="combat-radar" width="180" height="180" aria-label="訓練雷達"></canvas>
       <div class="combat-section"><small>CONTACTS / 接觸點</small><div class="contact-actions" id="contact-actions"></div></div>
+      <div class="combat-section"><small>LANDING BEACONS / 降落信標</small><div class="landing-beacon-actions" id="landing-beacon-actions"></div></div>
       <div class="combat-focus"><span id="contact-name">等待雷達接觸</span><button type="button" id="focus-state" data-focus>鎖定</button></div>
-      <div class="combat-hint" id="radar-hint">選取目標後按鎖定；符合裝備用途才能發射。</div>
+      <div class="combat-hint" id="radar-hint">目標：選取並鎖定後發射；機場／航艦：點選信標開始進場導引。</div>
     `;
     this.reticle = document.createElement('div');
     this.reticle.id = 'view-reticle';
@@ -94,11 +98,30 @@ export class ArcadeProjectileSystem {
     this.status.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
+      if (target.dataset.landingId) {
+        this.selectLandingSite(target.dataset.landingId);
+        return;
+      }
       if (target.dataset.contactId) this.selectContact(target.dataset.contactId);
       if (target.hasAttribute('data-focus')) this.toggleFocus();
     });
+    const landingActions = this.status.querySelector<HTMLElement>('#landing-beacon-actions');
+    landingActions?.replaceChildren(...SITE_MARKERS.map((site) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.landingId = site.id;
+      button.textContent = site.kind === 'carrier' ? 'PETREL 航艦' : site.id.toUpperCase();
+      button.title = `${site.name} · 點選以啟用降落導引`;
+      return button;
+    }));
     window.addEventListener('cfs:flight-start', () => this.resetFlight());
     window.addEventListener('cfs:flight-snapshot', (event) => this.onSnapshot(event as FlightSnapshotEvent));
+    window.addEventListener('cfs:landing-approach-state', (event) => {
+      const state = (event as CustomEvent<{ active?: boolean; siteId?: string | null }>).detail;
+      if (state?.siteId) this.landingSiteId = state.siteId;
+      this.landingApproachActive = Boolean(state?.active);
+      this.updatePanel(true);
+    });
     window.addEventListener('cfs:missile-launch', () => this.launch());
     window.addEventListener('cfs:cannon-trigger', () => { this.cannonBurstUntil = performance.now() + 260; });
     window.addEventListener('cfs:equipment-select', (event) => {
@@ -199,6 +222,16 @@ export class ArcadeProjectileSystem {
 
   private latestSnapshot: AircraftSnapshot | null = null;
   private latestCamera: CameraState | null = null;
+
+  private selectLandingSite(id: string): void {
+    const site = SITE_MARKERS.find((item) => item.id === id);
+    if (!site) return;
+    this.landingSiteId = site.id;
+    window.dispatchEvent(new CustomEvent('cfs:landing-site-select', { detail: { id: site.id } }));
+    this.setMessage(`${site.name} · 降落導引啟用`, 1800);
+    this.lastUiSignature = '';
+    this.updatePanel(true);
+  }
 
   private selectedContact(): CombatContact | undefined {
     return this.selectedTargetId ? this.simulation.getContact(this.selectedTargetId) : undefined;
@@ -337,6 +370,7 @@ export class ArcadeProjectileSystem {
     const signature = [
       this.equipment, remaining, state, this.selectedTargetId, this.focused,
       contact?.health, contact?.alive, this.simulation.cannonRounds, this.simulation.destroyedCount,
+      this.landingSiteId, this.landingApproachActive,
     ].join('|');
     if (!force && signature === this.lastUiSignature && performance.now() - this.lastUiTime < 150) return;
     this.lastUiSignature = signature;
@@ -366,8 +400,8 @@ export class ArcadeProjectileSystem {
     }
     this.status.dataset.focused = String(this.focused);
     if (hint) hint.textContent = contact?.alive
-      ? `${this.withinRadarRange(contact) ? (this.focused ? 'LOCK VALID' : '選取後鎖定，再發射') : '目標超出雷達範圍'} · ${this.equipmentKind(spec.category) === contact.kind ? '裝備相符' : (this.equipmentKind(spec.category) === 'air' ? '請選空中目標' : '請選地面目標')} · ${contact.health} HP`
-      : '按 Tab 或點選接觸點切換目標';
+      ? `${this.withinRadarRange(contact) ? (this.focused ? 'LOCK VALID' : '選取後鎖定，再發射') : '目標超出雷達範圍'} · ${this.equipmentKind(spec.category) === contact.kind ? '裝備相符' : (this.equipmentKind(spec.category) === 'air' ? '請選空中目標' : '請選地面目標')} · ${contact.health} HP · 點降落信標啟用進場`
+      : '按 Tab 或點選接觸點切換目標；點降落信標啟用進場';
     if (radarReadout) radarReadout.textContent = `${Math.round(this.radarRange / 1000)} KM`;
     const feedback = this.panel.querySelector<HTMLElement>('#combat-feedback');
     if (feedback) feedback.textContent = performance.now() < this.messageUntil
@@ -399,6 +433,10 @@ export class ArcadeProjectileSystem {
         button.disabled = !item?.alive;
       });
     }
+    const landingActions = this.status.querySelector<HTMLElement>('#landing-beacon-actions');
+    landingActions?.querySelectorAll<HTMLButtonElement>('[data-landing-id]').forEach((button) => {
+      button.dataset.active = String(button.dataset.landingId === this.landingSiteId && this.landingApproachActive);
+    });
     this.drawRadar();
   }
 
@@ -445,6 +483,26 @@ export class ArcadeProjectileSystem {
         ctx.strokeStyle = this.focused ? '#7dff9a' : '#ffc56b';
         ctx.strokeRect(x - 6, y - 6, 12, 12);
       }
+    }
+    for (const site of SITE_MARKERS) {
+      const offset: Vec3 = [site.x - snapshot.position[0], 0, site.z - snapshot.position[2]];
+      const ahead = dot(offset, forward);
+      const across = dot(offset, right);
+      const distance = Math.hypot(ahead, across);
+      if (distance > range) continue;
+      const scale = distance / range;
+      const x = cx + (across / Math.max(distance, 1)) * radius * scale;
+      const y = cy - (ahead / Math.max(distance, 1)) * radius * scale;
+      const active = site.id === this.landingSiteId && this.landingApproachActive;
+      ctx.strokeStyle = active ? '#7dff9a' : '#f4f7f2';
+      ctx.lineWidth = active ? 2 : 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x + 5, y);
+      ctx.lineTo(x, y + 5);
+      ctx.lineTo(x - 5, y);
+      ctx.closePath();
+      ctx.stroke();
     }
     ctx.restore();
   }

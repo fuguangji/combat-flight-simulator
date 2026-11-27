@@ -184,6 +184,16 @@ describe('Tutorial (chapter 2)', () => {
     expect(bearingTo({ x: 0, z: 0 }, { x: 0, z: 5 })).toBeCloseTo(Math.PI);
   });
 
+  it('teaches selecting a landing beacon and waits for approach guidance to activate', () => {
+    const list = steps(SETUP).filter((x) => x.id === 'landing-site' || x.id === 'landing-guide');
+    const t = new Tutorial(list);
+    t.update(snap(0));
+    t.note('landing-site');
+    expect(t.update(snap(0.1)).title).toBe('跟隨進場導引');
+    t.setFlag('landingGuide', true);
+    expect(feed(t, 0.2, 1).done).toBe(true);
+  });
+
   it('autopilot on then off completes the pair of steps', () => {
     const list = steps(SETUP).filter((x) => x.id === 'autopilot-on' || x.id === 'autopilot-off');
     const t = new Tutorial(list);

@@ -4,6 +4,7 @@ import { CRASH_BUILDING, LAND_DECK, type AircraftSnapshot } from '../physics/sta
 import { activeWarnings } from '../physics/warnings';
 import { attitudeFromQuat, bodyDirToView } from './camera';
 import { BANK_MARKS, severity, tapeTicks, wrapDeg, type Severity } from './hudMath';
+import { landingAdvice, type LandingGuidance } from '../navigation/landingGuidance';
 
 const GREEN = '#7dff9a';
 const WARN = '#ff5a4d';
@@ -24,6 +25,7 @@ export class Hud {
   /** UI scale of the frame being drawn (used by the text / stroke helpers). */
   private u = 1;
   private readonly orbLaunches: number[] = [];
+  private landingGuidance: LandingGuidance | null = null;
 
   /** Trigger a harmless screen-space sphere effect from the aircraft nose. */
   launchOrb(nowMs = performance.now()): void {
@@ -70,6 +72,9 @@ export class Hud {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('2D canvas context unavailable');
     this.ctx = ctx;
+    window.addEventListener('cfs:landing-guidance', (event) => {
+      this.landingGuidance = (event as CustomEvent<LandingGuidance | null>).detail;
+    });
   }
 
   private colour(sev: Severity): string {
@@ -173,6 +178,38 @@ export class Hud {
       this.canvas.width = Math.max(1, Math.round(w * dpr));
       this.canvas.height = Math.max(1, Math.round(h * dpr));
     }
+  }
+
+  private drawLandingGuidance(cx: number, y: number, w: number): void {
+    const guidance = this.landingGuidance;
+    if (!guidance) return;
+    const { ctx, u } = this;
+    const width = Math.min(w - 24 * u, 460 * u);
+    const height = 48 * u;
+    const x = cx - width / 2;
+    const course = String((Math.round(guidance.course * 180 / Math.PI) + 360) % 360).padStart(3, '0');
+    const loc = Math.abs(guidance.lateralError) <= 35
+      ? 'LOC CENTER'
+      : `LOC ${guidance.lateralError > 0 ? 'LEFT' : 'RIGHT'} ${Math.round(Math.abs(guidance.lateralError))}m`;
+    const glide = Math.abs(guidance.glideError) <= 25
+      ? 'G/S ON'
+      : `G/S ${guidance.glideError > 0 ? 'HIGH' : 'LOW'} ${Math.round(Math.abs(guidance.glideError))}m`;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 12, 8, 0.78)';
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = guidance.phase === 'MISSED' ? WARN : GREEN;
+    ctx.lineWidth = 1 * u;
+    ctx.strokeRect(x, y, width, height);
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${10 * u}px ui-monospace, Menlo, Consolas, monospace`;
+    ctx.fillStyle = guidance.phase === 'MISSED' ? WARN : GREEN;
+    this.text(`${guidance.site.name.toUpperCase()} · ${guidance.phase} · THR ${(guidance.distanceToThreshold / 1000).toFixed(1)} KM`, cx, y + 12 * u);
+    ctx.font = `${9 * u}px ui-monospace, Menlo, Consolas, monospace`;
+    ctx.fillStyle = GREEN;
+    this.text(`CRS ${course}°  ${loc}  ${glide}  ${Math.round(guidance.speed * MS_TO_KT)} KT`, cx, y + 27 * u);
+    ctx.fillStyle = CAUTION;
+    this.text(landingAdvice(guidance), cx, y + 40 * u);
+    ctx.restore();
   }
 
   /** `fovY` is the field of view actually used by the 3D camera (it varies with speed). */
@@ -414,6 +451,7 @@ export class Hud {
         ctx.lineWidth = 1.5 * u;
       }
     }
+    if (!s.crashed && !s.landed) this.drawLandingGuidance(cx, 82 * u, w);
     this.drawOrbEffects(nowMs, cx, cy, h, u);
     ctx.fillStyle = GREEN;
   }
