@@ -8,6 +8,9 @@
  */
 import { headShift, variantFor } from './panelVariants';
 import { knobAngle, knobDrag, wrapValue } from './knob';
+import { CockpitVisualRenderer } from './cockpitVisual';
+import type { AircraftVisualInput } from '../aircraft/builder/modularAircraft';
+import type { AircraftAnimationInput } from '../aircraft/builder/aircraftAnimation';
 
 export interface CockpitShell {
   /** Switch the panel to the look of the given aircraft key. */
@@ -15,6 +18,10 @@ export interface CockpitShell {
   /** `fovY` (radians) is the 3D camera's current vertical field of view; omit to use raw angles. */
   setHeadPose(yaw: number, pitch: number, fovY?: number): void;
   setFlightReadout(altitude: number, speedKt: number, heading: number): void;
+  /** Apply the exact V1/V2 visual JSON loaded by the shared aircraft repository. */
+  setVisualConfig(config: AircraftVisualInput | null): void;
+  setAnimationControls(input: AircraftAnimationInput): void;
+  updateAnimations(deltaSeconds: number): void;
 }
 
 /** CSS perspective distance in px; the pilot's eye is this far in front of the screen plane. */
@@ -227,6 +234,20 @@ export function mountCockpitShell(): CockpitShell {
     body.touch .knob { width:30px; } body.touch .ap-module { padding:3px 6px 4px; }
     body.touch .cockpit-switches button { padding:5px 5px; font-size:8px; }
     body.touch .cockpit-config summary { padding:5px; font-size:8px; }
+    #cockpit-visual-model {
+      position:absolute; inset:0; z-index:2; pointer-events:none;
+      transform-style:preserve-3d; perspective:1600px; overflow:visible;
+    }
+    .cockpit-model-component {
+      position:absolute; left:50%; top:56%; width:0; height:0;
+      transform-style:preserve-3d; transform-origin:0 0 0;
+    }
+    .cockpit-model-part {
+      position:absolute; left:0; top:0; display:block; transform-origin:50% 50% 0;
+      backface-visibility:hidden; border:1px solid rgba(210,230,220,.2);
+      box-sizing:border-box; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));
+    }
+    #cockpit-visual-model[hidden] { display:none; }
     @media(max-width:560px) {
       .canopy-post.left {left:1%;}
       .canopy-post.right {right:1%;}
@@ -257,6 +278,8 @@ export function mountCockpitShell(): CockpitShell {
             <button type="button" data-action="missile" class="primary">MISSILE / 導彈</button>
             <button type="button" data-action="cannon" class="primary">CANNON / 機炮</button>
             <button type="button" data-action="recenter">CENTER / 回正</button>
+            <button type="button" data-action="gear">GEAR / 起落架</button>
+            <button type="button" data-action="canopy">CANOPY / 座艙罩</button>
             <button type="button" data-action="orb">ORB / 球體演出</button>
           </div>
         <details class="cockpit-config">
@@ -280,6 +303,7 @@ export function mountCockpitShell(): CockpitShell {
       </section>
     </div>`;
   document.body.append(shell);
+  const visualRenderer = new CockpitVisualRenderer(shell.querySelector<HTMLElement>('#cockpit-airframe')!);
 
   const fire = (): void => document.querySelector<HTMLButtonElement>('#cockpit-dashboard [data-fire]')?.click();
   const missile = (): void => { window.dispatchEvent(new Event('cfs:missile-launch')); };
@@ -290,6 +314,8 @@ export function mountCockpitShell(): CockpitShell {
   shell.querySelector('[data-action="cannon"]')?.addEventListener('click', cannon);
   shell.querySelector('[data-action="autopilot"]')?.addEventListener('click', ap);
   shell.querySelector('[data-action="recenter"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:look-recenter')));
+  shell.querySelector('[data-action="gear"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:gear-toggle')));
+  shell.querySelector('[data-action="canopy"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:canopy-toggle')));
   shell.querySelector('[data-action="orb"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:orb-launch')));
 
   const KNOBS: Record<string, { min: number; max: number; step: number; wrap?: boolean; fmt: (v: number) => string }> = {
@@ -442,6 +468,18 @@ export function mountCockpitShell(): CockpitShell {
       root.setProperty('--head-yaw', `${cssYaw}rad`);
       root.setProperty('--head-pitch', `${cssPitch}rad`);
     },
+    setVisualConfig: (config) => {
+      try {
+        visualRenderer.setConfig(config);
+        shell.dataset.customModel = config ? 'true' : 'false';
+      } catch (error) {
+        visualRenderer.setConfig(null);
+        shell.dataset.customModel = 'false';
+        console.warn('[CockpitVisual] 座艙模型載入失敗，保留內建儀表：', error);
+      }
+    },
+    setAnimationControls: (input) => visualRenderer.setControls(input),
+    updateAnimations: (deltaSeconds) => visualRenderer.update(deltaSeconds),
     setFlightReadout: (altitude, speedKt, heading) => {
       readoutEl ??= shell.querySelector<HTMLElement>('#cockpit-flight-readout');
       if (!readoutEl) return;
