@@ -94,6 +94,17 @@ describe('modular aircraft component hierarchy', () => {
     }
   });
 
+  it('keeps every registered pilot eye point at the seat rather than the nose', () => {
+    for (const definition of aircraftRegistry.list()) {
+      const [x, y, z] = definition.eyeOffset;
+      expect(x, definition.key).toBeGreaterThan(-1.3);
+      expect(x, definition.key).toBeLessThan(0.1);
+      expect(y, definition.key).toBeGreaterThan(0.75);
+      expect(y, definition.key).toBeLessThan(1.35);
+      expect(z, definition.key).toBeCloseTo(0, 5);
+    }
+  });
+
   it('resolves every registered aircraft into separated editor V2 geometry', () => {
     const fleet = aircraftRegistry.list();
     expect(fleet.length).toBeGreaterThan(1);
