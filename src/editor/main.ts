@@ -464,6 +464,12 @@ const addCockpitInterior = (): void => {
     });
   }
 
+  const gearLever = addComponentNode('gear-lever', '起落架控制桿', [-.05, .08, -.57], { channel: 'gear', axis: 'z', min: 0, max: -25 * radians });
+  config.components[config.components.length - 1].parent = interior;
+  addDetail(gearLever, 'gear-lever-base', '起落架控制台', 'box', { width: .22, height: .12, depth: .2, color: '#303b3e' });
+  addDetail(gearLever, 'gear-lever-shaft', '起落架控制桿', 'cylinder', { radius: .025, height: .22, position: [0, .15, 0], rotation: [0, 0, -.15], color: '#aab4ad' });
+  addDetail(gearLever, 'gear-lever-grip', '起落架握把', 'sphere', { radius: .055, position: [0, .28, 0], color: '#8c9c90' });
+
   const canopy = addComponentNode('cockpit-canopy', '座艙罩', [-.35, .55, 0], { channel: 'canopy', axis: 'z', min: 0, max: 48 * radians });
   config.components[config.components.length - 1].parent = interior;
   addDetail(canopy, 'canopy-glass', '座艙罩透明罩', 'sphere', {
