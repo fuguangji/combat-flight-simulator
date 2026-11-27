@@ -18,7 +18,7 @@ const HORIZON: vec3<f32> = vec3<f32>(0.72, 0.80, 0.88);
 const ZENITH: vec3<f32> = vec3<f32>(0.16, 0.36, 0.74);
 
 fn applyFog(c: vec3<f32>, dist: f32) -> vec3<f32> {
-  let f = 1.0 - exp(-pow(dist / 30000.0, 1.6));
+  let f = 1.0 - exp(-pow(dist / 55000.0, 1.6));
   return mix(c, HORIZON, clamp(f, 0.0, 1.0));
 }
 fn hash2(p: vec2<f32>) -> f32 {
