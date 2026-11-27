@@ -11,6 +11,7 @@ import { knobAngle, knobDrag, wrapValue } from './knob';
 import { CockpitVisualRenderer } from './cockpitVisual';
 import type { AircraftVisualInput } from '../aircraft/builder/modularAircraft';
 import type { AircraftAnimationInput } from '../aircraft/builder/aircraftAnimation';
+import { loadAircraftVisualConfig } from '../aircraft/builder/visualRepository';
 
 export interface CockpitShell {
   /** Switch the panel to the look of the given aircraft key. */
@@ -434,6 +435,14 @@ export function mountCockpitShell(): CockpitShell {
       shell.dataset.layout = v.layout;
       shell.dataset.canopy = v.canopy;
       shell.dataset.seats = String(v.seats);
+      try {
+        visualRenderer.setConfig(loadAircraftVisualConfig(key));
+        shell.dataset.customModel = 'true';
+      } catch (error) {
+        visualRenderer.setConfig(null);
+        shell.dataset.customModel = 'false';
+        console.warn(`[CockpitVisual] ${key} 載入失敗，使用內建座艙：`, error);
+      }
       shell.style.setProperty('--cp-accent', v.accent);
       shell.style.setProperty('--cp-body', v.body);
       shell.style.setProperty('--cp-trim', v.trim);
