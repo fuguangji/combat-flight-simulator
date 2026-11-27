@@ -5,6 +5,7 @@ export type AircraftPartShape = 'box' | 'cylinder' | 'hollowCylinder' | 'cone' |
 export interface AircraftVisualComponent {
   id: string;
   name: string;
+  parent?: string;
   position?: Vec3Tuple;
   rotation?: Vec3Tuple;
   scale?: Vec3Tuple;
@@ -14,7 +15,6 @@ export interface AircraftVisualPart {
   componentId: string;
   name?: string;
   shape: AircraftPartShape;
-  parent?: string;
   position?: Vec3Tuple;
   rotation?: Vec3Tuple;
   scale?: Vec3Tuple;
@@ -78,7 +78,7 @@ export function normalizeAircraftVisualConfig(input: AircraftVisualInput): Aircr
     const visited = new Set([part.id]); let parent = part.parent;
     while (parent) { if (visited.has(parent)) throw new Error(`零件階層形成循環：${part.id}`); visited.add(parent); parent = byId.get(parent)?.parent; }
   }
-  const components: AircraftVisualComponent[] = input.parts.map((part) => ({ id: `component-${part.id}`, name: part.name?.trim() || part.id, parent: part.parent ? `component-${part.parent}` : undefined, position: part.position ?? [0,0,0], rotation: part.rotation ?? [0,0,0], scale: part.scale ?? [1,1,1] }));
+  const components: AircraftVisualComponent[] = [{ id: 'aircraft-root', name: '飛機本體' }, ...input.parts.map((part) => ({ id: `component-${part.id}`, name: part.name?.trim() || part.id, parent: part.parent ? `component-${part.parent}` : 'aircraft-root', position: part.position ?? [0,0,0], rotation: part.rotation ?? [0,0,0], scale: part.scale ?? [1,1,1] }))];
   const parts: AircraftVisualPart[] = input.parts.map((part) => {
     const { parent: _parent, position: _position, rotation: _rotation, scale: _scale, ...geometry } = part;
     return { ...geometry, id: part.id, componentId: `component-${part.id}`, position: [0,0,0], rotation: [0,0,0], scale: [1,1,1] };
