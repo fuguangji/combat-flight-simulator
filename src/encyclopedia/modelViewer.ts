@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { AircraftDefinition } from '../aircraft/registry';
 import type { Anchor } from './modelKit';
 import { buildWeaponModel, weaponAnchors } from './weaponModels';
-import { createModularAircraft, createProceduralAircraftConfig, type AircraftVisualConfig } from '../aircraft/builder/modularAircraft';
+import { createModularAircraft, createProceduralAircraftConfig, type AircraftVisualInput } from '../aircraft/builder/modularAircraft';
 
 type WeaponDefinition = {
   id: string;
@@ -242,8 +242,26 @@ export class EncyclopediaViewer {
 
   private buildAircraft(item: AircraftDefinition): THREE.Group {
     const visualPath = Object.keys(this.visualConfigs).find((path) => path.endsWith(`/${item.key}.json`));
-    const custom = visualPath ? this.visualConfigs[visualPath] as AircraftVisualConfig : undefined;
-    const model = createModularAircraft(custom ?? createProceduralAircraftConfig(item.id));
+    const custom = visualPath ? this.visualConfigs[visualPath] as AircraftVisualInput : undefined;
+    let model: THREE.Group;
+    if (custom) {
+      try {
+        // The editor exports this exact schema. The builder also migrates legacy v1 assets.
+        model = createModularAircraft(custom);
+        model.userData.visualSource = visualPath;
+        model.userData.visualSchemaVersion = custom.version;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        // A broken optional art asset must never prevent the aircraft/game UI from starting.
+        console.warn(`[AircraftVisual] ${item.key} 視覺資料載入失敗，已使用程序模型：${reason}`);
+        model = createModularAircraft(createProceduralAircraftConfig(item.id));
+        model.userData.visualLoadError = reason;
+        model.userData.visualSource = 'procedural-fallback';
+      }
+    } else {
+      model = createModularAircraft(createProceduralAircraftConfig(item.id));
+      model.userData.visualSource = 'procedural-fallback';
+    }
     model.scale.setScalar(1.05);
     model.userData.aircraftKey = item.key;
     return model;
