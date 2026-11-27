@@ -882,6 +882,21 @@ async function boot(): Promise<void> {
   let bufW = 0;
   let bufH = 0;
 
+  // The home scene keeps orbiting on its own; mouse position adds a soft parallax look offset.
+  let attractPointerX = 0;
+  let attractPointerY = 0;
+  let attractPointerTargetX = 0;
+  let attractPointerTargetY = 0;
+  window.addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'mouse' || mode !== 'menu') return;
+    attractPointerTargetX = Math.max(-1, Math.min(1, (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2));
+    attractPointerTargetY = Math.max(-1, Math.min(1, (event.clientY / Math.max(1, window.innerHeight) - 0.5) * 2));
+  });
+  window.addEventListener('blur', () => {
+    attractPointerTargetX = 0;
+    attractPointerTargetY = 0;
+  });
+
   const frame = (now: number): void => {
     requestAnimationFrame(frame);
     const frameMs = now - lastFrame;
@@ -902,7 +917,10 @@ async function boot(): Promise<void> {
     if (mode === 'menu' || mode === 'loading') {
       audio.silence();
       aircraftView?.setVisible(false);
-      renderer.render(attractCamera(now));
+      const pointerEase = 1 - Math.exp(-Math.min(frameMs, 100) / 180);
+      attractPointerX += (attractPointerTargetX - attractPointerX) * pointerEase;
+      attractPointerY += (attractPointerTargetY - attractPointerY) * pointerEase;
+      renderer.render(attractCamera(now, attractPointerX, attractPointerY));
       hud.draw(null, aircraft, now);
     } else if (mode === 'paused') {
       // frozen picture: same snapshot, same camera as the moment of pausing
