@@ -20,8 +20,9 @@ export class FreeLook {
   /** Mouse movement in pixels. Cancels any recentering in progress. */
   move(dx: number, dy: number, sensitivity = LOOK_SENSITIVITY): void {
     this.recentering = false;
-    this.yaw = clamp(this.yaw + dx * sensitivity, -LOOK_YAW_MAX, LOOK_YAW_MAX);
-    this.pitch = clamp(this.pitch - dy * sensitivity, LOOK_PITCH_MIN, LOOK_PITCH_MAX);
+    // No angular stops: the pilot can rotate through any number of full turns.
+    this.yaw += dx * sensitivity;
+    this.pitch -= dy * sensitivity;
   }
 
   /** Explicitly recenter only when requested by the pilot (C / recenter control). */
