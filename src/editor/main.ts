@@ -149,6 +149,7 @@ const renderModel = (): void => {
     $('empty-hint').removeAttribute('hidden');
   }
   setValue('model-name-input', config.name || 'Untitled Aircraft');
+  setValue('model-key-input', config.aircraftKey ?? '');
   $('selection-status').textContent = selectedPart() ? `細節：${selectedPart()!.name ?? selectedPart()!.id}` : `組件：${config.components.find((item) => item.id === selectedComponentId)?.name ?? '未選取'}`;
 };
 
@@ -228,9 +229,10 @@ const fillInspector = (): void => {
       setValue(`component-pos-${axis}`, position[index]);
       setValue(`component-rot-${axis}`, Number((rotation[index] * degrees).toFixed(2)));
     });
+    const axisChannel = component.animation?.channel === 'pitch' || component.animation?.channel === 'roll' || component.animation?.channel === 'yaw';
     setValue('component-animation-channel', component.animation?.channel ?? '');
     setValue('component-animation-axis', component.animation?.axis ?? 'x');
-    setValue('component-animation-min', Number(((component.animation?.min ?? 0) * degrees).toFixed(2)));
+    setValue('component-animation-min', Number(((component.animation?.min ?? (axisChannel ? -Math.PI / 4 : 0)) * degrees).toFixed(2)));
     setValue('component-animation-max', Number(((component.animation?.max ?? Math.PI / 4) * degrees).toFixed(2)));
     return;
   }
@@ -462,7 +464,7 @@ const addCockpitInterior = (): void => {
     });
   }
 
-  const canopy = addComponentNode('canopy', '座艙罩', [-.35, .55, 0], { channel: 'canopy', axis: 'z', min: 0, max: 48 * radians });
+  const canopy = addComponentNode('cockpit-canopy', '座艙罩', [-.35, .55, 0], { channel: 'canopy', axis: 'z', min: 0, max: 48 * radians });
   config.components[config.components.length - 1].parent = interior;
   addDetail(canopy, 'canopy-glass', '座艙罩透明罩', 'sphere', {
     radius: 1, scale: [1.55, .68, .86], position: [.35, .12, 0], color: '#73b9c6',
@@ -545,7 +547,7 @@ const openJsonPanel = (mode: 'import' | 'export'): void => {
   $('json-title').textContent = mode === 'import' ? '貼上模型 JSON' : '模型 JSON（可複製）';
   $('json-help').textContent = mode === 'import'
     ? '將完整模型 JSON 貼在下方，再按「載入文字」。載入成功後會取代目前模型。'
-    : '以下是目前模型的完整資料。選取文字後複製即可，不會下載檔案。';
+    : 'V2 JSON 可直接供遊戲載入。請將檔案存成 src/aircraft/visuals/<機型 Key>.json；機型 Key 必須與 aircraft/data 中的 key 相同。';
   jsonText.value = mode === 'export' ? JSON.stringify(config, null, 2) : '';
   ($('json-load') as HTMLButtonElement).hidden = mode !== 'import';
   ($('json-copy') as HTMLButtonElement).hidden = mode !== 'export';
@@ -647,10 +649,11 @@ const commitComponentEdit = (): void => {
   component.rotation = ['x','y','z'].map((axis) => readNumber(`component-rot-${axis}`, 0) * radians) as [number,number,number];
   const channel = ($('component-animation-channel') as HTMLSelectElement).value;
   if (channel) {
+    const axisChannel = channel === 'pitch' || channel === 'roll' || channel === 'yaw';
     component.animation = {
       channel: channel as NonNullable<AircraftVisualComponent['animation']>['channel'],
       axis: ($('component-animation-axis') as HTMLSelectElement).value as 'x' | 'y' | 'z',
-      min: readNumber('component-animation-min', 0) * radians,
+      min: readNumber('component-animation-min', axisChannel ? -45 : 0) * radians,
       max: readNumber('component-animation-max', 45) * radians,
     };
   } else {
@@ -671,6 +674,18 @@ $('component-id').addEventListener('change', () => { commitComponentEdit(); save
 
 $('model-name-input').addEventListener('change', () => {
   config.name = ($('model-name-input') as HTMLInputElement).value.trim() || 'Untitled Aircraft';
+  saveHistory();
+  persist();
+});
+$('model-key-input').addEventListener('change', () => {
+  const key = ($('model-key-input') as HTMLInputElement).value.trim();
+  if (key && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(key)) {
+    notify('機型 Key 必須使用小寫英數與連字號，例如 viper-t21');
+    setValue('model-key-input', config.aircraftKey ?? '');
+    return;
+  }
+  if (key) config.aircraftKey = key;
+  else delete config.aircraftKey;
   saveHistory();
   persist();
 });

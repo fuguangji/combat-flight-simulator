@@ -1,18 +1,1321 @@
 {
-  "version": 1,
+  "version": 2,
   "name": "ViperT21 / Modular",
+  "components": [
+    {
+      "id": "aircraft-root",
+      "name": "飛機本體"
+    },
+    {
+      "id": "component-fuselage",
+      "name": "fuselage",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -1.5707963
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-nose",
+      "name": "nose",
+      "parent": "aircraft-root",
+      "position": [
+        3.72,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -1.5707963
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-rear-fairing",
+      "name": "rear-fairing",
+      "parent": "aircraft-root",
+      "position": [
+        -3.45,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-canopy",
+      "name": "canopy",
+      "parent": "aircraft-root",
+      "position": [
+        0.95,
+        0.3,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.18,
+        0.37,
+        0.47
+      ]
+    },
+    {
+      "id": "component-left-wing-root",
+      "name": "left-wing-root",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-left-wing-tip",
+      "name": "left-wing-tip",
+      "parent": "aircraft-root",
+      "position": [
+        -0.75,
+        0,
+        -1.65
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-right-wing-root",
+      "name": "right-wing-root",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-right-wing-tip",
+      "name": "right-wing-tip",
+      "parent": "aircraft-root",
+      "position": [
+        -0.75,
+        0,
+        1.65
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-left-fin",
+      "name": "left-fin",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0.15,
+        0.38
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-right-fin",
+      "name": "right-fin",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0.15,
+        -0.38
+      ],
+      "rotation": [
+        0,
+        0,
+        3.1415926
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-engine-left",
+      "name": "engine-left",
+      "parent": "aircraft-root",
+      "position": [
+        -2.75,
+        -0.02,
+        -0.48
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-engine-right",
+      "name": "engine-right",
+      "parent": "aircraft-root",
+      "position": [
+        -2.75,
+        -0.02,
+        0.48
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-interior",
+      "name": "座艙內飾",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "cockpit-tub",
+      "name": "座艙底槽",
+      "parent": "cockpit-interior",
+      "position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "instrument-panel",
+      "name": "儀表板",
+      "parent": "cockpit-interior",
+      "position": [
+        0.88,
+        0.48,
+        0
+      ]
+    },
+    {
+      "id": "hud",
+      "name": "抬頭顯示器",
+      "parent": "cockpit-interior",
+      "position": [
+        1.22,
+        0.92,
+        0
+      ]
+    },
+    {
+      "id": "pilot-seat",
+      "name": "飛行員座椅",
+      "parent": "cockpit-interior",
+      "position": [
+        -0.62,
+        0.02,
+        0
+      ]
+    },
+    {
+      "id": "control-stick",
+      "name": "操縱桿",
+      "parent": "cockpit-interior",
+      "position": [
+        0.02,
+        0.02,
+        0
+      ],
+      "animation": {
+        "channel": "pitch",
+        "axis": "z",
+        "min": -0.20943951023931953,
+        "max": 0.20943951023931953
+      }
+    },
+    {
+      "id": "throttle-quadrant",
+      "name": "油門控制台",
+      "parent": "cockpit-interior",
+      "position": [
+        0.05,
+        0.04,
+        0.57
+      ]
+    },
+    {
+      "id": "left-console",
+      "name": "左側控制台",
+      "parent": "cockpit-interior",
+      "position": [
+        -0.05,
+        0.08,
+        -0.69
+      ]
+    },
+    {
+      "id": "right-console",
+      "name": "右側控制台",
+      "parent": "cockpit-interior",
+      "position": [
+        -0.05,
+        0.08,
+        0.69
+      ]
+    },
+    {
+      "id": "cockpit-canopy",
+      "name": "座艙罩",
+      "parent": "cockpit-interior",
+      "position": [
+        -0.35,
+        0.55,
+        0
+      ],
+      "animation": {
+        "channel": "canopy",
+        "axis": "z",
+        "min": 0,
+        "max": 0.8377580409572781
+      }
+    }
+  ],
   "parts": [
-    { "id": "fuselage", "shape": "cylinder", "radiusTop": 0.27, "radiusBottom": 0.39, "height": 6.2, "radialSegments": 20, "rotation": [0, 0, -1.5707963], "color": "#738d83" },
-    { "id": "nose", "shape": "cone", "radius": 0.27, "height": 1.35, "radialSegments": 20, "position": [3.72, 0, 0], "rotation": [0, 0, -1.5707963], "color": "#b9d2c4" },
-    { "id": "rear-fairing", "shape": "cone", "radius": 0.31, "height": 0.95, "position": [-3.45, 0, 0], "rotation": [0, 0, 1.5707963], "color": "#738d83" },
-    { "id": "canopy", "shape": "sphere", "radius": 1, "radialSegments": 20, "position": [0.95, 0.3, 0], "scale": [1.18, 0.37, 0.47], "color": "#4cae9b", "opacity": 0.78 },
-    { "id": "left-wing-root", "shape": "polygon", "plane": "xz", "depth": 0.14, "color": "#586d78", "vertices": [[1.05, 0], [0.1, -1.65], [-1.42, 0]] },
-    { "id": "left-wing-tip", "shape": "polygon", "plane": "xz", "depth": 0.12, "position": [-0.75, 0, -1.65], "color": "#718b91", "vertices": [[0.25, 0], [0.12, -0.25], [0.1, -0.95], [-0.55, -0.95], [-0.42, -0.55], [-0.35, 0]] },
-    { "id": "right-wing-root", "shape": "polygon", "plane": "xz", "depth": 0.14, "color": "#586d78", "vertices": [[1.05, 0], [-1.42, 0], [0.1, 1.65]] },
-    { "id": "right-wing-tip", "shape": "polygon", "plane": "xz", "depth": 0.12, "position": [-0.75, 0, 1.65], "color": "#718b91", "vertices": [[0.25, 0], [-0.35, 0], [-0.42, 0.55], [-0.55, 0.95], [0.1, 0.95], [0.12, 0.25]] },
-    { "id": "left-fin", "shape": "polygon", "plane": "xy", "depth": 0.12, "position": [0, 0.15, 0.38], "color": "#738d83", "vertices": [[-2.5, 0.18], [-1.2, 1.5], [-0.75, 1.42], [-0.85, 0.12]] },
-    { "id": "right-fin", "shape": "polygon", "plane": "xy", "depth": 0.12, "position": [0, 0.15, -0.38], "rotation": [0, 0, 3.1415926], "color": "#738d83", "vertices": [[-2.5, 0.18], [-1.2, 1.5], [-0.75, 1.42], [-0.85, 0.12]] },
-    { "id": "engine-left", "shape": "cylinder", "radiusTop": 0.19, "radiusBottom": 0.24, "height": 0.8, "position": [-2.75, -0.02, -0.48], "rotation": [0, 0, 1.5707963], "color": "#273c3a" },
-    { "id": "engine-right", "shape": "cylinder", "radiusTop": 0.19, "radiusBottom": 0.24, "height": 0.8, "position": [-2.75, -0.02, 0.48], "rotation": [0, 0, 1.5707963], "color": "#273c3a" }
-  ]
+    {
+      "id": "fuselage",
+      "shape": "cylinder",
+      "radiusTop": 0.27,
+      "radiusBottom": 0.39,
+      "height": 6.2,
+      "radialSegments": 20,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": "#738d83",
+      "componentId": "component-fuselage",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "nose",
+      "shape": "cone",
+      "radius": 0.27,
+      "height": 1.35,
+      "radialSegments": 20,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": "#b9d2c4",
+      "componentId": "component-nose",
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "rear-fairing",
+      "shape": "cone",
+      "radius": 0.31,
+      "height": 0.95,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": "#738d83",
+      "componentId": "component-rear-fairing",
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "canopy",
+      "shape": "sphere",
+      "radius": 1,
+      "radialSegments": 20,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "color": "#4cae9b",
+      "opacity": 0.78,
+      "componentId": "component-canopy",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "left-wing-root",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.14,
+      "color": "#586d78",
+      "vertices": [
+        [
+          1.05,
+          0
+        ],
+        [
+          0.1,
+          -1.65
+        ],
+        [
+          -1.42,
+          0
+        ]
+      ],
+      "componentId": "component-left-wing-root",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "left-wing-tip",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.12,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "color": "#718b91",
+      "vertices": [
+        [
+          0.25,
+          0
+        ],
+        [
+          0.12,
+          -0.25
+        ],
+        [
+          0.1,
+          -0.95
+        ],
+        [
+          -0.55,
+          -0.95
+        ],
+        [
+          -0.42,
+          -0.55
+        ],
+        [
+          -0.35,
+          0
+        ]
+      ],
+      "componentId": "component-left-wing-tip",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "right-wing-root",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.14,
+      "color": "#586d78",
+      "vertices": [
+        [
+          1.05,
+          0
+        ],
+        [
+          -1.42,
+          0
+        ],
+        [
+          0.1,
+          1.65
+        ]
+      ],
+      "componentId": "component-right-wing-root",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "right-wing-tip",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.12,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "color": "#718b91",
+      "vertices": [
+        [
+          0.25,
+          0
+        ],
+        [
+          -0.35,
+          0
+        ],
+        [
+          -0.42,
+          0.55
+        ],
+        [
+          -0.55,
+          0.95
+        ],
+        [
+          0.1,
+          0.95
+        ],
+        [
+          0.12,
+          0.25
+        ]
+      ],
+      "componentId": "component-right-wing-tip",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "left-fin",
+      "shape": "polygon",
+      "plane": "xy",
+      "depth": 0.12,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "color": "#738d83",
+      "vertices": [
+        [
+          -2.5,
+          0.18
+        ],
+        [
+          -1.2,
+          1.5
+        ],
+        [
+          -0.75,
+          1.42
+        ],
+        [
+          -0.85,
+          0.12
+        ]
+      ],
+      "componentId": "component-left-fin",
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "right-fin",
+      "shape": "polygon",
+      "plane": "xy",
+      "depth": 0.12,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": "#738d83",
+      "vertices": [
+        [
+          -2.5,
+          0.18
+        ],
+        [
+          -1.2,
+          1.5
+        ],
+        [
+          -0.75,
+          1.42
+        ],
+        [
+          -0.85,
+          0.12
+        ]
+      ],
+      "componentId": "component-right-fin",
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "engine-left",
+      "shape": "cylinder",
+      "radiusTop": 0.19,
+      "radiusBottom": 0.24,
+      "height": 0.8,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": "#273c3a",
+      "componentId": "component-engine-left",
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "engine-right",
+      "shape": "cylinder",
+      "radiusTop": 0.19,
+      "radiusBottom": 0.24,
+      "height": 0.8,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "color": "#273c3a",
+      "componentId": "component-engine-right",
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-floor",
+      "componentId": "cockpit-tub",
+      "name": "座艙地板",
+      "shape": "box",
+      "color": "#202a2e",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 2.8,
+      "height": 0.16,
+      "depth": 1.55,
+      "position": [
+        -0.2,
+        -0.22,
+        0
+      ]
+    },
+    {
+      "id": "cockpit-sidewall-left",
+      "componentId": "cockpit-tub",
+      "name": "左側內壁",
+      "shape": "box",
+      "color": "#39464b",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 2.35,
+      "height": 0.62,
+      "depth": 0.12,
+      "position": [
+        -0.15,
+        0.12,
+        -0.7
+      ]
+    },
+    {
+      "id": "cockpit-sidewall-right",
+      "componentId": "cockpit-tub",
+      "name": "右側內壁",
+      "shape": "box",
+      "color": "#39464b",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 2.35,
+      "height": 0.62,
+      "depth": 0.12,
+      "position": [
+        -0.15,
+        0.12,
+        0.7
+      ]
+    },
+    {
+      "id": "instrument-panel-body",
+      "componentId": "instrument-panel",
+      "name": "儀表板本體",
+      "shape": "box",
+      "color": "#151d22",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.18,
+      "height": 0.72,
+      "depth": 1.48,
+      "rotation": [
+        0,
+        0,
+        -0.16
+      ]
+    },
+    {
+      "id": "mfd-left",
+      "componentId": "instrument-panel",
+      "name": "左多功能顯示器",
+      "shape": "box",
+      "color": "#102d32",
+      "metalness": 0.18,
+      "roughness": 0.22,
+      "width": 0.055,
+      "height": 0.31,
+      "depth": 0.43,
+      "position": [
+        -0.105,
+        0.08,
+        -0.39
+      ]
+    },
+    {
+      "id": "mfd-right",
+      "componentId": "instrument-panel",
+      "name": "右多功能顯示器",
+      "shape": "box",
+      "color": "#102d32",
+      "metalness": 0.18,
+      "roughness": 0.22,
+      "width": 0.055,
+      "height": 0.31,
+      "depth": 0.43,
+      "position": [
+        -0.105,
+        0.08,
+        0.39
+      ]
+    },
+    {
+      "id": "panel-dial--0.66",
+      "componentId": "instrument-panel",
+      "name": "圓形儀表",
+      "shape": "cylinder",
+      "color": "#aab5ad",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.105,
+      "height": 0.045,
+      "radialSegments": 24,
+      "position": [
+        -0.11,
+        -0.18,
+        -0.66
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963267948966
+      ]
+    },
+    {
+      "id": "panel-dial-0.66",
+      "componentId": "instrument-panel",
+      "name": "圓形儀表",
+      "shape": "cylinder",
+      "color": "#aab5ad",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.105,
+      "height": 0.045,
+      "radialSegments": 24,
+      "position": [
+        -0.11,
+        -0.18,
+        0.66
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963267948966
+      ]
+    },
+    {
+      "id": "panel-center-display",
+      "componentId": "instrument-panel",
+      "name": "中央狀態顯示器",
+      "shape": "box",
+      "color": "#183c3d",
+      "metalness": 0.12,
+      "roughness": 0.58,
+      "width": 0.05,
+      "height": 0.2,
+      "depth": 0.25,
+      "position": [
+        -0.11,
+        0.34,
+        0
+      ]
+    },
+    {
+      "id": "hud-combiner",
+      "componentId": "hud",
+      "name": "HUD 透明反射片",
+      "shape": "box",
+      "color": "#76c9ad",
+      "metalness": 0.05,
+      "roughness": 0.12,
+      "width": 0.025,
+      "height": 0.34,
+      "depth": 0.42,
+      "position": [
+        0,
+        0.05,
+        0
+      ],
+      "opacity": 0.22
+    },
+    {
+      "id": "hud-frame",
+      "componentId": "hud",
+      "name": "HUD 支架",
+      "shape": "box",
+      "color": "#69777a",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.12,
+      "height": 0.06,
+      "depth": 0.52,
+      "position": [
+        -0.04,
+        -0.15,
+        0
+      ]
+    },
+    {
+      "id": "seat-cushion",
+      "componentId": "pilot-seat",
+      "name": "座椅坐墊",
+      "shape": "box",
+      "color": "#303b3b",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.82,
+      "height": 0.2,
+      "depth": 0.78,
+      "position": [
+        0,
+        0.04,
+        0
+      ]
+    },
+    {
+      "id": "seat-back",
+      "componentId": "pilot-seat",
+      "name": "座椅靠背",
+      "shape": "box",
+      "color": "#263232",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.2,
+      "height": 0.88,
+      "depth": 0.78,
+      "position": [
+        -0.28,
+        0.48,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.12
+      ]
+    },
+    {
+      "id": "seat-headrest",
+      "componentId": "pilot-seat",
+      "name": "頭枕",
+      "shape": "box",
+      "color": "#45514d",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.2,
+      "height": 0.24,
+      "depth": 0.42,
+      "position": [
+        -0.39,
+        0.98,
+        0
+      ]
+    },
+    {
+      "id": "stick-base",
+      "componentId": "control-stick",
+      "name": "操縱桿底座",
+      "shape": "cylinder",
+      "color": "#64716b",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.14,
+      "height": 0.1,
+      "position": [
+        0,
+        0.02,
+        0
+      ]
+    },
+    {
+      "id": "stick-shaft",
+      "componentId": "control-stick",
+      "name": "操縱桿桿身",
+      "shape": "cylinder",
+      "color": "#9aa49d",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.48,
+      "position": [
+        0,
+        0.27,
+        0
+      ]
+    },
+    {
+      "id": "stick-grip",
+      "componentId": "control-stick",
+      "name": "操縱桿握把",
+      "shape": "box",
+      "color": "#222b2b",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.14,
+      "height": 0.16,
+      "depth": 0.12,
+      "position": [
+        0,
+        0.53,
+        0
+      ]
+    },
+    {
+      "id": "throttle-base",
+      "componentId": "throttle-quadrant",
+      "name": "油門底座",
+      "shape": "box",
+      "color": "#252f32",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 0.72,
+      "height": 0.22,
+      "depth": 0.34
+    },
+    {
+      "id": "throttle-lever",
+      "componentId": "throttle-quadrant",
+      "name": "油門桿",
+      "shape": "cylinder",
+      "color": "#aab4ad",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.34,
+      "position": [
+        0,
+        0.25,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.2
+      ]
+    },
+    {
+      "id": "throttle-grip",
+      "componentId": "throttle-quadrant",
+      "name": "油門握把",
+      "shape": "sphere",
+      "color": "#3e514a",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.085,
+      "position": [
+        -0.035,
+        0.42,
+        0
+      ]
+    },
+    {
+      "id": "left-console-base",
+      "componentId": "left-console",
+      "name": "側邊控制台",
+      "shape": "box",
+      "color": "#303b3e",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 1.6,
+      "height": 0.2,
+      "depth": 0.28
+    },
+    {
+      "id": "left-switch-1",
+      "componentId": "left-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        -0.48,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "left-switch-2",
+      "componentId": "left-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        -0.18,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "left-switch-3",
+      "componentId": "left-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        0.12,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "left-switch-4",
+      "componentId": "left-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        0.41999999999999993,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "right-console-base",
+      "componentId": "right-console",
+      "name": "側邊控制台",
+      "shape": "box",
+      "color": "#303b3e",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "width": 1.6,
+      "height": 0.2,
+      "depth": 0.28
+    },
+    {
+      "id": "right-switch-1",
+      "componentId": "right-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        -0.48,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "right-switch-2",
+      "componentId": "right-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        -0.18,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "right-switch-3",
+      "componentId": "right-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        0.12,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "right-switch-4",
+      "componentId": "right-console",
+      "name": "實體開關",
+      "shape": "cylinder",
+      "color": "#a8b5ac",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.035,
+      "height": 0.1,
+      "radialSegments": 10,
+      "position": [
+        0.41999999999999993,
+        0.13,
+        0
+      ]
+    },
+    {
+      "id": "canopy-glass",
+      "componentId": "cockpit-canopy",
+      "name": "座艙罩透明罩",
+      "shape": "sphere",
+      "color": "#73b9c6",
+      "metalness": 0.08,
+      "roughness": 0.12,
+      "radius": 1,
+      "scale": [
+        1.55,
+        0.68,
+        0.86
+      ],
+      "position": [
+        0.35,
+        0.12,
+        0
+      ],
+      "opacity": 0.14
+    },
+    {
+      "id": "canopy-frame",
+      "componentId": "cockpit-canopy",
+      "name": "座艙罩邊框",
+      "shape": "torus",
+      "color": "#657b80",
+      "metalness": 0.42,
+      "roughness": 0.58,
+      "radius": 0.82,
+      "tube": 0.035,
+      "position": [
+        0.35,
+        0.1,
+        0
+      ],
+      "rotation": [
+        1.5707963267948966,
+        0,
+        0
+      ],
+      "scale": [
+        1.8,
+        1,
+        1
+      ]
+    }
+  ],
+  "aircraftKey": "viper-t21"
 }

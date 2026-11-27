@@ -35,3 +35,8 @@
 #add-cockpit:hover{background:#344963}
 @media(max-width:900px){.animation-sliders{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.animation-preview{padding:8px}.animation-sliders{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.animation-sliders label{font-size:9px}}
+
+
+.model-key-input{display:inline-block;width:min(210px,28vw);margin-left:9px;padding:5px 8px;border:1px solid rgba(143,183,232,.38);border-radius:4px;background:#111a24;color:#dce8f7;font:10px ui-monospace,monospace}
+.model-key-input::placeholder{color:#78889a}
+@media(max-width:680px){.model-key-input{width:130px;margin:5px 0 0}}

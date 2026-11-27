@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { createModularAircraft, createAircraftPart, normalizeAircraftVisualConfig, type AircraftVisualConfig, type AircraftVisualInput, type LegacyAircraftVisualConfig } from '../src/aircraft/builder/modularAircraft';
 import { AircraftModelController } from '../src/aircraft/builder/aircraftAnimation';
+import { loadAircraftVisual, loadAircraftVisualConfig } from '../src/aircraft/builder/visualRepository';
 
 const visualAssets = import.meta.glob('../src/aircraft/visuals/*.json', { eager: true, import: 'default' });
 
@@ -90,6 +91,30 @@ describe('modular aircraft component hierarchy', () => {
         else if (mesh.material) mesh.material.dispose();
       });
     }
+  });
+
+  it('loads the editor asset by aircraft key through the shared game repository', () => {
+    const config = loadAircraftVisualConfig('viper-t21');
+    expect(config).not.toBeNull();
+    expect(config?.version).toBe(2);
+    expect(config?.components[0].id).toBe('aircraft-root');
+    expect(config?.aircraftKey).toBe('viper-t21');
+    expect(config?.components.some((component) => component.id === 'cockpit-interior')).toBe(true);
+    expect(config?.components.find((component) => component.id === 'control-stick')?.animation?.channel).toBe('pitch');
+    expect(config?.components.find((component) => component.id === 'cockpit-canopy')?.animation?.channel).toBe('canopy');
+    const loaded = loadAircraftVisual('viper-t21', 0);
+    expect(loaded.config.version).toBe(2);
+    expect(loaded.model.userData.aircraftKey).toBe('viper-t21');
+    expect(loaded.model.userData.visualSchemaVersion).toBe(2);
+  });
+
+  it('rejects malformed geometry values before Three.js construction', () => {
+    const invalid = {
+      version: 2,
+      components: [{ id: 'root', name: '根' }],
+      parts: [{ id: 'bad', componentId: 'root', shape: 'box', position: [0, Number.NaN, 0] }],
+    } as unknown as AircraftVisualConfig;
+    expect(() => createModularAircraft(invalid)).toThrow(/position 必須是三個有限數值/);
   });
 
   it('accepts the exact v2 JSON shape exported by the editor', () => {
