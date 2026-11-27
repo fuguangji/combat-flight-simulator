@@ -12,7 +12,6 @@ export interface CockpitShell {
   setFlightReadout(altitude: number, speedKt: number, heading: number): void;
 }
 
-/** CSS perspective distance in px; the pilot's eye is this far in front of the screen plane. */
 const PERSPECTIVE = 1600;
 export function mountCockpitShell(): CockpitShell {
   const existing = document.getElementById('cockpit-shell');
@@ -23,39 +22,9 @@ export function mountCockpitShell(): CockpitShell {
   style.textContent = `
     #cockpit-shell {
       --cp-accent:#a8ffc9; --cp-body:#0b1410; --cp-trim:#53645b;
-      position:fixed; inset:0; z-index:5; pointer-events:none;
-      perspective:${PERSPECTIVE}px; perspective-origin:50% 52%; overflow:hidden;
+      position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden;
     }
-    #cockpit-airframe {
-      position:absolute; inset:0; transform-style:preserve-3d;
-      /* The eye sits at the perspective distance: the cockpit counter-rotates about it. */
-      transform-origin:50% 52% ${PERSPECTIVE}px;
-      /* Head pose = yaw first, then pitch about the turned head. The cockpit applies the same two
-         rotations to its points in that order (the rightmost function acts first), about the eye. */
-      /* The eye sits ahead of the neck pivot, so turning the head also slides the cockpit sideways
-         (--head-x/--head-y): the panel is a solid object fixed to the aircraft, not a flat sticker. */
-      transform:translate3d(var(--head-x,0px),var(--head-y,0px),0) rotateX(var(--head-pitch,0rad)) rotateY(var(--head-yaw,0rad));
-      will-change:transform;
-    }
-    .canopy-post {
-      position:absolute; top:-8%; bottom:17%; width:clamp(12px,2.3vw,30px);
-      background:linear-gradient(90deg,#101b1a,#50615b 38%,#111b19 70%,#050a09);
-      border:1px solid #64736b; opacity:.9; box-shadow:0 0 18px #000;
-      backface-visibility:hidden;
-      /* Canopy structure is farther from the pilot than the instrument panel. */
-      transform:translateZ(180px);
-    }
-    .canopy-post.left { left:clamp(3%,5vw,8%); rotate:0deg; }
-    .canopy-post.right { right:clamp(3%,5vw,8%); }
-    .canopy-post.left { transform:translateZ(180px) rotateZ(8deg) rotateY(10deg); }
-    .canopy-post.right { transform:translateZ(180px) rotateZ(-8deg) rotateY(-10deg); }
-    .canopy-arch {
-      position:absolute; top:-15%; left:50%; width:75vw; height:34vh;
-      transform:translate3d(-50%,0,210px) rotateX(70deg);
-      border:clamp(8px,1.2vw,16px) solid #1a2824; border-bottom:0;
-      border-radius:50% 50% 0 0; box-shadow:0 0 0 2px #65766b,inset 0 0 20px #000;
-      opacity:.82; backface-visibility:hidden;
-    }
+    #cockpit-airframe { position:absolute; inset:0; }
     #cockpit-console {
       position:absolute; left:50%; bottom:6%; width:min(1040px,94vw);
       height:clamp(205px,32vh,310px);
@@ -248,7 +217,7 @@ export function mountCockpitShell(): CockpitShell {
   shell.id = 'cockpit-shell';
   shell.innerHTML = `
     <div id="cockpit-airframe">
-      <div class="canopy-post left"></div><div class="canopy-post right"></div><div class="canopy-arch"></div>
+      
       <section id="cockpit-console" aria-label="固定式駕駛艙儀表板 Cockpit instrument panel">
         <div class="cockpit-label"><span id="cockpit-plate">GENERIC</span> · 駕駛艙固定儀表</div>
         <div id="cockpit-flight-readout">ALT — m · SPD — kt · HDG —°</div>
