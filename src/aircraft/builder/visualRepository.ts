@@ -36,6 +36,15 @@ export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadR
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
   const raw = path ? visualModules[path] as AircraftVisualInput : createProceduralAircraftConfig(id);
   const config = normalizeAircraftVisualConfig(raw);
+  if (!path) {
+    // Generated airframes are normalized to the same editable V2 component/part hierarchy.
+    const stick = config.components.find((component) => component.id === 'component-cockpit-control-stick');
+    if (stick) stick.animation = { channel: 'pitch', axis: 'z', min: -0.16, max: 0.16 };
+    const canopy = config.components.find((component) => component.id === 'component-canopy');
+    if (canopy) canopy.animation = { channel: 'canopy', axis: 'z', min: 0, max: 0.62 };
+    const gear = config.components.find((component) => component.id === 'component-cockpit-gear-lever');
+    if (gear) gear.animation = { channel: 'gear', axis: 'z', min: 0, max: -0.42 };
+  }
   if (config.aircraftKey && config.aircraftKey !== key) {
     throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
   }
