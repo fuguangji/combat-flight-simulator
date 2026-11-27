@@ -105,7 +105,7 @@
         <div class="panel-foot inspector-foot"><p id="autosave-status">本機編輯暫存已啟用</p><p>模型會自動暫存在此瀏覽器。JSON 可直接複製到其他裝置。</p></div>
       </aside>
     </main>
-    <section id="json-panel" class="json-panel" hidden aria-label="JSON 文字匯入與匯出"><div class="json-card"><div class="json-heading"><strong id="json-title">模型 JSON</strong><button id="json-close" type="button" class="subtle">關閉</button></div><p id="json-help">可直接貼上或複製以下文字，不需要建立檔案。</p><textarea id="json-text" spellcheck="false" rows="18" placeholder="在此貼上模型 JSON…"></textarea><div class="json-actions"><button id="json-load" class="primary">載入文字</button><button id="json-copy">複製文字</button></div></div></section>
+    <section id="json-panel" class="json-panel" hidden aria-label="JSON 文字匯入與匯出"><div class="json-card"><div class="json-heading"><strong id="json-title">模型 JSON</strong><button id="json-close" type="button" class="subtle">關閉</button></div><p id="json-help">可直接貼上或複製以下文字，不需要建立檔案。</p><p id="json-error" class="json-error" role="alert" hidden></p><textarea id="json-text" spellcheck="false" rows="18" placeholder="在此貼上模型 JSON…"></textarea><div class="json-actions"><button id="json-load" class="primary">載入文字</button><button id="json-copy">複製文字</button></div></div></section>
   <div id="toast" role="status" aria-live="polite"></div>
   </div>
   <script type="module" src="/src/editor/main.ts"></script>
