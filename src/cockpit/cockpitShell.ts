@@ -269,10 +269,10 @@ export function mountCockpitShell(): CockpitShell {
             <label>高度反應 Altitude response <output id="ap-alt-gain-out">36%</output><input id="ap-alt-gain" type="range" min="10" max="100" step="1" value="36"></label>
             <label>航向反應 Heading response <output id="ap-hdg-gain-out">44%</output><input id="ap-hdg-gain" type="range" min="10" max="100" step="1" value="44"></label>
             <div class="cockpit-divider"></div>
-            <h3>SIM TARGET DISPLAY / 遊戲目標顯示</h3>
-            <label>顯示靈敏度 Display sensitivity <output id="lock-sens-out">50%</output><input id="lock-sens" type="range" min="10" max="100" step="1" value="50"></label>
-            <label>顯示範圍 Display range <output id="lock-range-out">20 km</output><input id="lock-range" type="range" min="2" max="80" step="1" value="20"></label>
-            <p>以上鎖定設定只影響虛構訓練接觸點的介面顯示，不控制現實感測、導引或武器行為。</p>
+            <h3>SIM TRAINING RADAR / 訓練雷達</h3>
+            <label>雷達靈敏度 Radar sensitivity <output id="lock-sens-out">50%</output><input id="lock-sens" type="range" min="10" max="100" step="1" value="50"></label>
+            <label>雷達範圍 Radar range <output id="lock-range-out">20 km</output><input id="lock-range" type="range" min="2" max="80" step="1" value="20"></label>
+            <p>此設定控制本遊戲的虛構訓練接觸範圍與鎖定，不對應現實感測或裝備。</p>
           </div>
         </details>
         </div>

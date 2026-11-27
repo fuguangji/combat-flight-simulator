@@ -650,6 +650,7 @@ async function boot(): Promise<void> {
     physics.resume();
     showOverlay(null);
     setMode('flying');
+    window.dispatchEvent(new Event('cfs:flight-start'));
   };
 
   const startFlight = (): void => {
@@ -946,8 +947,18 @@ async function boot(): Promise<void> {
         look.update(frameMs / 1000);
         const attitude = attitudeFromQuat(snap.orientation);
         cockpit.setFlightReadout(snap.altitude, snap.airspeed * MS_TO_KT, attitude.heading);
-        window.dispatchEvent(new CustomEvent('cfs:flight-snapshot', { detail: { x: snap.position[0], y: snap.altitude, z: snap.position[2], heading: attitude.heading, speed: snap.airspeed } }));
         const cam = rig.update(snap, aircraft, now, look);
+        window.dispatchEvent(new CustomEvent('cfs:flight-snapshot', {
+          detail: {
+            x: snap.position[0],
+            y: snap.altitude,
+            z: snap.position[2],
+            heading: attitude.heading,
+            speed: snap.airspeed,
+            snapshot: snap,
+            camera: cam,
+          },
+        }));
         cockpit.setHeadPose(look.yaw, look.pitch, cam.fovY);
         renderer.render(cam);
         hud.draw(snap, aircraft, now, cam.fovY, look);
