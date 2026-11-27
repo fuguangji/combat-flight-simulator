@@ -641,7 +641,7 @@ async function boot(): Promise<void> {
   const beginFlight = (): void => {
     visualGear = 0;
     visualCanopy = 0;
-    cockpit.setAnimationControls({ pitch: 0, roll: 0, yaw: 0, gear: visualGear, flaps: 0, canopy: visualCanopy });
+    aircraftView?.setControls({ pitch: 0, roll: 0, yaw: 0, gear: visualGear, flaps: 0, canopy: visualCanopy });
     physics.reset();
     autopilot.enabled = false;
     publishAutopilotState();
