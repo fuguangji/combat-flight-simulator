@@ -6,6 +6,7 @@ import {
   type AircraftVisualInput,
 } from './modularAircraft';
 import * as THREE from 'three';
+import { aircraftRegistry } from '../registry';
 
 /** The editor's exported V2 JSON is the canonical visual asset format. */
 const visualModules: Record<string, unknown> = import.meta.glob('../visuals/*.json', {
@@ -21,29 +22,42 @@ export interface AircraftVisualLoadResult {
 }
 
 /** Read and normalize the exact visual asset used by the editor and all game views. */
+function addFallbackAnimations(config: AircraftVisualConfig): AircraftVisualConfig {
+  const stick = config.components.find((component) => component.id === 'component-cockpit-control-stick');
+  if (stick) stick.animation = { channel: 'pitch', axis: 'z', min: -0.16, max: 0.16 };
+  const canopy = config.components.find((component) => component.id === 'component-canopy');
+  if (canopy) canopy.animation = { channel: 'canopy', axis: 'z', min: 0, max: 0.62 };
+  const gear = config.components.find((component) => component.id === 'component-cockpit-gear-lever');
+  if (gear) gear.animation = { channel: 'gear', axis: 'z', min: 0, max: -0.42 };
+  return config;
+}
+
+/** Every registered aircraft resolves to a validated editor V2 configuration. */
 export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | null {
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
-  if (!path) return null;
-  const config = normalizeAircraftVisualConfig(visualModules[path] as AircraftVisualInput);
-  if (config.aircraftKey && config.aircraftKey !== key) {
-    throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
+  if (path) {
+    const config = normalizeAircraftVisualConfig(visualModules[path] as AircraftVisualInput);
+    if (config.aircraftKey && config.aircraftKey !== key) {
+      throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
+    }
+    return config;
   }
+  const definition = aircraftRegistry.find(key);
+  if (!definition) return null;
+  const config = addFallbackAnimations(normalizeAircraftVisualConfig(createProceduralAircraftConfig(definition.id)));
+  config.name = definition.displayName;
+  config.aircraftKey = key;
   return config;
 }
 
 /** Shared model factory: hangar, encyclopedia, cockpit adapter and runtime use one parser. */
 export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadResult {
+export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadResult {
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
-  const raw = path ? visualModules[path] as AircraftVisualInput : createProceduralAircraftConfig(id);
-  const config = normalizeAircraftVisualConfig(raw);
+  const config = loadAircraftVisualConfig(key) ?? addFallbackAnimations(normalizeAircraftVisualConfig(createProceduralAircraftConfig(id)));
   if (!path) {
-    // Generated airframes are normalized to the same editable V2 component/part hierarchy.
-    const stick = config.components.find((component) => component.id === 'component-cockpit-control-stick');
-    if (stick) stick.animation = { channel: 'pitch', axis: 'z', min: -0.16, max: 0.16 };
-    const canopy = config.components.find((component) => component.id === 'component-canopy');
-    if (canopy) canopy.animation = { channel: 'canopy', axis: 'z', min: 0, max: 0.62 };
-    const gear = config.components.find((component) => component.id === 'component-cockpit-gear-lever');
-    if (gear) gear.animation = { channel: 'gear', axis: 'z', min: 0, max: -0.42 };
+    config.name = config.name ?? `Aircraft-${id}`;
+    config.aircraftKey = key;
   }
   if (config.aircraftKey && config.aircraftKey !== key) {
     throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
