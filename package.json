@@ -8,9 +8,10 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "node scripts/build-wasm.mjs && vite",
+    "dev": "node scripts/generate-visual-assets.mjs && node scripts/build-wasm.mjs && vite",
     "build:wasm": "node scripts/build-wasm.mjs",
-    "build": "node scripts/build-wasm.mjs && tsc --noEmit && vite build",
+    "generate:visuals": "node scripts/generate-visual-assets.mjs",
+    "build": "node scripts/generate-visual-assets.mjs && node scripts/build-wasm.mjs && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
