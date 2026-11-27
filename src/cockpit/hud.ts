@@ -410,7 +410,6 @@ export class Hud {
       }
     }
     if (!s.crashed && !s.landed) this.drawLandingGuidance(cx, 82 * u, w);
-    this.drawOrbEffects(nowMs, cx, cy, h, u);
     ctx.fillStyle = GREEN;
   }
 
