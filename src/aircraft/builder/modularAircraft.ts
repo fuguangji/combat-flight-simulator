@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export type Vec3Tuple = [number, number, number];
-export type AircraftPartShape = 'box' | 'cylinder' | 'cone' | 'sphere' | 'torus' | 'polygon';
+export type AircraftPartShape = 'box' | 'cylinder' | 'hollowCylinder' | 'cone' | 'sphere' | 'torus' | 'polygon';
 export interface AircraftVisualPart {
   id: string;
   name?: string;
@@ -19,6 +19,7 @@ export interface AircraftVisualPart {
   height?: number;
   depth?: number;
   radius?: number;
+  innerRadius?: number;
   radiusTop?: number;
   radiusBottom?: number;
   radialSegments?: number;
@@ -46,6 +47,23 @@ function createGeometry(part: AircraftVisualPart): THREE.BufferGeometry {
       return new THREE.BoxGeometry(part.width ?? 1, part.height ?? 1, part.depth ?? 1);
     case 'cylinder':
       return new THREE.CylinderGeometry(part.radiusTop ?? part.radius ?? 0.3, part.radiusBottom ?? part.radius ?? 0.3, part.height ?? 1, part.radialSegments ?? 16);
+    case 'hollowCylinder': {
+      const outer = Math.max(0.02, part.radius ?? 0.5);
+      const inner = THREE.MathUtils.clamp(part.innerRadius ?? outer * 0.65, 0.01, outer - 0.01);
+      const shape = new THREE.Shape();
+      shape.absarc(0, 0, outer, 0, Math.PI * 2, false);
+      const hole = new THREE.Path();
+      hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
+      shape.holes.push(hole);
+      const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: part.height ?? 1, bevelEnabled: false, steps: 1,
+        curveSegments: part.radialSegments ?? 24,
+      });
+      geometry.translate(0, 0, -(part.height ?? 1) / 2);
+      geometry.rotateX(Math.PI / 2);
+      geometry.computeVertexNormals();
+      return geometry;
+    }
     case 'cone':
       return new THREE.ConeGeometry(part.radius ?? 0.3, part.height ?? 1, part.radialSegments ?? 16);
     case 'sphere':
