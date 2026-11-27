@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createModularAircraft, createAircraftPart, normalizeAircraftVisualConfig, type AircraftVisualConfig, type LegacyAircraftVisualConfig } from '../src/aircraft/builder/modularAircraft';
+import * as THREE from 'three';
+import { createModularAircraft, createAircraftPart, normalizeAircraftVisualConfig, type AircraftVisualConfig, type AircraftVisualInput, type LegacyAircraftVisualConfig } from '../src/aircraft/builder/modularAircraft';
+
+const visualAssets = import.meta.glob('../src/aircraft/visuals/*.json', { eager: true, import: 'default' });
 
 describe('modular aircraft component hierarchy', () => {
   it('builds geometry details inside their owning component', () => {
@@ -67,6 +70,43 @@ describe('modular aircraft component hierarchy', () => {
       version: 1, parts: [{ id: 'loose', shape: 'box', parent: 'not-found' }],
     };
     expect(() => normalizeAircraftVisualConfig(legacy)).toThrow(/孤兒零件/);
+  });
+
+  it('loads every checked-in aircraft visual through the same runtime builder', () => {
+    expect(Object.keys(visualAssets).length).toBeGreaterThan(0);
+    for (const [path, raw] of Object.entries(visualAssets)) {
+      const model = createModularAircraft(raw as AircraftVisualInput);
+      expect(model.children.length, path).toBe(1);
+      const componentIds = new Set<string>();
+      model.traverse((node) => {
+        if (typeof node.userData.componentId === 'string') componentIds.add(node.userData.componentId);
+      });
+      expect(componentIds.size, path).toBeGreaterThan(0);
+      model.traverse((node) => {
+        const mesh = node as THREE.Mesh;
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+        else if (mesh.material) mesh.material.dispose();
+      });
+    }
+  });
+
+  it('accepts the exact v2 JSON shape exported by the editor', () => {
+    const editorExport = JSON.stringify({
+      version: 2,
+      name: 'Editor export',
+      components: [
+        { id: 'aircraft-root', name: '飛機本體' },
+        { id: 'cannon', name: '機炮', parent: 'aircraft-root', position: [1, 0, 0] },
+      ],
+      parts: [
+        { id: 'cannon-body', componentId: 'cannon', shape: 'hollowCylinder', radius: 0.2, innerRadius: 0.1, height: 1 },
+      ],
+    });
+    const config = JSON.parse(editorExport) as AircraftVisualInput;
+    const model = createModularAircraft(config);
+    expect(model.children[0].children[0].name).toBe('機炮');
+    expect(model.children[0].children[0].children[0].name).toBe('cannon-body');
   });
 
   it('supports visibility and primitive dimensions for standalone geometry details', () => {
