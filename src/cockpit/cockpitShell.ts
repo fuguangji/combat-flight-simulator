@@ -6,7 +6,7 @@
  * cockpit surface has a real depth offset, so it translates with perspective
  * parallax instead of simply spinning in place.
  */
-import { headShift, variantFor } from './panelVariants';
+import { variantFor } from './panelVariants';
 import { knobAngle, knobDrag, wrapValue } from './knob';
 
 export interface CockpitShell {
@@ -17,20 +17,6 @@ export interface CockpitShell {
 
 /** CSS perspective distance in px; the pilot's eye is this far in front of the screen plane. */
 const PERSPECTIVE = 1600;
-/** Beyond this the panels are far off-screen anyway; also keeps tan() finite. */
-const MAX_PANEL_ANGLE = (83 * Math.PI) / 180;
-
-/**
- * Head angle -> CSS rotation angle. The panels are drawn with a fixed 1600 px perspective while the
- * 3D scene uses the real field of view, so the same head angle would slide them at a different
- * rate. Scaling tan(angle) by pxPerTan / PERSPECTIVE makes a point straight ahead move across the
- * screen by exactly as many pixels as the outside world does.
- */
-export function panelAngle(angle: number, pxPerTan: number): number {
-  const a = Math.max(-MAX_PANEL_ANGLE, Math.min(MAX_PANEL_ANGLE, angle));
-  return Math.atan(Math.tan(a) * (pxPerTan / PERSPECTIVE));
-}
-
 export function mountCockpitShell(): CockpitShell {
   const existing = document.getElementById('cockpit-shell');
   if (existing) existing.remove();
