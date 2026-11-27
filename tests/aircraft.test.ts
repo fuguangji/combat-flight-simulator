@@ -24,6 +24,19 @@ describe('aircraft JSON files', () => {
     }
   });
 
+  it('stores engine thrust in newtons and keeps display thrust in kilonewtons', () => {
+    for (const f of files) {
+      const json = raw(f);
+      const p = json.physics;
+      const thrustKN = json.specs?.thrustKN;
+      expect(p.max_thrust_sl, f).toBeGreaterThan(10_000);
+      expect(p.ab_thrust_sl, f).toBeGreaterThanOrEqual(p.max_thrust_sl);
+      expect(thrustKN, f).toBeGreaterThan(0);
+      const maxPhysicsThrust = p.ab_thrust_sl > p.max_thrust_sl * 1.001 ? p.ab_thrust_sl : p.max_thrust_sl;
+      expect(maxPhysicsThrust / 1000, f).toBeCloseTo(thrustKN, 6);
+    }
+  });
+
   it('ids and keys are unique, and the registry glob finds every file', () => {
     const reg = aircraftRegistry.list();
     expect(reg.length).toBe(files.length);
