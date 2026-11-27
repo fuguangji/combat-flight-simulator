@@ -139,20 +139,33 @@ const renderModel = (): void => {
     notify(error instanceof Error ? error.message : '模型建立失敗');
     $('empty-hint').removeAttribute('hidden');
   }
-  $('model-name').textContent = config.name || 'Untitled Aircraft';
   setValue('model-name-input', config.name || 'Untitled Aircraft');
-  $('part-count').textContent = `${config.parts.length} PARTS`;
+  $('part-count').textContent = `${config.parts.length} 個零件`;
   $('selection-status').textContent = selectedPart() ? `SELECTED · ${selectedPart()!.id}` : '未選取零件';
 };
 
-const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', cylinder: '▤', cone: '△', sphere: '●', torus: '◎', polygon: '⬡' };
+const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', cylinder: '▤', hollowCylinder: '◉', cone: '△', sphere: '●', torus: '◎', polygon: '⬡' };
 const renderPartsList = (): void => {
   partsList.replaceChildren();
+  const byId = new Map(config.parts.map((part) => [part.id, part]));
+  const children = new Map<string, AircraftVisualPart[]>();
+  const roots: AircraftVisualPart[] = [];
   for (const part of config.parts) {
+    const parent = part.parent ? byId.get(part.parent) : undefined;
+    if (parent && parent.id !== part.id) {
+      const list = children.get(parent.id) ?? [];
+      list.push(part);
+      children.set(parent.id, list);
+    } else roots.push(part);
+  }
+  const visited = new Set<string>();
+  const appendTree = (part: AircraftVisualPart, depth: number): void => {
+    if (visited.has(part.id)) return;
+    visited.add(part.id);
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `part-entry${part.id === selectedId ? ' selected' : ''}`;
-    button.innerHTML = '';
+    button.style.paddingLeft = `${10 + depth * 16}px`;
     const icon = document.createElement('span');
     icon.className = 'part-icon';
     icon.textContent = shapeSymbol[part.shape];
@@ -161,8 +174,12 @@ const renderPartsList = (): void => {
     button.append(icon, label);
     button.addEventListener('click', () => selectPart(part.id));
     partsList.append(button);
-  }
-  $('part-count').textContent = `${config.parts.length} PARTS`;
+    for (const child of children.get(part.id) ?? []) appendTree(child, depth + 1);
+  };
+  for (const root of roots) appendTree(root, 0);
+  // Keep malformed or cyclic imported parts visible at the root level.
+  for (const part of config.parts) if (!visited.has(part.id)) appendTree(part, 0);
+  $('part-count').textContent = `${config.parts.length} 個零件`;
 };
 
 const setValue = (id: string, value: string | number): void => {
@@ -180,12 +197,6 @@ const fillInspector = (): void => {
   setValue('part-name', part.name ?? part.id);
   setValue('part-id', part.id);
   setValue('part-shape', part.shape);
-  const parentSelect = $('part-parent') as HTMLSelectElement;
-  parentSelect.replaceChildren(new Option('根節點', ''));
-  for (const candidate of config.parts) {
-    if (candidate.id !== part.id) parentSelect.add(new Option(partLabel(candidate), candidate.id));
-  }
-  parentSelect.value = part.parent ?? '';
   const position = part.position ?? [0, 0, 0];
   const rotation = part.rotation ?? [0, 0, 0];
   const scale = part.scale ?? [1, 1, 1];
@@ -198,6 +209,7 @@ const fillInspector = (): void => {
   setValue('dim-height', part.height ?? 1);
   setValue('dim-depth', part.depth ?? 0.12);
   setValue('dim-radius', part.radius ?? 0.5);
+  setValue('dim-inner-radius', part.innerRadius ?? (part.radius ?? 0.5) * 0.65);
   setValue('dim-radius-top', part.radiusTop ?? part.radius ?? 0.3);
   setValue('dim-radius-bottom', part.radiusBottom ?? part.radius ?? 0.3);
   setValue('dim-tube', part.tube ?? 0.05);
@@ -236,24 +248,6 @@ const commitEdit = (): void => {
   }
   part.name = ($('part-name') as HTMLInputElement).value.trim() || part.id;
   part.shape = ($('part-shape') as HTMLSelectElement).value as AircraftPartShape;
-  const parent = ($('part-parent') as HTMLSelectElement).value;
-  let ancestor = parent;
-  const visited = new Set<string>();
-  let createsCycle = false;
-  while (ancestor) {
-    if (ancestor === part.id || visited.has(ancestor)) {
-      createsCycle = true;
-      break;
-    }
-    visited.add(ancestor);
-    ancestor = config.parts.find((candidate) => candidate.id === ancestor)?.parent ?? '';
-  }
-  if (createsCycle) {
-    notify('此父節點會形成循環階層，已保留原設定');
-    setValue('part-parent', part.parent ?? '');
-  } else {
-    part.parent = parent || undefined;
-  }
   part.position = ['x', 'y', 'z'].map((axis) => readNumber(`pos-${axis}`, 0)) as [number, number, number];
   part.rotation = ['x', 'y', 'z'].map((axis) => readNumber(`rot-${axis}`, 0) * radians) as [number, number, number];
   part.scale = ['x', 'y', 'z'].map((axis) => Math.max(.01, readNumber(`scale-${axis}`, 1))) as [number, number, number];
@@ -261,6 +255,7 @@ const commitEdit = (): void => {
   part.height = Math.max(.01, readNumber('dim-height', 1));
   part.depth = Math.max(.01, readNumber('dim-depth', .12));
   part.radius = Math.max(.01, readNumber('dim-radius', .5));
+  part.innerRadius = Math.max(.01, Math.min(part.radius - .01, readNumber('dim-inner-radius', part.radius * .65)));
   part.radiusTop = Math.max(0, readNumber('dim-radius-top', .3));
   part.radiusBottom = Math.max(0, readNumber('dim-radius-bottom', .3));
   part.tube = Math.max(.01, readNumber('dim-tube', .05));
@@ -297,6 +292,13 @@ const addPart = (shape: AircraftPartShape): void => {
     metalness: .68,
     roughness: .32,
   };
+  if (shape === 'hollowCylinder') {
+    part.radius = 0.5;
+    part.innerRadius = 0.32;
+    part.height = 1;
+    part.radialSegments = 32;
+    part.color = '#aab4c2';
+  }
   if (shape === 'polygon') {
     part.plane = 'xz';
     part.depth = .12;
@@ -398,29 +400,37 @@ const loadConfig = (next: AircraftVisualConfig, message: string): void => {
   notify(message);
 };
 
-const exportConfig = (): void => {
-  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${(config.name || 'aircraft').toLowerCase().replace(/[^a-z0-9-]+/g, '-')}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-  notify('模型 JSON 已匯出');
+const jsonPanel = $('json-panel');
+const jsonText = $('json-text') as HTMLTextAreaElement;
+const openJsonPanel = (mode: 'import' | 'export'): void => {
+  $('json-title').textContent = mode === 'import' ? '貼上模型 JSON' : '模型 JSON（可複製）';
+  $('json-help').textContent = mode === 'import'
+    ? '將完整模型 JSON 貼在下方，再按「載入文字」。載入成功後會取代目前模型。'
+    : '以下是目前模型的完整資料。選取文字後複製即可，不會下載檔案。';
+  jsonText.value = mode === 'export' ? JSON.stringify(config, null, 2) : '';
+  ($('json-load') as HTMLButtonElement).hidden = mode !== 'import';
+  ($('json-copy') as HTMLButtonElement).hidden = mode !== 'export';
+  jsonPanel.hidden = false;
+  jsonText.focus();
 };
-
-$('export').addEventListener('click', exportConfig);
-$('import').addEventListener('click', () => ($('file-input') as HTMLInputElement).click());
-$('file-input').addEventListener('change', async (event) => {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
+$('export').addEventListener('click', () => openJsonPanel('export'));
+$('import').addEventListener('click', () => openJsonPanel('import'));
+$('json-close').addEventListener('click', () => { jsonPanel.hidden = true; });
+$('json-load').addEventListener('click', () => {
   try {
-    loadConfig(JSON.parse(await file.text()) as AircraftVisualConfig, `已匯入 ${file.name}`);
+    loadConfig(JSON.parse(jsonText.value) as AircraftVisualConfig, '模型文字載入成功');
+    jsonPanel.hidden = true;
   } catch (error) {
-    notify(error instanceof Error ? error.message : 'JSON 匯入失敗');
+    notify(error instanceof Error ? error.message : 'JSON 格式錯誤');
   }
-  (event.target as HTMLInputElement).value = '';
 });
+$('json-copy').addEventListener('click', () => {
+  jsonText.focus();
+  jsonText.select();
+  const copied = document.execCommand('copy');
+  notify(copied ? 'JSON 已複製' : '請手動選取文字並複製');
+});
+
 document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((button) => button.addEventListener('click', () => addPart(button.dataset.add as AircraftPartShape)));
 $('add-cannon').addEventListener('click', addCannonVisual);
 $('duplicate').addEventListener('click', () => duplicateSelected(false));
@@ -467,7 +477,6 @@ $('part-opacity').addEventListener('input', () => $('opacity-value').textContent
 
 $('model-name-input').addEventListener('change', () => {
   config.name = ($('model-name-input') as HTMLInputElement).value.trim() || 'Untitled Aircraft';
-  $('model-name').textContent = config.name;
   saveHistory();
   persist();
 });
