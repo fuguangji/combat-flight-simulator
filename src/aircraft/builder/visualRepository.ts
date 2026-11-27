@@ -24,7 +24,11 @@ export interface AircraftVisualLoadResult {
 export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | null {
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
   if (!path) return null;
-  return normalizeAircraftVisualConfig(visualModules[path] as AircraftVisualInput);
+  const config = normalizeAircraftVisualConfig(visualModules[path] as AircraftVisualInput);
+  if (config.aircraftKey && config.aircraftKey !== key) {
+    throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
+  }
+  return config;
 }
 
 /** Shared model factory: hangar, encyclopedia, cockpit adapter and runtime use one parser. */
@@ -32,6 +36,9 @@ export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadR
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
   const raw = path ? visualModules[path] as AircraftVisualInput : createProceduralAircraftConfig(id);
   const config = normalizeAircraftVisualConfig(raw);
+  if (config.aircraftKey && config.aircraftKey !== key) {
+    throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
+  }
   const model = createModularAircraft(config);
   model.scale.setScalar(1.05);
   model.userData.aircraftKey = key;
