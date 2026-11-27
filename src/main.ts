@@ -21,7 +21,6 @@ import { TouchControls, isTouchDevice } from './ui/touch';
 import { KeyboardControls } from './ui/input';
 import { EncyclopediaViewer } from './encyclopedia/modelViewer';
 import * as THREE from 'three';
-import { mountCockpitMotionDemo } from './scene/cockpitMotionDemo';
 
 type Mode = 'loading' | 'menu' | 'flying' | 'paused' | 'crashed';
 
@@ -464,6 +463,7 @@ async function boot(): Promise<void> {
   $<HTMLElement>('spec-backend').textContent = renderer.backend === 'webgpu' ? 'WebGPU' : 'WebGL 2';
 
   const hud = new Hud(hudCanvas);
+  window.addEventListener('cfs:orb-launch', () => hud.launchOrb(performance.now()));
   const input = new KeyboardControls(aircraft.startThrottle);
   const dynRes = new DynamicResolution();
   const rig = new CameraRig();
@@ -472,7 +472,6 @@ async function boot(): Promise<void> {
   const cockpit = mountCockpitShell();
   cockpit.setAircraft(aircraft.key);
   new PanelToggles();
-  mountCockpitMotionDemo();
   new NavigationDisplay();
   window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
   const touchMode = isTouchDevice();
