@@ -55,7 +55,7 @@ use collision::World;
 use flight::{Controls, Sim};
 
 pub const STATE_LEN: usize = 40;
-pub const API_VERSION: u32 = 5;
+pub const API_VERSION: u32 = 6;
 
 static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
@@ -206,6 +206,20 @@ pub extern "C" fn sim_reset() {
     sim().reset();
 }
 
+/// Place an initialized aircraft at a world-space state before it begins its simulation.
+#[no_mangle]
+pub extern "C" fn sim_set_initial_state(
+    px: f64, py: f64, pz: f64,
+    vx: f64, vy: f64, vz: f64,
+    qx: f64, qy: f64, qz: f64, qw: f64,
+) -> u32 {
+    sim().set_initial_state(
+        math::Vec3::new(px, py, pz),
+        math::Vec3::new(vx, vy, vz),
+        math::Quat { x: qx, y: qy, z: qz, w: qw },
+    ) as u32
+}
+
 #[no_mangle]
 pub extern "C" fn sim_set_controls(throttle: f64, pitch: f64, roll: f64, yaw: f64) {
     sim().set_controls(Controls { throttle, pitch, roll, yaw });
@@ -249,5 +263,23 @@ mod tests {
         assert_eq!(out[25], flight::IMPACT_NONE);
         let q = (out[3] * out[3] + out[4] * out[4] + out[5] * out[5] + out[6] * out[6]).sqrt();
         assert!((q - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn accepts_finite_world_space_initial_state_for_ai_entities() {
+        let mut sim = Sim::new(AircraftParams::generic_fighter());
+        let position = math::Vec3::new(1200.0, 2400.0, -800.0);
+        let velocity = math::Vec3::new(25.0, 2.0, -175.0);
+        let orientation = math::Quat::from_axis_angle(
+            math::Vec3::new(0.0, 1.0, 0.0),
+            std::f64::consts::FRAC_PI_2,
+        );
+
+        assert!(sim.set_initial_state(position, velocity, orientation));
+        assert_eq!(sim.state.position, position);
+        assert_eq!(sim.state.velocity, velocity);
+        assert!(sim.state.orientation.is_finite());
+        assert!(!sim.set_initial_state(position, velocity, math::Quat { x: 0.0, y: 0.0, z: 0.0, w: 0.0 }));
+        assert_eq!(sim.state.position, position);
     }
 }

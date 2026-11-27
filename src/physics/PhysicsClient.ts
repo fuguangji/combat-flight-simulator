@@ -1,6 +1,13 @@
 import { INTERP_DELAY_MS, MAX_EXTRAPOLATION_MS } from '../core/config';
+import type { Quat, Vec3 } from '../core/math';
 import { SnapshotBuffer } from './snapshotBuffer';
 import { decodeSnapshot, type AircraftSnapshot } from './stateLayout';
+
+export interface PhysicsInitialState {
+  position: Vec3;
+  velocity: Vec3;
+  orientation: Quat;
+}
 
 export interface ControlInput {
   throttle: number; // 0..1
@@ -10,7 +17,7 @@ export interface ControlInput {
 }
 
 export type WorkerIn =
-  | { type: 'init'; wasmUrl: string; params: number[] }
+  | { type: 'init'; wasmUrl: string; params: number[]; initialState?: PhysicsInitialState }
   | { type: 'aircraft'; params: number[] }
   | { type: 'controls'; c: [number, number, number, number] }
   | { type: 'reset' }
@@ -36,9 +43,13 @@ export class PhysicsClient {
     this.worker = new Worker(new URL('../../workers/physics.worker.ts', import.meta.url), { type: 'module' });
   }
 
-  start(wasmUrl: string, params: ArrayLike<number>, timeoutMs = 10_000): Promise<void> {
+  start(
+    wasmUrl: string,
+    params: ArrayLike<number>,
+    options: { timeoutMs?: number; initialState?: PhysicsInitialState } = {},
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Physics worker timed out during startup')), timeoutMs);
+      const timer = setTimeout(() => reject(new Error('Physics worker timed out during startup')), options.timeoutMs ?? 10_000);
       this.worker.onerror = (e) => {
         clearTimeout(timer);
         reject(new Error(`Physics worker crashed: ${e.message}`));
@@ -56,7 +67,7 @@ export class PhysicsClient {
           this.onMessage(m); // initial snapshot is posted just before 'ready'
         }
       };
-      this.post({ type: 'init', wasmUrl, params: Array.from(params) });
+      this.post({ type: 'init', wasmUrl, params: Array.from(params), initialState: options.initialState });
     });
   }
 

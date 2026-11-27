@@ -1,7 +1,10 @@
 import { quatRotate, type Vec3 } from '../core/math';
+import { attitudeFromQuat } from '../cockpit/camera';
+import { aircraftRegistry } from '../aircraft/registry';
 import type { CameraState } from '../rendering/Renderer';
 import type { AircraftSnapshot } from '../physics/stateLayout';
 import { CombatSimulation, distanceBetween, type CombatContact, type CombatTargetKind } from './simulation';
+import { CombatAircraftEntity } from './aircraftEntity';
 import { SITE_MARKERS } from '../world/sites';
 import weaponCatalog from './weapons.json';
 
@@ -27,6 +30,8 @@ export class ArcadeProjectileSystem {
   private readonly status: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
   private readonly simulation = new CombatSimulation();
+  private readonly airEntities = new Map<string, CombatAircraftEntity>();
+  private readonly wasmUrl: string;
   private equipment: EquipmentId = 'nova17';
   private ammo: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, weapon.capacity]));
   private cooldowns: Record<EquipmentId, number> = Object.fromEntries(weaponCatalog.map((weapon) => [weapon.id, 0]));
@@ -52,8 +57,13 @@ export class ArcadeProjectileSystem {
   private radarSensitivity = 0.5;
   private autopilotEnabled = false;
   private landingApproachActive = false;
+  private airEntitiesReady = false;
+  private airEntitiesStarting: Promise<void> | null = null;
+  private airEntityGeneration = 0;
+  private aiActive = false;
 
   constructor() {
+    this.wasmUrl = new URL(`${import.meta.env.BASE_URL}wasm/physics_engine.wasm`, location.href).href;
     const initial = document.body.dataset.equipment as EquipmentId | undefined;
     if (initial && EQUIPMENT[initial]) this.equipment = initial;
 
@@ -168,6 +178,7 @@ export class ArcadeProjectileSystem {
   }
 
   private resetFlight(): void {
+    this.disposeAirEntities();
     this.initialized = false;
     this.selectedTargetId = null;
     this.focused = false;
@@ -191,6 +202,7 @@ export class ArcadeProjectileSystem {
       const forward = quatRotate(snapshot.orientation, [1, 0, 0]);
       const heading = Math.atan2(forward[0], -forward[2]);
       this.simulation.reset(snapshot.position, heading);
+      if (mode === 'flying') this.startAirEntities(snapshot);
       this.initialized = true;
       this.lastSimTime = snapshot.time;
       this.selectedTargetId = this.simulation.contacts[0]?.id ?? null;
@@ -202,6 +214,11 @@ export class ArcadeProjectileSystem {
       const dt = clamp(snapshot.time - this.lastSimTime, 0, 0.05);
       this.lastSimTime = snapshot.time;
       this.simulation.update(dt);
+      for (const hit of this.simulation.drainProjectileHits()) {
+        const contact = this.simulation.getContact(hit.targetId);
+        const weapon = hit.weapon === 'missile' ? '導彈' : '機砲';
+        this.setMessage(contact?.alive ? `${hit.targetId} · ${weapon}命中` : `${hit.targetId} · 目標摧毀`, 1000);
+      }
       for (const contact of this.simulation.contacts) {
         if (!contact.alive && !this.notifiedDestroyed.has(contact.id)) this.notifyDestroyed(contact);
       }
@@ -222,6 +239,92 @@ export class ArcadeProjectileSystem {
 
   private latestSnapshot: AircraftSnapshot | null = null;
   private latestCamera: CameraState | null = null;
+
+  private startAirEntities(player: AircraftSnapshot): void {
+    if (this.airEntitiesStarting || this.airEntities.size > 0) return;
+    const aircraft = aircraftRegistry.find('viper-t21');
+    if (!aircraft) {
+      const error = new Error('generic-fighter.json (viper-t21) is not registered');
+      console.error(error);
+      this.setMessage(error.message, 5000);
+      return;
+    }
+
+    const token = this.airEntityGeneration;
+    const baseHeading = attitudeFromQuat(player.orientation).heading;
+    const contacts = this.simulation.contacts.filter((contact) => contact.kind === 'air');
+    this.setMessage('AI FIGHTERS · PHYSICS INITIALIZING', 5000);
+    const jobs = contacts.map(async (contact, index) => {
+      const altitude = Math.max(1800, contact.position[1]);
+      contact.position[1] = altitude;
+      const heading = baseHeading + (index - (contacts.length - 1) / 2) * 0.3;
+      const entity = new CombatAircraftEntity(
+        contact.id,
+        contact.position,
+        heading,
+        0.035 + index * 0.006,
+        altitude,
+        aircraft.startSpeed,
+      );
+      this.airEntities.set(contact.id, entity);
+      await entity.start(this.wasmUrl, aircraft);
+    });
+
+    this.airEntitiesStarting = Promise.all(jobs)
+      .then(() => {
+        if (token === this.airEntityGeneration) {
+          this.airEntitiesReady = true;
+          this.setMessage('AI FIGHTERS · PHYSICS ONLINE', 1800);
+        }
+      })
+      .catch((error: unknown) => {
+        if (token !== this.airEntityGeneration) return;
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error('Could not initialize physical air targets', error);
+        this.setMessage(`空中目標物理初始化失敗 · ${detail}`, 5000);
+        this.disposeAirEntities();
+      })
+      .finally(() => {
+        if (token === this.airEntityGeneration) this.airEntitiesStarting = null;
+      });
+  }
+
+  private updateAirEntities(mode: string, now: number): void {
+    if (mode !== 'flying') {
+      for (const entity of this.airEntities.values()) entity.pause();
+      this.aiActive = false;
+      return;
+    }
+    if (!this.aiActive) {
+      for (const entity of this.airEntities.values()) entity.resume();
+      this.aiActive = true;
+    }
+    if (!this.airEntitiesReady) return;
+
+    for (const [id, entity] of this.airEntities) {
+      const contact = this.simulation.getContact(id);
+      if (!contact?.alive) {
+        entity.pause();
+        continue;
+      }
+      const state = entity.update(now);
+      if (!state) continue;
+      this.simulation.updateAirContact(id, state.position, state.velocity);
+      if (state.crashed || state.landed) {
+        this.simulation.destroyAirContact(id);
+        entity.pause();
+      }
+    }
+  }
+
+  private disposeAirEntities(): void {
+    this.airEntityGeneration++;
+    for (const entity of this.airEntities.values()) entity.dispose();
+    this.airEntities.clear();
+    this.airEntitiesReady = false;
+    this.airEntitiesStarting = null;
+    this.aiActive = false;
+  }
 
   private selectLandingSite(id: string): void {
     const site = SITE_MARKERS.find((item) => item.id === id);
@@ -309,7 +412,11 @@ export class ArcadeProjectileSystem {
       this.setMessage(kind === 'air' ? '此裝備僅適用空中接觸點' : '此裝備僅適用地面接觸點', 1800);
       return;
     }
-    if (!this.simulation.fireMissile(this.latestSnapshot, contact.id, spec.color)) {
+    if (!this.simulation.fireMissile({
+      position: this.latestSnapshot.position,
+      velocity: this.latestSnapshot.velocity,
+      orientation: this.latestSnapshot.orientation,
+    }, contact.id, spec.color)) {
       this.setMessage('目標已失效，請重新選取', 1600);
       return;
     }
@@ -327,19 +434,18 @@ export class ArcadeProjectileSystem {
   }
 
   private fireCannon(snapshot: AircraftSnapshot): void {
-    const result = this.simulation.fireCannon(snapshot);
-    if (!result.fired) {
+    const fired = this.simulation.fireCannon({
+      position: snapshot.position,
+      velocity: snapshot.velocity,
+      orientation: snapshot.orientation,
+    });
+    if (!fired) {
       this.cannonHeld = false;
       this.cannonBurstUntil = 0;
       this.setMessage('機砲彈藥耗盡', 1800);
       return;
     }
     this.cannonFlash = 0.09;
-    if (result.hitId) {
-      const contact = this.simulation.getContact(result.hitId);
-      this.setMessage(contact?.alive ? `${result.hitId} · 命中` : `${result.hitId} · 目標摧毀`, 1000);
-      if (!contact?.alive) this.notifyDestroyed(contact);
-    }
     this.lastUiSignature = '';
     this.updatePanel(true);
   }
@@ -525,6 +631,7 @@ export class ArcadeProjectileSystem {
     const mode = document.body.dataset.mode ?? '';
     if (mode === 'menu' && this.lastMode !== 'menu') this.resetFlight();
     this.lastMode = mode;
+    this.updateAirEntities(mode, now);
     this.resizeAndDraw(mode, now);
     if (now - this.lastUiTime > 150) this.updatePanel(false);
     requestAnimationFrame(this.frame);
@@ -603,11 +710,36 @@ export class ArcadeProjectileSystem {
     for (const missile of this.simulation.missiles) {
       const point = this.project(missile.position, camera, w, h);
       if (!point || point.x < -10 || point.x > w + 10 || point.y < -10 || point.y > h + 10) continue;
+      const previous = this.project(missile.previousPosition, camera, w, h);
       ctx.save();
+      if (previous) {
+        ctx.strokeStyle = missile.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(previous.x, previous.y);
+        ctx.lineTo(point.x, point.y);
+        ctx.stroke();
+      }
       ctx.fillStyle = missile.color;
       ctx.shadowColor = missile.color;
       ctx.shadowBlur = 12;
       ctx.beginPath(); ctx.arc(point.x, point.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    for (const bullet of this.simulation.bullets) {
+      const point = this.project(bullet.position, camera, w, h);
+      if (!point || point.x < -10 || point.x > w + 10 || point.y < -10 || point.y > h + 10) continue;
+      const previous = this.project(bullet.previousPosition, camera, w, h);
+      if (!previous) continue;
+      ctx.save();
+      ctx.strokeStyle = '#ffe7a3';
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(previous.x, previous.y);
+      ctx.lineTo(point.x, point.y);
+      ctx.stroke();
       ctx.restore();
     }
 

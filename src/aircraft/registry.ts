@@ -55,6 +55,7 @@ export class AircraftDefinition {
   readonly startThrottle: number;
   readonly startAltitude: number; // m
   readonly startSpeed: number; // m/s
+  readonly startAlpha: number; // rad
   readonly fuelCapacity: number; // kg
   readonly gLimit: number;
   readonly maxMach: number;
@@ -79,6 +80,7 @@ export class AircraftDefinition {
     this.startThrottle = get('start_throttle');
     this.startAltitude = get('start_altitude');
     this.startSpeed = get('start_speed');
+    this.startAlpha = get('start_alpha');
     this.fuelCapacity = get('fuel_capacity');
     this.gLimit = get('g_limit_pos');
     this.maxMach = get('max_mach');

@@ -15,6 +15,11 @@ interface Exports {
   sim_init(id: number): number;
   sim_param_alloc(len: number): number;
   sim_aircraft_commit(len: number): number;
+  sim_set_initial_state(
+    px: number, py: number, pz: number,
+    vx: number, vy: number, vz: number,
+    qx: number, qy: number, qz: number, qw: number,
+  ): number;
   sim_reset(): void;
   sim_set_controls(t: number, p: number, r: number, y: number): void;
   sim_step(dt: number): void;
@@ -50,6 +55,17 @@ describe.skipIf(!existsSync(wasmPath))('physics WASM module', () => {
     w.sim_init(0);
     for (let i = 0; i < 30; i++) w.sim_step(PHYSICS_DT);
     expect(snapshot(w).time).toBeCloseTo(1, 9);
+  });
+
+  it('initializes a physical aircraft at an explicit world-space state', async () => {
+    const w = await load();
+    w.sim_init(0);
+    expect(w.sim_set_initial_state(1200, 2400, -800, 25, 2, -175, 0, Math.SQRT1_2, 0, Math.SQRT1_2)).toBe(1);
+    const s = snapshot(w);
+    expect(s.position).toEqual([1200, 2400, -800]);
+    expect(s.velocity).toEqual([25, 2, -175]);
+    expect(w.sim_set_initial_state(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)).toBe(0);
+    expect(snapshot(w).position).toEqual(s.position);
   });
 
   it('is deterministic across instances', async () => {

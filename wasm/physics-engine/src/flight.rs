@@ -222,6 +222,25 @@ impl Sim {
         self.refresh_derived();
     }
 
+    pub fn set_initial_state(&mut self, position: Vec3, velocity: Vec3, orientation: Quat) -> bool {
+        if !(position.is_finite() && velocity.is_finite() && orientation.is_finite() && orientation.norm() > 1e-12) {
+            return false;
+        }
+        self.state.position = position;
+        self.state.velocity = velocity;
+        self.state.orientation = orientation.normalized();
+        self.state.angular_velocity = Vec3::ZERO;
+        self.state.time = 0.0;
+        self.state.crashed = false;
+        self.state.crash_kind = CRASH_NONE;
+        self.state.crash_time = 0.0;
+        self.state.landed = false;
+        self.state.landing_kind = sites::LAND_NONE;
+        self.state.landing_sink = 0.0;
+        self.refresh_derived();
+        true
+    }
+
     pub fn mass(&self, st: &BodyState) -> f64 {
         self.params.empty_mass + st.fuel
     }

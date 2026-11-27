@@ -3,13 +3,18 @@
 import { MAX_STEPS_PER_TICK, MAX_TICK_SECONDS, PHYSICS_DT, WASM_API_VERSION } from '../src/core/config';
 import { FixedStepper } from '../src/core/fixedStep';
 import { buildTestScene } from '../src/rendering/scene';
-import type { WorkerIn, WorkerOut } from '../src/physics/PhysicsClient';
+import type { PhysicsInitialState, WorkerIn, WorkerOut } from '../src/physics/PhysicsClient';
 
 interface PhysicsExports {
   memory: WebAssembly.Memory;
   sim_api_version(): number;
   sim_param_alloc(len: number): number;
   sim_aircraft_commit(len: number): number;
+  sim_set_initial_state(
+    px: number, py: number, pz: number,
+    vx: number, vy: number, vz: number,
+    qx: number, qy: number, qz: number, qw: number,
+  ): number;
   sim_reset(): void;
   sim_set_controls(throttle: number, pitch: number, roll: number, yaw: number): void;
   sim_step(dt: number): void;
@@ -71,7 +76,7 @@ function tick(): void {
   });
 }
 
-async function init(wasmUrl: string, params: ArrayLike<number>): Promise<void> {
+async function init(wasmUrl: string, params: ArrayLike<number>, initialState?: PhysicsInitialState): Promise<void> {
   const response = await fetch(wasmUrl);
   if (!response.ok) throw new Error(`Could not load ${wasmUrl} (HTTP ${response.status})`);
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), {});
@@ -81,6 +86,13 @@ async function init(wasmUrl: string, params: ArrayLike<number>): Promise<void> {
   }
   uploadScene(exports); // the scene first: defining the aircraft keeps it
   defineAircraft(exports, params);
+  if (initialState && exports.sim_set_initial_state(
+    ...initialState.position,
+    ...initialState.velocity,
+    ...initialState.orientation,
+  ) !== 1) {
+    throw new Error('Physics engine rejected the initial aircraft state');
+  }
   wasm = exports;
   lastTick = performance.now();
   postSnapshot();
@@ -93,7 +105,7 @@ ctx.onmessage = (e) => {
   const m = e.data;
   switch (m.type) {
     case 'init':
-      init(m.wasmUrl, m.params).catch((err: unknown) =>
+      init(m.wasmUrl, m.params, m.initialState).catch((err: unknown) =>
         ctx.postMessage({ type: 'error', message: err instanceof Error ? err.message : String(err) }),
       );
       break;

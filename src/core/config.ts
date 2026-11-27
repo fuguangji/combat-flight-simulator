@@ -15,4 +15,4 @@ export const INTERP_DELAY_MS = PHYSICS_DT * 1000 * 1.25;
 /** If a snapshot is late, the renderer may extrapolate the newest one by at most this long. */
 export const MAX_EXTRAPOLATION_MS = 100;
 
-export const WASM_API_VERSION = 5;
+export const WASM_API_VERSION = 6;
