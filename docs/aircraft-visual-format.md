@@ -8,7 +8,7 @@
 
 `src/aircraft/visuals/<aircraft-key>.json`
 
-目前沒有專屬 JSON 的機型，會由 `createProceduralAircraftConfig()` 產生各自的外形配置，再立即正規化為 V2；`loadAircraftVisualConfig(key)` 對所有 registry 機型都回傳 V2 設定。這些程序模型不是另一種執行格式，也不會直接把 V1 傳進渲染器。
+`scripts/generate-visual-assets.mjs` 會在 `npm run dev`、`npm run build` 與 Pages CI 建置前，為尚無專屬資產的機型產生各自的 V2 JSON。它會保留已存在的手工模型（例如 Viper T21），不覆蓋編輯器輸出。生成資料以 `createProceduralAircraftConfig()` 為基礎，再透過同一個 normalizer 轉為 V2，因此每架機型在 Vite 載入時都有自己的 `src/aircraft/visuals/<aircraft-key>.json`。
 
 `<aircraft-key>` 必須與 `src/aircraft/data/*.json` 中該機型的 `key` 完全一致。V2 可選填 `aircraftKey`；若有填寫，載入器會檢查它與檔名是否一致，避免把 A 機型模型套到 B 機型。
 
@@ -48,7 +48,7 @@
 
 ## 舊版 V1
 
-V1 僅作為遷移輸入。舊版自訂資產與程序生成的舊版幾何資料都會透過同一個 normalizer 轉成 V2；新編輯、匯出及渲染器輸入一律使用 V2。不要再新增 V1 資產。
+V1 僅作為遷移輸入。舊版自訂資產與程序生成的舊版幾何資料都會透過同一個 normalizer 轉成 V2；新編輯、匯出及渲染器輸入一律使用 V2。生成器只會把 V1 當作內部建模來源，輸出的檔案一定是 V2。不要再新增 V1 資產。
 
 ## 驗證規則
 
