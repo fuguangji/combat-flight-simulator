@@ -22,15 +22,16 @@
     <main class="workspace">
       <aside class="left-panel panel">
         <div class="panel-heading"><div><span class="eyebrow">模型結構</span><h1>模型組件</h1></div><span id="part-count" class="count">0 個零件</span></div>
+        <div class="component-tools"><button id="add-component" class="primary wide">＋ 新增組件</button><div class="section-label">新增某部件細節</div></div>
         <div class="quick-tools">
-          <button data-add="box"><b>＋</b> 方塊</button>
-          <button data-add="cylinder"><b>＋</b> 圓柱</button>
-          <button data-add="cone"><b>＋</b> 圓錐</button>
-          <button data-add="sphere"><b>＋</b> 球體</button>
-          <button data-add="torus"><b>＋</b> 圓環</button>
-          <button data-add="polygon"><b>＋</b> 擠出輪廓</button>
-          <button data-add="hollowCylinder"><b>＋</b> 空心圓筒</button>
-          <button id="add-cannon" title="新增固定式機炮外觀零件"><b>＋</b> 機炮外觀</button>
+          <button data-add-detail="box"><b>＋</b> 方塊</button>
+          <button data-add-detail="cylinder"><b>＋</b> 圓柱</button>
+          <button data-add-detail="cone"><b>＋</b> 圓錐</button>
+          <button data-add-detail="sphere"><b>＋</b> 球體</button>
+          <button data-add-detail="torus"><b>＋</b> 圓環</button>
+          <button data-add-detail="polygon"><b>＋</b> 擠出輪廓</button>
+          <button data-add-detail="hollowCylinder"><b>＋</b> 空心圓筒</button>
+          <button id="add-cannon" title="新增機炮組件"><b>＋</b> 機炮組件</button>
         </div>
         <div class="tool-row">
           <button id="duplicate">複製零件</button>
@@ -61,8 +62,19 @@
       </section>
 
       <aside class="right-panel panel">
-        <div class="panel-heading"><div><span class="eyebrow">零件設定</span><h2>零件屬性</h2></div></div>
-        <div id="inspector-empty" class="inspector-empty">先從左側清單選取一個零件。<br /><small>所有變更都會即時反映在 3D 預覽。</small></div>
+        <div class="panel-heading"><div><span class="eyebrow">組件與細節設定</span><h2>屬性</h2></div></div>
+        <div id="inspector-empty" class="inspector-empty">先選取一個組件或幾何細節。<br /><small>新增細節前，請先選取它所屬的組件。</small></div>
+        <form id="component-inspector" class="inspector" hidden>
+          <div class="section-label">組件資料</div>
+          <label>組件名稱<input id="component-name" type="text" autocomplete="off" /></label>
+          <label>組件 ID<input id="component-id" type="text" autocomplete="off" /></label>
+          <div class="section-label">組件位置與動畫樞軸基準</div>
+          <div class="field-grid">
+            <label>位置 X<input id="component-pos-x" type="number" step="0.05" /></label><label>位置 Y<input id="component-pos-y" type="number" step="0.05" /></label><label>位置 Z<input id="component-pos-z" type="number" step="0.05" /></label>
+            <label>旋轉 X°<input id="component-rot-x" type="number" step="1" /></label><label>旋轉 Y°<input id="component-rot-y" type="number" step="1" /></label><label>旋轉 Z°<input id="component-rot-z" type="number" step="1" /></label>
+          </div>
+          <p>組件的變換會帶動其下所有子組件與細節。</p>
+        </form>
         <form id="inspector" class="inspector" hidden>
           <label>零件名稱<input id="part-name" type="text" autocomplete="off" /></label>
           <label>零件 ID<input id="part-id" type="text" autocomplete="off" /></label>
