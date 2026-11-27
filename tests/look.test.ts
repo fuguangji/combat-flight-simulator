@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyLook, bodyDirToView } from '../src/cockpit/camera';
 import type { CameraState } from '../src/rendering/Renderer';
-import { FreeLook, LOOK_PITCH_MAX, LOOK_YAW_MAX } from '../src/ui/look';
+import { FreeLook } from '../src/ui/look';
 
 const cam = (): CameraState => ({ position: [0, 0, 0], forward: [1, 0, 0], up: [0, 1, 0], right: [0, 0, 1], fovY: 1 });
 const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -42,15 +42,15 @@ describe('bodyDirToView', () => {
 });
 
 describe('FreeLook', () => {
-  it('mouse right turns the head right, mouse up looks up, and the limits hold', () => {
+  it('mouse right turns the head right and rotation remains unlimited across full turns', () => {
     const l = new FreeLook();
     l.move(100, 0);
     expect(l.yaw).toBeGreaterThan(0);
     l.move(0, -100);
     expect(l.pitch).toBeGreaterThan(0);
     l.move(1e6, -1e6);
-    expect(l.yaw).toBe(LOOK_YAW_MAX);
-    expect(l.pitch).toBe(LOOK_PITCH_MAX);
+    expect(l.yaw).toBeGreaterThan(Math.PI * 2);
+    expect(l.pitch).toBeGreaterThan(Math.PI * 2);
   });
 
   it('recentering eases back to exactly zero and moving cancels it', () => {
