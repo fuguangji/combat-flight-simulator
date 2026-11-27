@@ -22,7 +22,7 @@
     <main class="workspace">
       <aside class="left-panel panel">
         <div class="panel-heading"><div><span class="eyebrow">模型結構</span><h1>模型組件</h1></div><span id="part-count" class="count">0 個零件</span></div>
-        <div class="component-tools"><button id="add-component" class="primary wide">＋ 新增組件</button><div class="section-label">新增某部件細節</div></div>
+        <div class="component-tools"><button id="add-component" class="primary wide">＋ 新增組件</button><button id="add-cockpit" class="wide">＋ 建立座艙內飾</button><div class="section-label">新增某部件細節</div></div>
         <div class="quick-tools">
           <button data-add-detail="box"><b>＋</b> 方塊</button>
           <button data-add-detail="cylinder"><b>＋</b> 圓柱</button>
@@ -58,6 +58,17 @@
           <div class="viewport-hint">拖曳旋轉 · 滾輪縮放 · 點擊選取零件</div>
           <div id="empty-hint" class="empty-hint" hidden>尚無模型零件<br /><small>從左側新增幾何形狀開始</small></div>
         </div>
+        <div class="animation-preview">
+          <div class="animation-preview-head"><strong>動畫測試台</strong><button id="animation-reset" type="button">重設</button></div>
+          <div class="animation-sliders">
+            <label>俯仰 <input id="anim-pitch" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+            <label>滾轉 <input id="anim-roll" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+            <label>偏航 <input id="anim-yaw" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+            <label>起落架 <input id="anim-gear" type="range" min="0" max="1" step="0.01" value="0" /></label>
+            <label>襟翼 <input id="anim-flaps" type="range" min="0" max="1" step="0.01" value="0" /></label>
+            <label>座艙罩 <input id="anim-canopy" type="range" min="0" max="1" step="0.01" value="0" /></label>
+          </div>
+        </div>
         <div class="viewport-status"><span><i class="status-dot"></i> LIVE PREVIEW</span><span id="selection-status">未選取零件</span><span>Y-UP · X-FORWARD · Z-RIGHT</span></div>
       </section>
 
@@ -73,7 +84,14 @@
             <label>位置 X<input id="component-pos-x" type="number" step="0.05" /></label><label>位置 Y<input id="component-pos-y" type="number" step="0.05" /></label><label>位置 Z<input id="component-pos-z" type="number" step="0.05" /></label>
             <label>旋轉 X°<input id="component-rot-x" type="number" step="1" /></label><label>旋轉 Y°<input id="component-rot-y" type="number" step="1" /></label><label>旋轉 Z°<input id="component-rot-z" type="number" step="1" /></label>
           </div>
-          <p>組件的變換會帶動其下所有子組件與細節。</p>
+          <div class="section-label">動畫設定（樞軸相對旋轉）</div>
+          <label>動畫通道<select id="component-animation-channel"><option value="">不設定動畫</option><option value="pitch">俯仰控制</option><option value="roll">滾轉控制</option><option value="yaw">偏航控制</option><option value="gear">起落架</option><option value="flaps">襟翼</option><option value="canopy">座艙罩</option></select></label>
+          <div class="field-grid">
+            <label>旋轉軸<select id="component-animation-axis"><option value="x">X 軸</option><option value="y">Y 軸</option><option value="z">Z 軸</option></select></label>
+            <label>最小角度 °<input id="component-animation-min" type="number" step="1" /></label>
+            <label>最大角度 °<input id="component-animation-max" type="number" step="1" /></label>
+          </div>
+          <p>請將組件原點放在轉軸位置；角度是相對於組件基準姿態的偏移量。</p>
         </form>
         <form id="inspector" class="inspector" hidden>
           <label>零件名稱<input id="part-name" type="text" autocomplete="off" /></label>
