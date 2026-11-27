@@ -908,15 +908,6 @@ async function boot(): Promise<void> {
       if (touchMode) touch.update(Math.min(frameMs / 1000, 0.1));
       input.update(Math.min(frameMs / 1000, 0.1));
       const c = input.state;
-      cockpit.setAnimationControls({
-        pitch: c.pitch,
-        roll: c.roll,
-        yaw: c.yaw,
-        gear: visualGear,
-        flaps: 0,
-        canopy: visualCanopy,
-      });
-      cockpit.updateAnimations(Math.min(frameMs / 1000, 0.1));
       if (autopilot.enabled && lastSnap && mode === 'flying') {
         const attitude = attitudeFromQuat(lastSnap.orientation);
         const headingError = Math.atan2(
@@ -930,6 +921,15 @@ async function boot(): Promise<void> {
         c.yaw = Math.max(-0.3, Math.min(0.3, headingError * autopilot.headingGain - lastSnap.angularVelocity[1] * autopilot.yawDamping));
         c.throttle = autopilot.throttle;
       }
+      cockpit.setAnimationControls({
+        pitch: c.pitch,
+        roll: c.roll,
+        yaw: c.yaw,
+        gear: visualGear,
+        flaps: 0,
+        canopy: visualCanopy,
+      });
+      cockpit.updateAnimations(Math.min(frameMs / 1000, 0.1));
       if (touchMode && Math.abs(c.throttle - shownThrottle) > 1e-3) {
         shownThrottle = c.throttle;
         touch.setThrottle(c.throttle);
