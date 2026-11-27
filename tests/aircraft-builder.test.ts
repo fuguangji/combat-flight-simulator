@@ -126,7 +126,7 @@ describe('modular aircraft component hierarchy', () => {
     const model = createModularAircraft(config);
     const controller = new AircraftModelController(model, config.components);
     controller.setControls({ gear: 1, roll: 1 });
-    controller.update(0.1);
+    for (let frame = 0; frame < 24; frame++) controller.update(0.1);
     const gear = controller.getComponent('gear-door');
     const surface = controller.getComponent('control-surface');
     expect(gear?.rotation.z).toBeCloseTo(-Math.PI / 2, 2);
