@@ -228,9 +228,10 @@ const fillInspector = (): void => {
       setValue(`component-pos-${axis}`, position[index]);
       setValue(`component-rot-${axis}`, Number((rotation[index] * degrees).toFixed(2)));
     });
+    const axisChannel = component.animation?.channel === 'pitch' || component.animation?.channel === 'roll' || component.animation?.channel === 'yaw';
     setValue('component-animation-channel', component.animation?.channel ?? '');
     setValue('component-animation-axis', component.animation?.axis ?? 'x');
-    setValue('component-animation-min', Number(((component.animation?.min ?? 0) * degrees).toFixed(2)));
+    setValue('component-animation-min', Number(((component.animation?.min ?? (axisChannel ? -Math.PI / 4 : 0)) * degrees).toFixed(2)));
     setValue('component-animation-max', Number(((component.animation?.max ?? Math.PI / 4) * degrees).toFixed(2)));
     return;
   }
@@ -647,10 +648,11 @@ const commitComponentEdit = (): void => {
   component.rotation = ['x','y','z'].map((axis) => readNumber(`component-rot-${axis}`, 0) * radians) as [number,number,number];
   const channel = ($('component-animation-channel') as HTMLSelectElement).value;
   if (channel) {
+    const axisChannel = channel === 'pitch' || channel === 'roll' || channel === 'yaw';
     component.animation = {
       channel: channel as NonNullable<AircraftVisualComponent['animation']>['channel'],
       axis: ($('component-animation-axis') as HTMLSelectElement).value as 'x' | 'y' | 'z',
-      min: readNumber('component-animation-min', 0) * radians,
+      min: readNumber('component-animation-min', axisChannel ? -45 : 0) * radians,
       max: readNumber('component-animation-max', 45) * radians,
     };
   } else {
