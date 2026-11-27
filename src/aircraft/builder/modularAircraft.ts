@@ -49,15 +49,18 @@ export interface AircraftVisualPart {
 export interface AircraftVisualConfig {
   version: 2;
   name?: string;
+  /** Optional binding to the aircraft registry key; when present it must match the visual asset filename. */
+  aircraftKey?: string;
   components: AircraftVisualComponent[];
   parts: AircraftVisualPart[];
 }
 export interface LegacyAircraftVisualPart extends Omit<AircraftVisualPart, 'componentId'> { parent?: string; }
-export interface LegacyAircraftVisualConfig { version: 1; name?: string; parts: LegacyAircraftVisualPart[]; }
+export interface LegacyAircraftVisualConfig { version: 1; name?: string; aircraftKey?: string; parts: LegacyAircraftVisualPart[]; }
 export type AircraftVisualInput = AircraftVisualConfig | LegacyAircraftVisualConfig;
 
 export function validateAircraftVisualConfig(config: AircraftVisualConfig): void {
   if (config.version !== 2 || !Array.isArray(config.components) || !Array.isArray(config.parts)) throw new Error('模型格式錯誤：需要 version 2、components 與 parts');
+  if (config.aircraftKey !== undefined && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(config.aircraftKey)) throw new Error('模型 aircraftKey 必須是 kebab-case 機型識別碼');
   const ids = new Set<string>();
   const components = new Map<string, AircraftVisualComponent>();
   for (const component of config.components) {
@@ -127,7 +130,7 @@ export function normalizeAircraftVisualConfig(input: AircraftVisualInput): Aircr
     const { parent: _parent, position: _position, rotation: _rotation, scale: _scale, ...geometry } = part;
     return { ...geometry, id: part.id, componentId: `component-${part.id}`, position: [0,0,0], rotation: [0,0,0], scale: [1,1,1] };
   });
-  const migrated: AircraftVisualConfig = { version: 2, name: input.name, components, parts };
+  const migrated: AircraftVisualConfig = { version: 2, name: input.name, aircraftKey: input.aircraftKey, components, parts };
   validateAircraftVisualConfig(migrated); return migrated;
 }
 
