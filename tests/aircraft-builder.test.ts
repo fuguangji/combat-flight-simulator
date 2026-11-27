@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { createModularAircraft, createAircraftPart, normalizeAircraftVisualConfig, type AircraftVisualConfig, type AircraftVisualInput, type LegacyAircraftVisualConfig } from '../src/aircraft/builder/modularAircraft';
+import { AircraftModelController } from '../src/aircraft/builder/aircraftAnimation';
 
 const visualAssets = import.meta.glob('../src/aircraft/visuals/*.json', { eager: true, import: 'default' });
 
@@ -107,6 +108,44 @@ describe('modular aircraft component hierarchy', () => {
     const model = createModularAircraft(config);
     expect(model.children[0].children[0].name).toBe('機炮');
     expect(model.children[0].children[0].children[0].name).toBe('cannon-body');
+  });
+
+  it('animates only components with explicit visual animation bindings', () => {
+    const config: AircraftVisualConfig = {
+      version: 2,
+      components: [
+        { id: 'aircraft-root', name: '飛機本體' },
+        { id: 'gear-door', name: '起落架艙門', parent: 'aircraft-root', animation: { channel: 'gear', axis: 'z', min: 0, max: -Math.PI / 2 } },
+        { id: 'control-surface', name: '控制面', parent: 'aircraft-root', animation: { channel: 'roll', axis: 'x', min: -0.2, max: 0.2 } },
+      ],
+      parts: [
+        { id: 'door-panel', componentId: 'gear-door', shape: 'box' },
+        { id: 'surface-panel', componentId: 'control-surface', shape: 'box' },
+      ],
+    };
+    const model = createModularAircraft(config);
+    const controller = new AircraftModelController(model, config.components);
+    controller.setControls({ gear: 1, roll: 1 });
+    controller.update(0.1);
+    const gear = controller.getComponent('gear-door');
+    const surface = controller.getComponent('control-surface');
+    expect(gear?.rotation.z).toBeCloseTo(-Math.PI / 2, 2);
+    expect(surface?.rotation.x).toBeCloseTo(0.2, 2);
+    controller.reset();
+    expect(gear?.rotation.z).toBeCloseTo(0);
+    expect(surface?.rotation.x).toBeCloseTo(0);
+  });
+
+  it('rejects invalid animation channels and non-finite angles', () => {
+    const invalid = {
+      version: 2,
+      components: [
+        { id: 'root', name: '根' },
+        { id: 'bad', name: '錯誤動畫', parent: 'root', animation: { channel: 'fire', axis: 'x', min: 0, max: Number.NaN } },
+      ],
+      parts: [],
+    } as unknown as AircraftVisualConfig;
+    expect(() => createModularAircraft(invalid)).toThrow(/動畫通道無效/);
   });
 
   it('supports visibility and primitive dimensions for standalone geometry details', () => {
