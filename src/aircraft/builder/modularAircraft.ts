@@ -296,6 +296,8 @@ export function createProceduralAircraftConfig(id: number): LegacyAircraftVisual
     { id: 'cockpit-display-right', shape: 'box', width: 0.055, height: 0.25, depth: 0.34, position: [0.66, 0.5, 0.36], color: '#10383a', metalness: 0.12, roughness: 0.2 },
     { id: 'cockpit-center-display', shape: 'box', width: 0.06, height: 0.18, depth: 0.22, position: [0.64, 0.76, 0], color: '#1b5550', metalness: 0.08, roughness: 0.24 },
     { id: 'cockpit-control-stick', shape: 'cylinder', radiusTop: 0.035, radiusBottom: 0.045, height: 0.42, position: [0.02, 0.03, 0], color: '#65766d', metalness: 0.82, roughness: 0.28 },
+    { id: 'cockpit-gear-lever', shape: 'cylinder', radius: 0.025, height: 0.24, position: [-0.08, 0.13, -0.48], rotation: [0, 0, -0.2], color: '#87968d', metalness: 0.76, roughness: 0.3 },
+    { id: 'cockpit-gear-knob', shape: 'sphere', radius: 0.06, position: [-0.08, 0.25, -0.48], color: '#a4b6a9', metalness: 0.42, roughness: 0.36 },
     { id: 'cockpit-stick-grip', shape: 'sphere', radius: 0.095, position: [0.02, 0.26, 0], color: '#1c2824', metalness: 0.32, roughness: 0.5 },
     { id: 'cockpit-console-left', shape: 'box', width: 1.05, height: 0.18, depth: 0.28, position: [-0.05, 0.0, -0.57], rotation: [0, 0, 0.05], color: '#303d38', metalness: 0.38, roughness: 0.58 },
     { id: 'cockpit-console-right', shape: 'box', width: 1.05, height: 0.18, depth: 0.28, position: [-0.05, 0.0, 0.57], rotation: [0, 0, 0.05], color: '#303d38', metalness: 0.38, roughness: 0.58 },
