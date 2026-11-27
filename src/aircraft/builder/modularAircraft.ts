@@ -2,6 +2,15 @@ import * as THREE from 'three';
 
 export type Vec3Tuple = [number, number, number];
 export type AircraftPartShape = 'box' | 'cylinder' | 'hollowCylinder' | 'cone' | 'sphere' | 'torus' | 'polygon';
+export type AircraftAnimationChannel = 'pitch' | 'roll' | 'yaw' | 'gear' | 'flaps' | 'canopy';
+export type AircraftAnimationAxis = 'x' | 'y' | 'z';
+export interface AircraftComponentAnimation {
+  channel: AircraftAnimationChannel;
+  axis: AircraftAnimationAxis;
+  /** Relative rotation limits in radians, added to the component's base rotation. */
+  min?: number;
+  max?: number;
+}
 export interface AircraftVisualComponent {
   id: string;
   name: string;
@@ -9,6 +18,7 @@ export interface AircraftVisualComponent {
   position?: Vec3Tuple;
   rotation?: Vec3Tuple;
   scale?: Vec3Tuple;
+  animation?: AircraftComponentAnimation;
 }
 export interface AircraftVisualPart {
   id: string;
