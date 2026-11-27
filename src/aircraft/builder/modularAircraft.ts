@@ -71,7 +71,12 @@ export function validateAircraftVisualConfig(config: AircraftVisualConfig): void
     const visited = new Set([component.id]); let parent = component.parent;
     while (parent) { if (visited.has(parent)) throw new Error(`組件階層形成循環：${component.name}`); visited.add(parent); parent = components.get(parent)?.parent; }
   }
+  const validVec3 = (value: unknown): value is Vec3Tuple =>
+    Array.isArray(value) && value.length === 3 && value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
   for (const component of config.components) {
+    for (const [label, value] of [['position', component.position], ['rotation', component.rotation], ['scale', component.scale]] as const) {
+      if (value !== undefined && !validVec3(value)) throw new Error(`組件「${component.name}」的 ${label} 必須是三個有限數值`);
+    }
     const animation = component.animation;
     if (!animation) continue;
     if (!['pitch', 'roll', 'yaw', 'gear', 'flaps', 'canopy'].includes(animation.channel)) throw new Error(`組件「${component.name}」的動畫通道無效`);
@@ -80,10 +85,30 @@ export function validateAircraftVisualConfig(config: AircraftVisualConfig): void
       throw new Error(`組件「${component.name}」的動畫角度必須是有限數值`);
     }
   }
+  const shapes: readonly string[] = ['box', 'cylinder', 'hollowCylinder', 'cone', 'sphere', 'torus', 'polygon'];
   for (const part of config.parts) {
     if (!part.id?.trim() || ids.has(part.id)) throw new Error(`細節 ID 無效或重複：${part.id}`);
     ids.add(part.id);
     if (!components.has(part.componentId)) throw new Error(`孤兒細節「${part.name ?? part.id}」：找不到所屬組件「${part.componentId}」`);
+    if (!shapes.includes(part.shape)) throw new Error(`細節「${part.id}」的幾何類型無效`);
+    for (const [label, value] of [['position', part.position], ['rotation', part.rotation], ['scale', part.scale]] as const) {
+      if (value !== undefined && !validVec3(value)) throw new Error(`細節「${part.id}」的 ${label} 必須是三個有限數值`);
+    }
+    for (const key of ['width', 'height', 'depth', 'radius', 'innerRadius', 'radiusTop', 'radiusBottom', 'tube'] as const) {
+      const value = part[key];
+      if (value !== undefined && (!Number.isFinite(value) || value <= 0)) throw new Error(`細節「${part.id}」的 ${key} 必須是大於 0 的有限數值`);
+    }
+    for (const key of ['metalness', 'roughness', 'opacity'] as const) {
+      const value = part[key];
+      if (value !== undefined && (!Number.isFinite(value) || value < 0 || value > 1)) throw new Error(`細節「${part.id}」的 ${key} 必須介於 0 到 1`);
+    }
+    if (part.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(part.color)) throw new Error(`細節「${part.id}」的顏色必須是 #RRGGBB`);
+    if (part.radialSegments !== undefined && (!Number.isInteger(part.radialSegments) || part.radialSegments < 3 || part.radialSegments > 256)) throw new Error(`細節「${part.id}」的分段數必須是 3 到 256 的整數`);
+    if (part.tubularSegments !== undefined && (!Number.isInteger(part.tubularSegments) || part.tubularSegments < 3 || part.tubularSegments > 256)) throw new Error(`細節「${part.id}」的圓環分段數必須是 3 到 256 的整數`);
+    if (part.plane !== undefined && part.plane !== 'xy' && part.plane !== 'xz') throw new Error(`細節「${part.id}」的擠出平面無效`);
+    if (part.vertices !== undefined && (!Array.isArray(part.vertices) || part.vertices.length < 3 || !part.vertices.every((point) => Array.isArray(point) && point.length === 2 && point.every((value) => Number.isFinite(value))))) throw new Error(`細節「${part.id}」的頂點必須至少包含三組有限 [x, y] 座標`);
+    if (part.shape === 'polygon' && (!part.vertices || part.vertices.length < 3)) throw new Error(`Polygon part「${part.id}」至少需要三個頂點`);
+    if (part.shape === 'hollowCylinder' && part.innerRadius !== undefined && part.radius !== undefined && part.innerRadius >= part.radius) throw new Error(`空心圓筒「${part.id}」的內半徑必須小於外半徑`);
   }
 }
 
