@@ -283,9 +283,13 @@ const commitEdit = (): void => {
 
 const addPart = (shape: AircraftPartShape): void => {
   const index = config.parts.length + 1;
+  const shapeNames: Record<AircraftPartShape, string> = {
+    box: '方塊', cylinder: '圓柱', hollowCylinder: '空心圓筒',
+    cone: '圓錐', sphere: '球體', torus: '圓環', polygon: '擠出輪廓',
+  };
   const part: AircraftVisualPart = {
     id: uniqueId(`${shape}-${index}`),
-    name: `${shape} ${index}`,
+    name: `${shapeNames[shape]} ${index}`,
     shape,
     position: [0, 0, 0],
     color: '#738d83',
@@ -351,7 +355,7 @@ const duplicateSelected = (mirror = false): void => {
   if (!source) return;
   const copyPart = clone(source);
   copyPart.id = uniqueId(`${source.id}-copy`);
-  copyPart.name = `${partLabel(source)} Copy`;
+  copyPart.name = `${partLabel(source)} 複本`;
   if (copyPart.position) {
     copyPart.position[0] += mirror ? 0 : .35;
     copyPart.position[2] = mirror ? -copyPart.position[2] : copyPart.position[2] + .35;
