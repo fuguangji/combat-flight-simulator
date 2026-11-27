@@ -71,8 +71,10 @@ export class AircraftView {
       if (!mesh.isMesh) return;
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const material of materials) {
-        material.side = THREE.DoubleSide;
-        material.needsUpdate = true;
+        if (mesh.name.toLowerCase().includes('canopy') || mesh.geometry.type === 'ExtrudeGeometry') {
+          material.side = THREE.DoubleSide;
+          material.needsUpdate = true;
+        }
       }
     });
     this.scene.add(this.model);
@@ -85,12 +87,19 @@ export class AircraftView {
     this.controller?.setControls(input);
   }
 
-  render(yaw: number, pitch: number, width: number, height: number, deltaSeconds: number): void {
+  render(yaw: number, pitch: number, width: number, height: number, deltaSeconds: number, fovY?: number): void {
     if (this.disposed || !this.model) return;
     if (this.canvas.width !== Math.max(1, Math.floor(width * this.renderer.getPixelRatio())) ||
         this.canvas.height !== Math.max(1, Math.floor(height * this.renderer.getPixelRatio()))) this.resize();
     // Free-look is deliberately unbounded: 360°, 720°, and looking directly behind all work.
     this.camera.position.set(0, 0, 0);
+    if (fovY && Number.isFinite(fovY) && fovY > 0.05 && fovY < Math.PI) {
+      const nextFov = fovY * 180 / Math.PI;
+      if (Math.abs(this.camera.fov - nextFov) > 1e-4) {
+        this.camera.fov = nextFov;
+        this.camera.updateProjectionMatrix();
+      }
+    }
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.set(pitch, -yaw, 0, 'YXZ');
     this.camera.updateMatrixWorld(true);
