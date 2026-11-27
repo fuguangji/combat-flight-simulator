@@ -35,7 +35,7 @@ let historyIndex = -1;
 let toastTimer = 0;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x08120f);
+scene.background = new THREE.Color(0x121720);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
 let cameraYaw = 0.72;
 let cameraPitch = 0.38;
@@ -52,14 +52,14 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
-scene.add(new THREE.HemisphereLight(0xd8ffe6, 0x1b2924, 2.1));
+scene.add(new THREE.HemisphereLight(0xe0e9f5, 0x252d39, 2.1));
 const keyLight = new THREE.DirectionalLight(0xffffff, 3.2);
 keyLight.position.set(7, 10, 8);
 scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0x6cddb1, 1.8);
+const rimLight = new THREE.DirectionalLight(0x8fb7e8, 1.5);
 rimLight.position.set(-7, 3, -6);
 scene.add(rimLight);
-const grid = new THREE.GridHelper(24, 24, 0x426b58, 0x1d3529);
+const grid = new THREE.GridHelper(24, 24, 0x71849b, 0x303b4b);
 grid.position.y = -1.7;
 scene.add(grid);
 const axes = new THREE.AxesHelper(3.5);
@@ -128,7 +128,7 @@ const renderModel = (): void => {
       if (partGroup?.userData.partId === selectedId) {
         const original = object.material as THREE.MeshStandardMaterial;
         const highlighted = original.clone();
-        highlighted.emissive = new THREE.Color(0x1d6944);
+        highlighted.emissive = new THREE.Color(0x426fa8);
         highlighted.emissiveIntensity = 0.48;
         object.material = highlighted;
       }
@@ -141,7 +141,7 @@ const renderModel = (): void => {
   }
   setValue('model-name-input', config.name || 'Untitled Aircraft');
   $('part-count').textContent = `${config.parts.length} 個零件`;
-  $('selection-status').textContent = selectedPart() ? `SELECTED · ${selectedPart()!.id}` : '未選取零件';
+  $('selection-status').textContent = selectedPart() ? `SELECTED · ${selectedPart()!.id}` : '尚未選取零件';
 };
 
 const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', cylinder: '▤', hollowCylinder: '◉', cone: '△', sphere: '●', torus: '◎', polygon: '⬡' };
@@ -292,7 +292,7 @@ const addPart = (shape: AircraftPartShape): void => {
     name: `${shapeNames[shape]} ${index}`,
     shape,
     position: [0, 0, 0],
-    color: '#738d83',
+    color: '#8795a8',
     metalness: .68,
     roughness: .32,
   };
