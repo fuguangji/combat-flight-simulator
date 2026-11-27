@@ -38,7 +38,7 @@ const FACES: { n: [number, number, number]; v: [number, number, number][] }[] = 
   { n: [0, 1, 0], v: [[-0.5, 1, 0.5], [0.5, 1, 0.5], [0.5, 1, -0.5], [-0.5, 1, -0.5]] },
 ];
 
-export function buildTestScene(towers = 3600, massifs = 400, halfExtent = 25_000): TestScene {
+export function buildTestScene(towers = 5400, massifs = 600, halfExtent = 40_000): TestScene {
   const vertices = new Float32Array(FACES.length * 4 * 6);
   const indices = new Uint32Array(FACES.length * 6);
   FACES.forEach((face, fi) => {
