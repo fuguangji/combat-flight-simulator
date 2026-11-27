@@ -285,5 +285,22 @@ export function createProceduralAircraftConfig(id: number): LegacyAircraftVisual
       parts.push({ id: `engine-inner-${side}`, shape: 'cylinder', radius: 0.13, height: 0.035, radialSegments: 16, position: [-3.17, -0.02, twinEngine ? side * 0.48 : 0], rotation: [0, 0, Math.PI / 2], color: '#6a9d8c' });
     }
   }
+  // Shared physical cockpit layout for generated V2-compatible fallback airframes.
+  // All geometry stays in aircraft body coordinates (+X forward, +Y up, +Z right).
+  parts.push(
+    { id: 'cockpit-seat-base', shape: 'box', width: 0.72, height: 0.18, depth: 0.58, position: [-0.48, -0.28, 0], color: '#273431', metalness: 0.28, roughness: 0.72 },
+    { id: 'cockpit-seat-back', shape: 'box', width: 0.2, height: 0.78, depth: 0.56, position: [-0.88, 0.12, 0], rotation: [0, 0, -0.12], color: '#34423d', metalness: 0.22, roughness: 0.78 },
+    { id: 'cockpit-seat-headrest', shape: 'box', width: 0.18, height: 0.24, depth: 0.38, position: [-1.02, 0.58, 0], color: '#46534d', metalness: 0.18, roughness: 0.82 },
+    { id: 'cockpit-panel-body', shape: 'box', width: 0.2, height: 0.58, depth: 1.18, position: [0.78, 0.43, 0], rotation: [0, 0, -0.12], color: '#182320', metalness: 0.45, roughness: 0.48 },
+    { id: 'cockpit-display-left', shape: 'box', width: 0.055, height: 0.25, depth: 0.34, position: [0.66, 0.5, -0.36], color: '#10383a', metalness: 0.12, roughness: 0.2 },
+    { id: 'cockpit-display-right', shape: 'box', width: 0.055, height: 0.25, depth: 0.34, position: [0.66, 0.5, 0.36], color: '#10383a', metalness: 0.12, roughness: 0.2 },
+    { id: 'cockpit-center-display', shape: 'box', width: 0.06, height: 0.18, depth: 0.22, position: [0.64, 0.76, 0], color: '#1b5550', metalness: 0.08, roughness: 0.24 },
+    { id: 'cockpit-control-stick', shape: 'cylinder', radiusTop: 0.035, radiusBottom: 0.045, height: 0.42, position: [0.02, 0.03, 0], color: '#65766d', metalness: 0.82, roughness: 0.28 },
+    { id: 'cockpit-stick-grip', shape: 'sphere', radius: 0.095, position: [0.02, 0.26, 0], color: '#1c2824', metalness: 0.32, roughness: 0.5 },
+    { id: 'cockpit-console-left', shape: 'box', width: 1.05, height: 0.18, depth: 0.28, position: [-0.05, 0.0, -0.57], rotation: [0, 0, 0.05], color: '#303d38', metalness: 0.38, roughness: 0.58 },
+    { id: 'cockpit-console-right', shape: 'box', width: 1.05, height: 0.18, depth: 0.28, position: [-0.05, 0.0, 0.57], rotation: [0, 0, 0.05], color: '#303d38', metalness: 0.38, roughness: 0.58 },
+    { id: 'cockpit-canopy-rail-left', shape: 'box', width: 2.25, height: 0.045, depth: 0.045, position: [0.0, 0.72, -0.48], color: '#6c8277', metalness: 0.72, roughness: 0.3 },
+    { id: 'cockpit-canopy-rail-right', shape: 'box', width: 2.25, height: 0.045, depth: 0.045, position: [0.0, 0.72, 0.48], color: '#6c8277', metalness: 0.72, roughness: 0.3 },
+  );
   return { version: 1, name: `Aircraft-${id}`, parts };
 }
