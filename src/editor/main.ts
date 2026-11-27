@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import viperSample from '../aircraft/visuals/viper-t21.json';
 import {
   createModularAircraft,
+  normalizeAircraftVisualConfig,
   type AircraftVisualConfig,
+  type AircraftVisualInput,
+  type AircraftVisualComponent,
   type AircraftVisualPart,
   type AircraftPartShape,
 } from '../aircraft/builder/modularAircraft';
@@ -24,12 +27,14 @@ const radians = Math.PI / 180;
 const degrees = 180 / Math.PI;
 
 const defaultConfig = (): AircraftVisualConfig => ({
-  version: 1,
+  version: 2,
   name: 'Untitled Aircraft',
+  components: [{ id: 'aircraft-root', name: '飛機本體' }],
   parts: [],
 });
 let config: AircraftVisualConfig = defaultConfig();
 let selectedId: string | null = null;
+let selectedComponentId = 'aircraft-root';
 let history: AircraftVisualConfig[] = [];
 let historyIndex = -1;
 let toastTimer = 0;
@@ -88,7 +93,7 @@ const uniqueId = (base: string): string => {
   const clean = base.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'part';
   let id = clean;
   let index = 2;
-  while (config.parts.some((part) => part.id === id)) id = `${clean}-${index++}`;
+  while (config.parts.some((part) => part.id === id) || config.components.some((component) => component.id === id)) id = `${clean}-${index++}`;
   return id;
 };
 
@@ -147,39 +152,55 @@ const renderModel = (): void => {
 const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', cylinder: '▤', hollowCylinder: '◉', cone: '△', sphere: '●', torus: '◎', polygon: '⬡' };
 const renderPartsList = (): void => {
   partsList.replaceChildren();
-  const byId = new Map(config.parts.map((part) => [part.id, part]));
-  const children = new Map<string, AircraftVisualPart[]>();
-  const roots: AircraftVisualPart[] = [];
-  for (const part of config.parts) {
-    const parent = part.parent ? byId.get(part.parent) : undefined;
-    if (parent && parent.id !== part.id) {
-      const list = children.get(parent.id) ?? [];
-      list.push(part);
-      children.set(parent.id, list);
-    } else roots.push(part);
+  const byId = new Map(config.components.map((component) => [component.id, component]));
+  const children = new Map<string, AircraftVisualComponent[]>();
+  for (const component of config.components) {
+    if (!component.parent) continue;
+    const list = children.get(component.parent) ?? [];
+    list.push(component);
+    children.set(component.parent, list);
   }
-  const visited = new Set<string>();
-  const appendTree = (part: AircraftVisualPart, depth: number): void => {
-    if (visited.has(part.id)) return;
-    visited.add(part.id);
+  const details = new Map<string, AircraftVisualPart[]>();
+  for (const part of config.parts) {
+    const list = details.get(part.componentId) ?? [];
+    list.push(part);
+    details.set(part.componentId, list);
+  }
+  const appendComponent = (component: AircraftVisualComponent, depth: number): void => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `part-entry${part.id === selectedId ? ' selected' : ''}`;
-    button.style.paddingLeft = `${10 + depth * 16}px`;
+    button.className = `part-entry component-entry${component.id === selectedComponentId && !selectedId ? ' selected' : ''}`;
+    button.style.paddingLeft = `${10 + depth * 15}px`;
     const icon = document.createElement('span');
     icon.className = 'part-icon';
-    icon.textContent = shapeSymbol[part.shape];
+    icon.textContent = '▣';
     const label = document.createElement('span');
-    label.textContent = partLabel(part);
+    label.textContent = component.name;
     button.append(icon, label);
-    button.addEventListener('click', () => selectPart(part.id));
+    button.addEventListener('click', () => selectComponent(component.id));
     partsList.append(button);
-    for (const child of children.get(part.id) ?? []) appendTree(child, depth + 1);
+    for (const part of details.get(component.id) ?? []) {
+      const detail = document.createElement('button');
+      detail.type = 'button';
+      detail.className = `part-entry detail-entry${part.id === selectedId ? ' selected' : ''}`;
+      detail.style.paddingLeft = `${25 + (depth + 1) * 15}px`;
+      const detailIcon = document.createElement('span');
+      detailIcon.className = 'part-icon';
+      detailIcon.textContent = shapeSymbol[part.shape];
+      const detailLabel = document.createElement('span');
+      detailLabel.textContent = partLabel(part);
+      detail.append(detailIcon, detailLabel);
+      detail.addEventListener('click', () => selectPart(part.id));
+      partsList.append(detail);
+    }
+    for (const child of children.get(component.id) ?? []) appendComponent(child, depth + 1);
   };
-  for (const root of roots) appendTree(root, 0);
-  // Keep malformed or cyclic imported parts visible at the root level.
-  for (const part of config.parts) if (!visited.has(part.id)) appendTree(part, 0);
-  $('part-count').textContent = `${config.parts.length} 個零件`;
+  const roots = config.components.filter((component) => !component.parent);
+  for (const root of roots) appendComponent(root, 0);
+  $('part-count').textContent = `${config.components.length} 個組件 · ${config.parts.length} 個細節`;
+  document.querySelectorAll<HTMLButtonElement>('[data-add-detail]').forEach((button) => {
+    button.disabled = !selectedComponentId || !byId.has(selectedComponentId);
+  });
 };
 
 const setValue = (id: string, value: string | number): void => {
@@ -191,8 +212,21 @@ const readNumber = (id: string, fallback: number): number => {
 };
 const fillInspector = (): void => {
   const part = selectedPart();
-  $('inspector-empty').toggleAttribute('hidden', Boolean(part));
+  const component = config.components.find((item) => item.id === selectedComponentId);
+  $('inspector-empty').toggleAttribute('hidden', Boolean(part || component));
   inspector.hidden = !part;
+  $('component-inspector').toggleAttribute('hidden', !component || Boolean(part));
+  if (component && !part) {
+    setValue('component-name', component.name);
+    setValue('component-id', component.id);
+    const position = component.position ?? [0, 0, 0];
+    const rotation = component.rotation ?? [0, 0, 0];
+    ['x', 'y', 'z'].forEach((axis, index) => {
+      setValue(`component-pos-${axis}`, position[index]);
+      setValue(`component-rot-${axis}`, Number((rotation[index] * degrees).toFixed(2)));
+    });
+    return;
+  }
   if (!part) return;
   setValue('part-name', part.name ?? part.id);
   setValue('part-id', part.id);
@@ -224,8 +258,16 @@ const fillInspector = (): void => {
     $(`${key}-value`).textContent = Number((part as unknown as Record<string, number>)[key] ?? (key === 'opacity' ? 1 : key === 'metalness' ? .68 : .32)).toFixed(2);
   });
 };
+const selectComponent = (id: string): void => {
+  selectedComponentId = id;
+  selectedId = null;
+  renderPartsList();
+  fillInspector();
+  renderModel();
+};
 const selectPart = (id: string | null): void => {
   selectedId = id;
+  if (id) selectedComponentId = config.parts.find((part) => part.id === id)?.componentId ?? selectedComponentId;
   renderPartsList();
   fillInspector();
   renderModel();
@@ -243,7 +285,6 @@ const commitEdit = (): void => {
   const oldId = part.id;
   part.id = nextId;
   if (oldId !== nextId) {
-    for (const item of config.parts) if (item.parent === oldId) item.parent = nextId;
     selectedId = nextId;
   }
   part.name = ($('part-name') as HTMLInputElement).value.trim() || part.id;
@@ -281,7 +322,24 @@ const commitEdit = (): void => {
   persist();
 };
 
+const addComponent = (): void => {
+  const parent = config.components.find((item) => item.id === selectedComponentId);
+  if (!parent) { notify('請先選取一個有效組件'); return; }
+  const index = config.components.length;
+  const component: AircraftVisualComponent = {
+    id: uniqueId(`component-${index + 1}`),
+    name: `新組件 ${index + 1}`,
+    parent: parent.id,
+  };
+  config.components.push(component);
+  saveHistory(); persist();
+  selectComponent(component.id);
+  notify('已新增子組件；可在右側修改名稱');
+};
 const addPart = (shape: AircraftPartShape): void => {
+  if (!config.components.some((component) => component.id === selectedComponentId)) {
+    notify('請先選取要新增細節的組件'); return;
+  }
   const index = config.parts.length + 1;
   const shapeNames: Record<AircraftPartShape, string> = {
     box: '方塊', cylinder: '圓柱', hollowCylinder: '空心圓筒',
@@ -291,6 +349,7 @@ const addPart = (shape: AircraftPartShape): void => {
     id: uniqueId(`${shape}-${index}`),
     name: `${shapeNames[shape]} ${index}`,
     shape,
+    componentId: selectedComponentId,
     position: [0, 0, 0],
     color: '#8795a8',
     metalness: .68,
@@ -314,42 +373,16 @@ const addPart = (shape: AircraftPartShape): void => {
   selectPart(part.id);
 };
 const addCannonVisual = (): void => {
-  const mountId = uniqueId('cannon-mount');
-  const barrelId = uniqueId('cannon-barrel');
-  config.parts.push(
-    {
-      id: mountId,
-      name: '機炮固定座（外觀）',
-      shape: 'box',
-      position: [2.95, -0.2, 0],
-      width: 0.38,
-      height: 0.18,
-      depth: 0.2,
-      color: '#35463f',
-      metalness: 0.82,
-      roughness: 0.34,
-    },
-    {
-      id: barrelId,
-      name: '機炮炮管（外觀）',
-      shape: 'cylinder',
-      position: [3.55, -0.2, 0],
-      rotation: [0, 0, -Math.PI / 2],
-      radiusTop: 0.055,
-      radiusBottom: 0.055,
-      height: 1.05,
-      radialSegments: 12,
-      color: '#77877f',
-      metalness: 0.92,
-      roughness: 0.25,
-    },
-  );
-  saveHistory();
-  persist();
-  selectPart(barrelId);
-  notify('已新增固定式機炮外觀；可再調整炮管與固定座');
+  const component: AircraftVisualComponent = {
+    id: uniqueId('cannon'),
+    name: '機炮',
+    parent: selectedComponentId,
+  };
+  config.components.push(component);
+  selectedComponentId = component.id;
+  saveHistory(); persist(); selectComponent(component.id);
+  notify('已新增機炮組件；現在可新增其幾何細節');
 };
-
 const duplicateSelected = (mirror = false): void => {
   const source = selectedPart();
   if (!source) return;
@@ -371,22 +404,33 @@ const duplicateSelected = (mirror = false): void => {
   selectPart(copyPart.id);
 };
 const deleteSelected = (): void => {
-  if (!selectedId) return;
-  const removed = selectedId;
-  config.parts = config.parts.filter((part) => part.id !== removed);
-  for (const part of config.parts) if (part.parent === removed) part.parent = undefined;
-  saveHistory();
-  persist();
-  selectPart(config.parts[0]?.id ?? null);
-};
-const loadConfig = (next: AircraftVisualConfig, message: string): void => {
-  if (next.version !== 1 || !Array.isArray(next.parts)) throw new Error('不支援的模型 JSON 格式');
-  const ids = new Set<string>();
-  for (const part of next.parts) {
-    if (!part.id || ids.has(part.id)) throw new Error(`零件 ID 無效或重複：${part.id}`);
-    ids.add(part.id);
+  if (selectedId) {
+    config.parts = config.parts.filter((part) => part.id !== selectedId);
+    saveHistory(); persist(); selectComponent(selectedComponentId);
+    return;
   }
-  // Build once before accepting imported data; this catches malformed geometry.
+  if (!selectedComponentId) return;
+  const component = config.components.find((item) => item.id === selectedComponentId);
+  if (!component || !component.parent) { notify('飛機本體根組件不可刪除'); return; }
+  const removeIds = new Set<string>([component.id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const child of config.components) {
+      if (child.parent && removeIds.has(child.parent) && !removeIds.has(child.id)) {
+        removeIds.add(child.id); changed = true;
+      }
+    }
+  }
+  config.components = config.components.filter((item) => !removeIds.has(item.id));
+  config.parts = config.parts.filter((part) => !removeIds.has(part.componentId));
+  selectedComponentId = component.parent;
+  selectedId = null;
+  saveHistory(); persist(); selectComponent(selectedComponentId);
+  notify('已刪除組件及其所有子組件與細節');
+};
+const loadConfig = (input: AircraftVisualInput, message: string): void => {
+  const next = normalizeAircraftVisualConfig(input);
   const testModel = createModularAircraft(next);
   testModel.traverse((object) => {
     const mesh = object as THREE.Mesh;
@@ -395,12 +439,10 @@ const loadConfig = (next: AircraftVisualConfig, message: string): void => {
     else if (mesh.material) mesh.material.dispose();
   });
   config = clone(next);
-  selectedId = config.parts[0]?.id ?? null;
-  saveHistory();
-  persist();
-  renderPartsList();
-  fillInspector();
-  renderModel();
+  selectedId = null;
+  selectedComponentId = config.components.find((component) => !component.parent)!.id;
+  saveHistory(); persist();
+  renderPartsList(); fillInspector(); renderModel();
   notify(message);
 };
 
@@ -435,14 +477,19 @@ $('json-copy').addEventListener('click', () => {
   notify(copied ? 'JSON 已複製' : '請手動選取文字並複製');
 });
 
-document.querySelectorAll<HTMLButtonElement>('[data-add]').forEach((button) => button.addEventListener('click', () => addPart(button.dataset.add as AircraftPartShape)));
+document.querySelectorAll<HTMLButtonElement>('[data-add-detail]').forEach((button) => button.addEventListener('click', () => addPart(button.dataset.addDetail as AircraftPartShape)));
+$('add-component').addEventListener('click', addComponent);
 $('add-cannon').addEventListener('click', addCannonVisual);
 $('duplicate').addEventListener('click', () => duplicateSelected(false));
 $('mirror').addEventListener('click', () => duplicateSelected(true));
 $('delete').addEventListener('click', deleteSelected);
 $('clear-model').addEventListener('click', () => {
-  if (!config.parts.length || !window.confirm('確定清空目前模型？')) return;
+  if (!config.parts.length && config.components.length <= 1) return;
+  if (!window.confirm('確定清空目前模型的所有組件與細節？')) return;
+  config.components = [{ id: 'aircraft-root', name: '飛機本體' }];
   config.parts = [];
+  selectedComponentId = 'aircraft-root';
+  selectedId = null;
   saveHistory();
   persist();
   selectPart(null);
@@ -452,7 +499,8 @@ $('undo').addEventListener('click', () => {
   if (historyIndex <= 0) return;
   historyIndex--;
   config = clone(history[historyIndex]);
-  selectedId = config.parts.find((part) => part.id === selectedId)?.id ?? config.parts[0]?.id ?? null;
+  selectedId = config.parts.find((part) => part.id === selectedId)?.id ?? null;
+  selectedComponentId = config.components.find((component) => component.id === selectedComponentId)?.id ?? config.components[0]?.id ?? 'aircraft-root';
   renderPartsList(); fillInspector(); renderModel(); persist(); updateHistoryButtons();
 });
 $('redo').addEventListener('click', () => {
@@ -478,6 +526,33 @@ $('part-shape').addEventListener('change', () => { commitEdit(); saveHistory(); 
 $('part-metalness').addEventListener('input', () => $('metalness-value').textContent = readNumber('part-metalness', .68).toFixed(2));
 $('part-roughness').addEventListener('input', () => $('roughness-value').textContent = readNumber('part-roughness', .32).toFixed(2));
 $('part-opacity').addEventListener('input', () => $('opacity-value').textContent = readNumber('part-opacity', 1).toFixed(2));
+
+const commitComponentEdit = (): void => {
+  const component = config.components.find((item) => item.id === selectedComponentId);
+  if (!component) return;
+  const nextId = ($('component-id') as HTMLInputElement).value.trim();
+  if (!nextId || (nextId !== component.id && (config.components.some((item) => item.id === nextId) || config.parts.some((part) => part.id === nextId)))) {
+    notify('組件 ID 不可空白或重複'); setValue('component-id', component.id); return;
+  }
+  const oldId = component.id;
+  component.id = nextId;
+  if (oldId !== nextId) {
+    for (const item of config.components) if (item.parent === oldId) item.parent = nextId;
+    for (const part of config.parts) if (part.componentId === oldId) part.componentId = nextId;
+    selectedComponentId = nextId;
+  }
+  component.name = ($('component-name') as HTMLInputElement).value.trim() || component.id;
+  component.position = ['x','y','z'].map((axis) => readNumber(`component-pos-${axis}`, 0)) as [number,number,number];
+  component.rotation = ['x','y','z'].map((axis) => readNumber(`component-rot-${axis}`, 0) * radians) as [number,number,number];
+  renderPartsList(); renderModel(); persist();
+};
+$('component-inspector').addEventListener('input', (event) => {
+  if ((event.target as HTMLElement).id === 'component-name' || (event.target as HTMLElement).id === 'component-id') return;
+  commitComponentEdit();
+});
+$('component-inspector').addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
+$('component-name').addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
+$('component-id').addEventListener('change', () => { commitComponentEdit(); saveHistory(); });
 
 $('model-name-input').addEventListener('change', () => {
   config.name = ($('model-name-input') as HTMLInputElement).value.trim() || 'Untitled Aircraft';
@@ -516,8 +591,9 @@ canvas.addEventListener('pointerup', (event) => {
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects(modelRoot.children, true);
     let object: THREE.Object3D | null = hits[0]?.object ?? null;
-    while (object && !object.userData.partId) object = object.parent;
+    while (object && !object.userData.partId && !object.userData.componentId) object = object.parent;
     if (object?.userData.partId) selectPart(String(object.userData.partId));
+    else if (object?.userData.componentId) selectComponent(String(object.userData.componentId));
   }
 });
 canvas.addEventListener('pointercancel', () => { dragging = false; });
@@ -545,17 +621,16 @@ animate();
 
 try {
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    const parsed = JSON.parse(stored) as AircraftVisualConfig;
-    config = parsed;
-  } else {
-    config = clone(viperSample as AircraftVisualConfig);
-  }
-} catch {
-  config = clone(viperSample as AircraftVisualConfig);
+  config = stored
+    ? normalizeAircraftVisualConfig(JSON.parse(stored) as AircraftVisualInput)
+    : normalizeAircraftVisualConfig(viperSample as AircraftVisualInput);
+} catch (error) {
+  config = clone(defaultConfig());
+  notify(error instanceof Error ? `本機模型載入失敗：${error.message}` : '本機模型載入失敗');
 }
 saveHistory();
-selectedId = config.parts[0]?.id ?? null;
+selectedId = null;
+selectedComponentId = config.components.find((component) => !component.parent)?.id ?? 'aircraft-root';
 renderPartsList();
 fillInspector();
 renderModel();
