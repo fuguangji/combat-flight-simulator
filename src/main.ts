@@ -471,6 +471,10 @@ async function boot(): Promise<void> {
   const look = new FreeLook();
   const cockpit = mountCockpitShell();
   cockpit.setAircraft(aircraft.key);
+  let visualGear = 0;
+  let visualCanopy = 0;
+  window.addEventListener('cfs:gear-toggle', () => { visualGear = visualGear < 0.5 ? 1 : 0; });
+  window.addEventListener('cfs:canopy-toggle', () => { visualCanopy = visualCanopy < 0.5 ? 1 : 0; });
   new PanelToggles();
   new NavigationDisplay();
   window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
@@ -630,6 +634,9 @@ async function boot(): Promise<void> {
   };
 
   const beginFlight = (): void => {
+    visualGear = 0;
+    visualCanopy = 0;
+    cockpit.setAnimationControls({ pitch: 0, roll: 0, yaw: 0, gear: visualGear, flaps: 0, canopy: visualCanopy });
     physics.reset();
     autopilot.enabled = false;
     publishAutopilotState();
@@ -901,6 +908,15 @@ async function boot(): Promise<void> {
       if (touchMode) touch.update(Math.min(frameMs / 1000, 0.1));
       input.update(Math.min(frameMs / 1000, 0.1));
       const c = input.state;
+      cockpit.setAnimationControls({
+        pitch: c.pitch,
+        roll: c.roll,
+        yaw: c.yaw,
+        gear: visualGear,
+        flaps: 0,
+        canopy: visualCanopy,
+      });
+      cockpit.updateAnimations(Math.min(frameMs / 1000, 0.1));
       if (autopilot.enabled && lastSnap && mode === 'flying') {
         const attitude = attitudeFromQuat(lastSnap.orientation);
         const headingError = Math.atan2(
