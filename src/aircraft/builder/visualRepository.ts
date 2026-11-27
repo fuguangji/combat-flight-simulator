@@ -40,6 +40,7 @@ export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | nu
     if (config.aircraftKey && config.aircraftKey !== key) {
       throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
     }
+    config.aircraftKey = config.aircraftKey ?? key;
     return config;
   }
   const definition = aircraftRegistry.find(key);
@@ -50,23 +51,25 @@ export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | nu
   return config;
 }
 
-/** Shared model factory: hangar, encyclopedia, cockpit adapter and runtime use one parser. */
-export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadResult {
+/** Shared model factory: hangar, encyclopedia and flight view use the same V2 parser. */
 export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadResult {
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
-  const config = loadAircraftVisualConfig(key) ?? addFallbackAnimations(normalizeAircraftVisualConfig(createProceduralAircraftConfig(id)));
-  if (!path) {
-    config.name = config.name ?? `Aircraft-${id}`;
-    config.aircraftKey = key;
-  }
-  if (config.aircraftKey && config.aircraftKey !== key) {
+  const raw: AircraftVisualInput = path
+    ? visualModules[path] as AircraftVisualInput
+    : createProceduralAircraftConfig(id);
+  const config = path
+    ? normalizeAircraftVisualConfig(raw)
+    : loadAircraftVisualConfig(key) ?? addFallbackAnimations(normalizeAircraftVisualConfig(raw));
+  config.name = config.name ?? `Aircraft-${id}`;
+  config.aircraftKey = config.aircraftKey ?? key;
+  if (config.aircraftKey !== key) {
     throw new Error(`模型識別鍵不符：檔案屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
   }
   const model = createModularAircraft(config);
   model.scale.setScalar(1.05);
   model.userData.aircraftKey = key;
-  model.userData.visualSource = path ?? 'procedural-fallback';
+  model.userData.visualSource = path ?? 'procedural-v2-generated';
   model.userData.visualSchemaVersion = config.version;
   model.userData.visualMigratedFromLegacy = raw.version === 1;
-  return { config, model, source: path ?? 'procedural-fallback', migratedFromLegacy: raw.version === 1 };
+  return { config, model, source: path ?? 'procedural-v2-generated', migratedFromLegacy: raw.version === 1 };
 }
