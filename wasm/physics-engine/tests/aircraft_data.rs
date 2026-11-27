@@ -156,6 +156,28 @@ fn every_aircraft_stalls_when_pulled_slow_and_the_limiter_holds_g() {
 }
 
 #[test]
+fn every_supersonic_profile_can_cross_mach_one_at_full_throttle() {
+    for (name, _) in FILES {
+        let mut s = sim(name);
+        if s.params.max_mach <= 1.0 {
+            continue;
+        }
+        s.state.position.y = 10_000.0;
+        s.state.velocity = Vec3::new(0.0, 0.0, -250.0);
+        s.set_controls(Controls { throttle: 1.0, ..Controls::default() });
+        let mut max_mach = 0.0f64;
+        for _ in 0..(120.0 / DT) as usize {
+            s.step(DT);
+            max_mach = max_mach.max(s.derived.mach);
+            if s.state.crashed {
+                break;
+            }
+        }
+        assert!(max_mach > 1.0, "{name}: full throttle only reached Mach {max_mach}");
+    }
+}
+
+#[test]
 fn supplied_profiles_keep_distinct_performance_caps() {
     let viper = params("generic-fighter");
     let atlantic = params("light-trainer");
