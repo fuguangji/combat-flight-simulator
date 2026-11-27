@@ -437,7 +437,6 @@ export function mountCockpitShell(): CockpitShell {
       shell.dataset.seats = String(v.seats);
       try {
         visualRenderer.setConfig(loadAircraftVisualConfig(key));
-        shell.dataset.customModel = 'true';
       } catch (error) {
         visualRenderer.setConfig(null);
         shell.dataset.customModel = 'false';
