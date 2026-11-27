@@ -4,9 +4,11 @@
 
 ## 資產位置與機型識別
 
-每個機型最多對應一個視覺 JSON：
+有專屬模型的機型使用一份視覺 JSON：
 
 `src/aircraft/visuals/<aircraft-key>.json`
+
+目前沒有專屬 JSON 的機型，會由 `createProceduralAircraftConfig()` 產生各自的外形配置，再立即正規化為 V2；`loadAircraftVisualConfig(key)` 對所有 registry 機型都回傳 V2 設定。這些程序模型不是另一種執行格式，也不會直接把 V1 傳進渲染器。
 
 `<aircraft-key>` 必須與 `src/aircraft/data/*.json` 中該機型的 `key` 完全一致。V2 可選填 `aircraftKey`；若有填寫，載入器會檢查它與檔名是否一致，避免把 A 機型模型套到 B 機型。
 
@@ -40,11 +42,13 @@
 4. 將 JSON 存為 `src/aircraft/visuals/<aircraft-key>.json`，覆蓋或新增該機型的視覺資產。
 5. 推送到 `main`；遊戲端的共用 `visualRepository` 會讀取、正規化、驗證並建立模型。
 
-遊戲端的機庫與圖鑑使用同一個視覺載入器。飛行時的自訂座艙也使用同一份正規化設定，抽取 `cockpit-interior` 子樹並由共用動畫控制器驅動。沒有自訂座艙組件時，保留原本內建 CSS 儀表。
+遊戲端的機庫、圖鑑與飛行視角使用同一個 `visualRepository`。飛行時由 `AircraftView` 建立真正的 Three.js 模型，使用 V2 的組件父子階層與零件局部座標，並把模型放在駕駛員眼點的反向位移上；模型座標採機體 `+X 前、+Y 上、+Z 右`。攝影機位置固定在 `cockpit.eyeOffset`，玩家環顧只改變攝影機旋轉，不設偏航或俯仰角度上限。CSS 僅保留可操作的介面控制，不再以 CSS 形狀投影代替實際儀表板、座椅或座艙結構。
+
+目前飛行視角的機體模型以獨立透明 Three.js pass 疊加在主場景之上；模型自身有正確的 3D 深度測試，但尚未與主場景共用同一個深度緩衝，因此模型與遠處世界物件之間的遮擋仍是後續 renderer 整合項目。
 
 ## 舊版 V1
 
-V1 僅作為遷移輸入。遊戲載入時會透過同一個 normalizer 遷移成 V2；新編輯與匯出一律使用 V2。不要再新增 V1 資產。
+V1 僅作為遷移輸入。舊版自訂資產與程序生成的舊版幾何資料都會透過同一個 normalizer 轉成 V2；新編輯、匯出及渲染器輸入一律使用 V2。不要再新增 V1 資產。
 
 ## 驗證規則
 
