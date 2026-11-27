@@ -357,6 +357,22 @@
         "min": 0,
         "max": 0.8377580409572781
       }
+    },
+    {
+      "id": "gear-lever",
+      "name": "起落架控制桿",
+      "parent": "cockpit-interior",
+      "position": [
+        -0.05,
+        0.08,
+        -0.57
+      ],
+      "animation": {
+        "channel": "gear",
+        "axis": "z",
+        "min": 0,
+        "max": -0.4363323129985824
+      }
     }
   ],
   "parts": [
@@ -1315,6 +1331,54 @@
         1,
         1
       ]
+    },
+    {
+      "id": "gear-lever-base",
+      "componentId": "gear-lever",
+      "name": "起落架控制台",
+      "shape": "box",
+      "width": 0.22,
+      "height": 0.12,
+      "depth": 0.2,
+      "color": "#303b3e",
+      "metalness": 0.42,
+      "roughness": 0.58
+    },
+    {
+      "id": "gear-lever-shaft",
+      "componentId": "gear-lever",
+      "name": "起落架控制桿",
+      "shape": "cylinder",
+      "radius": 0.025,
+      "height": 0.22,
+      "position": [
+        0,
+        0.15,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.15
+      ],
+      "color": "#aab4ad",
+      "metalness": 0.62,
+      "roughness": 0.34
+    },
+    {
+      "id": "gear-lever-grip",
+      "componentId": "gear-lever",
+      "name": "起落架握把",
+      "shape": "sphere",
+      "radius": 0.055,
+      "position": [
+        0,
+        0.28,
+        0
+      ],
+      "color": "#8c9c90",
+      "metalness": 0.35,
+      "roughness": 0.42
     }
   ],
   "aircraftKey": "viper-t21"
