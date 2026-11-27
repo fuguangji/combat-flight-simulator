@@ -145,8 +145,7 @@ const renderModel = (): void => {
     $('empty-hint').removeAttribute('hidden');
   }
   setValue('model-name-input', config.name || 'Untitled Aircraft');
-  $('part-count').textContent = `${config.parts.length} 個零件`;
-  $('selection-status').textContent = selectedPart() ? `SELECTED · ${selectedPart()!.id}` : '尚未選取零件';
+  $('selection-status').textContent = selectedPart() ? `細節：${selectedPart()!.name ?? selectedPart()!.id}` : `組件：${config.components.find((item) => item.id === selectedComponentId)?.name ?? '未選取'}`;
 };
 
 const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', cylinder: '▤', hollowCylinder: '◉', cone: '△', sphere: '●', torus: '◎', polygon: '⬡' };
@@ -277,7 +276,7 @@ const commitEdit = (): void => {
   const part = selectedPart();
   if (!part) return;
   const nextId = ($( 'part-id') as HTMLInputElement).value.trim();
-  if (!nextId || (nextId !== part.id && config.parts.some((item) => item.id === nextId))) {
+  if (!nextId || (nextId !== part.id && (config.parts.some((item) => item.id === nextId) || config.components.some((item) => item.id === nextId)))) {
     notify('ID 不可空白或與其他零件重複');
     setValue('part-id', part.id);
     return;
@@ -464,10 +463,15 @@ $('import').addEventListener('click', () => openJsonPanel('import'));
 $('json-close').addEventListener('click', () => { jsonPanel.hidden = true; });
 $('json-load').addEventListener('click', () => {
   try {
-    loadConfig(JSON.parse(jsonText.value) as AircraftVisualConfig, '模型文字載入成功');
+    loadConfig(JSON.parse(jsonText.value) as AircraftVisualInput, '模型文字載入成功');
+    $('json-error').textContent = '';
+    $('json-error').hidden = true;
     jsonPanel.hidden = true;
   } catch (error) {
-    notify(error instanceof Error ? error.message : 'JSON 格式錯誤');
+    const message = error instanceof Error ? error.message : 'JSON 格式錯誤';
+    $('json-error').textContent = message;
+    $('json-error').hidden = false;
+    notify(message);
   }
 });
 $('json-copy').addEventListener('click', () => {
@@ -494,7 +498,7 @@ $('clear-model').addEventListener('click', () => {
   persist();
   selectPart(null);
 });
-$('load-viper').addEventListener('click', () => loadConfig(viperSample as AircraftVisualConfig, '已載入 Viper T21 範例'));
+$('load-viper').addEventListener('click', () => loadConfig(viperSample as AircraftVisualInput, '已載入 Viper T21 範例'));
 $('undo').addEventListener('click', () => {
   if (historyIndex <= 0) return;
   historyIndex--;
@@ -507,7 +511,8 @@ $('redo').addEventListener('click', () => {
   if (historyIndex >= history.length - 1) return;
   historyIndex++;
   config = clone(history[historyIndex]);
-  selectedId = config.parts.find((part) => part.id === selectedId)?.id ?? config.parts[0]?.id ?? null;
+  selectedId = config.parts.find((part) => part.id === selectedId)?.id ?? null;
+  selectedComponentId = config.components.find((component) => component.id === selectedComponentId)?.id ?? config.components[0]?.id ?? 'aircraft-root';
   renderPartsList(); fillInspector(); renderModel(); persist(); updateHistoryButtons();
 });
 
