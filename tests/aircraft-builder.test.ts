@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { createModularAircraft, createAircraftPart, normalizeAircraftVisualConfig, type AircraftVisualConfig, type AircraftVisualInput, type LegacyAircraftVisualConfig } from '../src/aircraft/builder/modularAircraft';
 import { AircraftModelController } from '../src/aircraft/builder/aircraftAnimation';
+import { aircraftRegistry } from '../src/aircraft/registry';
 import { loadAircraftVisual, loadAircraftVisualConfig } from '../src/aircraft/builder/visualRepository';
 
 const visualAssets = import.meta.glob('../src/aircraft/visuals/*.json', { eager: true, import: 'default' });
@@ -89,6 +90,38 @@ describe('modular aircraft component hierarchy', () => {
         if (mesh.geometry) mesh.geometry.dispose();
         if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
         else if (mesh.material) mesh.material.dispose();
+      });
+    }
+  });
+
+  it('resolves every registered aircraft into separated editor V2 geometry', () => {
+    const fleet = aircraftRegistry.list();
+    expect(fleet.length).toBeGreaterThan(1);
+    for (const definition of fleet) {
+      const config = loadAircraftVisualConfig(definition.key);
+      expect(config, definition.key).not.toBeNull();
+      expect(config?.version, definition.key).toBe(2);
+      expect(config?.aircraftKey, definition.key).toBe(definition.key);
+      expect(config?.components.length, definition.key).toBeGreaterThan(1);
+      expect(config?.parts.length, definition.key).toBeGreaterThan(10);
+
+      const loaded = loadAircraftVisual(definition.key, definition.id);
+      expect(loaded.config.version, definition.key).toBe(2);
+      const positions = new Set<string>();
+      loaded.model.updateMatrixWorld(true);
+      loaded.model.traverse((node) => {
+        const mesh = node as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const p = mesh.getWorldPosition(new THREE.Vector3());
+        positions.add(p.toArray().map((value) => value.toFixed(2)).join(','));
+      });
+      expect(positions.size, definition.key).toBeGreaterThan(5);
+      loaded.model.traverse((node) => {
+        const mesh = node as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.geometry.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+        else mesh.material.dispose();
       });
     }
   });
