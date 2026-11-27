@@ -55,6 +55,15 @@
             <button id="toggle-axes" class="active">座標軸</button>
           </div>
         </div>
+        <section class="modeling-notice" aria-label="建模提醒">
+          <strong>建模提醒</strong>
+          <ul>
+            <li><b>座標：</b>+X 機首、+Y 上方、+Z 飛機右側；尺寸單位為公尺。</li>
+            <li><b>組件：</b>先選取所屬組件再新增細節；活動部件的組件原點應放在旋轉樞軸。</li>
+            <li><b>座艙：</b>駕駛員視點 <code>cockpit.eyeOffset</code> 設定在機型資料，不屬於本頁匯出的視覺 JSON。</li>
+            <li><b>完成前：</b>旋轉檢查各方向與零件位置，並複製 JSON 備份。</li>
+          </ul>
+        </section>
         <div id="viewport"><canvas id="preview" aria-label="可互動的 3D 模型預覽"></canvas>
           <div class="viewport-hint">拖曳旋轉 · 滾輪縮放 · 點擊選取零件</div>
           <div id="empty-hint" class="empty-hint" hidden>尚無模型零件<br /><small>從左側新增幾何形狀開始</small></div>
