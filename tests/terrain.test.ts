@@ -59,7 +59,10 @@ describe('terrain sampler', () => {
 describe('test scene', () => {
   it('keeps the instance count and places no building on water', () => {
     const scene = buildTestScene();
-    expect(scene.fieldCount).toBe(4000);
+    expect(scene.fieldCount).toBe(6000);
+    const maxExtent = Math.max(...Array.from({ length: scene.fieldCount }, (_, i) => Math.max(Math.abs(scene.instances[i * 4]), Math.abs(scene.instances[i * 4 + 1]))));
+    expect(maxExtent).toBeGreaterThan(25_000);
+    expect(maxExtent).toBeLessThanOrEqual(40_000);
     expect(scene.instanceCount).toBeGreaterThan(scene.collisionCount);
     expect(scene.collisionCount).toBeGreaterThan(scene.fieldCount);
     let wet = 0;
