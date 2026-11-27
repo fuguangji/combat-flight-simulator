@@ -71,6 +71,15 @@ export function validateAircraftVisualConfig(config: AircraftVisualConfig): void
     const visited = new Set([component.id]); let parent = component.parent;
     while (parent) { if (visited.has(parent)) throw new Error(`組件階層形成循環：${component.name}`); visited.add(parent); parent = components.get(parent)?.parent; }
   }
+  for (const component of config.components) {
+    const animation = component.animation;
+    if (!animation) continue;
+    if (!['pitch', 'roll', 'yaw', 'gear', 'flaps', 'canopy'].includes(animation.channel)) throw new Error(`組件「${component.name}」的動畫通道無效`);
+    if (!['x', 'y', 'z'].includes(animation.axis)) throw new Error(`組件「${component.name}」的動畫軸無效`);
+    if ((animation.min !== undefined && !Number.isFinite(animation.min)) || (animation.max !== undefined && !Number.isFinite(animation.max))) {
+      throw new Error(`組件「${component.name}」的動畫角度必須是有限數值`);
+    }
+  }
   for (const part of config.parts) {
     if (!part.id?.trim() || ids.has(part.id)) throw new Error(`細節 ID 無效或重複：${part.id}`);
     ids.add(part.id);
