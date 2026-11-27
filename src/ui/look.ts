@@ -1,9 +1,5 @@
 import { clamp, damp } from '../core/math';
 
-/** Free-look limits (radians): the pilot can turn the head almost to the six o'clock, not past it. */
-export const LOOK_YAW_MAX = (150 * Math.PI) / 180;
-export const LOOK_PITCH_MIN = (-60 * Math.PI) / 180;
-export const LOOK_PITCH_MAX = (85 * Math.PI) / 180;
 /** Radians of head rotation per pixel of mouse movement. */
 export const LOOK_SENSITIVITY = 0.0022;
 
