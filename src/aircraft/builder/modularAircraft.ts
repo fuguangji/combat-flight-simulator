@@ -1,12 +1,30 @@
 import * as THREE from 'three';
 
 export type Vec3Tuple = [number, number, number];
-export type AircraftPartShape = 'box' | 'cylinder' | 'cone' | 'sphere' | 'torus' | 'polygon';
+export type AircraftPartShape = 'box' | 'cylinder' | 'hollowCylinder' | 'cone' | 'sphere' | 'torus' | 'polygon';
+export type AircraftAnimationChannel = 'pitch' | 'roll' | 'yaw' | 'gear' | 'flaps' | 'canopy';
+export type AircraftAnimationAxis = 'x' | 'y' | 'z';
+export interface AircraftComponentAnimation {
+  channel: AircraftAnimationChannel;
+  axis: AircraftAnimationAxis;
+  /** Relative rotation limits in radians, added to the component's base rotation. */
+  min?: number;
+  max?: number;
+}
+export interface AircraftVisualComponent {
+  id: string;
+  name: string;
+  parent?: string;
+  position?: Vec3Tuple;
+  rotation?: Vec3Tuple;
+  scale?: Vec3Tuple;
+  animation?: AircraftComponentAnimation;
+}
 export interface AircraftVisualPart {
   id: string;
+  componentId: string;
   name?: string;
   shape: AircraftPartShape;
-  parent?: string;
   position?: Vec3Tuple;
   rotation?: Vec3Tuple;
   scale?: Vec3Tuple;
@@ -19,6 +37,7 @@ export interface AircraftVisualPart {
   height?: number;
   depth?: number;
   radius?: number;
+  innerRadius?: number;
   radiusTop?: number;
   radiusBottom?: number;
   radialSegments?: number;
@@ -28,9 +47,54 @@ export interface AircraftVisualPart {
   plane?: 'xy' | 'xz';
 }
 export interface AircraftVisualConfig {
-  version: 1;
+  version: 2;
   name?: string;
+  components: AircraftVisualComponent[];
   parts: AircraftVisualPart[];
+}
+export interface LegacyAircraftVisualPart extends Omit<AircraftVisualPart, 'componentId'> { parent?: string; }
+export interface LegacyAircraftVisualConfig { version: 1; name?: string; parts: LegacyAircraftVisualPart[]; }
+export type AircraftVisualInput = AircraftVisualConfig | LegacyAircraftVisualConfig;
+
+export function validateAircraftVisualConfig(config: AircraftVisualConfig): void {
+  if (config.version !== 2 || !Array.isArray(config.components) || !Array.isArray(config.parts)) throw new Error('模型格式錯誤：需要 version 2、components 與 parts');
+  const ids = new Set<string>();
+  const components = new Map<string, AircraftVisualComponent>();
+  for (const component of config.components) {
+    if (!component.id?.trim() || ids.has(component.id)) throw new Error(`組件 ID 無效或重複：${component.id}`);
+    ids.add(component.id); components.set(component.id, component);
+  }
+  const roots = config.components.filter((component) => !component.parent);
+  if (roots.length !== 1) throw new Error(`模型必須且只能有一個根組件，目前找到 ${roots.length} 個`);
+  for (const component of config.components) {
+    if (component.parent && !components.has(component.parent)) throw new Error(`孤兒組件「${component.name}」：找不到父組件「${component.parent}」`);
+    const visited = new Set([component.id]); let parent = component.parent;
+    while (parent) { if (visited.has(parent)) throw new Error(`組件階層形成循環：${component.name}`); visited.add(parent); parent = components.get(parent)?.parent; }
+  }
+  for (const part of config.parts) {
+    if (!part.id?.trim() || ids.has(part.id)) throw new Error(`細節 ID 無效或重複：${part.id}`);
+    ids.add(part.id);
+    if (!components.has(part.componentId)) throw new Error(`孤兒細節「${part.name ?? part.id}」：找不到所屬組件「${part.componentId}」`);
+  }
+}
+
+export function normalizeAircraftVisualConfig(input: AircraftVisualInput): AircraftVisualConfig {
+  if (input.version === 2) { validateAircraftVisualConfig(input); return input; }
+  if (input.version !== 1 || !Array.isArray(input.parts)) throw new Error('不支援的模型 JSON 格式');
+  const ids = new Set<string>(); const byId = new Map<string, LegacyAircraftVisualPart>();
+  for (const part of input.parts) { if (!part.id || ids.has(part.id)) throw new Error(`零件 ID 無效或重複：${part.id}`); ids.add(part.id); byId.set(part.id, part); }
+  for (const part of input.parts) {
+    if (part.parent && !byId.has(part.parent)) throw new Error(`孤兒零件「${part.name ?? part.id}」：找不到父零件「${part.parent}」`);
+    const visited = new Set([part.id]); let parent = part.parent;
+    while (parent) { if (visited.has(parent)) throw new Error(`零件階層形成循環：${part.id}`); visited.add(parent); parent = byId.get(parent)?.parent; }
+  }
+  const components: AircraftVisualComponent[] = [{ id: 'aircraft-root', name: '飛機本體' }, ...input.parts.map((part) => ({ id: `component-${part.id}`, name: part.name?.trim() || part.id, parent: part.parent ? `component-${part.parent}` : 'aircraft-root', position: part.position ?? [0,0,0], rotation: part.rotation ?? [0,0,0], scale: part.scale ?? [1,1,1] }))];
+  const parts: AircraftVisualPart[] = input.parts.map((part) => {
+    const { parent: _parent, position: _position, rotation: _rotation, scale: _scale, ...geometry } = part;
+    return { ...geometry, id: part.id, componentId: `component-${part.id}`, position: [0,0,0], rotation: [0,0,0], scale: [1,1,1] };
+  });
+  const migrated: AircraftVisualConfig = { version: 2, name: input.name, components, parts };
+  validateAircraftVisualConfig(migrated); return migrated;
 }
 
 const vec = (value: Vec3Tuple | undefined, fallback: Vec3Tuple): Vec3Tuple => value ?? fallback;
@@ -46,6 +110,23 @@ function createGeometry(part: AircraftVisualPart): THREE.BufferGeometry {
       return new THREE.BoxGeometry(part.width ?? 1, part.height ?? 1, part.depth ?? 1);
     case 'cylinder':
       return new THREE.CylinderGeometry(part.radiusTop ?? part.radius ?? 0.3, part.radiusBottom ?? part.radius ?? 0.3, part.height ?? 1, part.radialSegments ?? 16);
+    case 'hollowCylinder': {
+      const outer = Math.max(0.02, part.radius ?? 0.5);
+      const inner = THREE.MathUtils.clamp(part.innerRadius ?? outer * 0.65, 0.01, outer - 0.01);
+      const shape = new THREE.Shape();
+      shape.absarc(0, 0, outer, 0, Math.PI * 2, false);
+      const hole = new THREE.Path();
+      hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
+      shape.holes.push(hole);
+      const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: part.height ?? 1, bevelEnabled: false, steps: 1,
+        curveSegments: part.radialSegments ?? 24,
+      });
+      geometry.translate(0, 0, -(part.height ?? 1) / 2);
+      geometry.rotateX(Math.PI / 2);
+      geometry.computeVertexNormals();
+      return geometry;
+    }
     case 'cone':
       return new THREE.ConeGeometry(part.radius ?? 0.3, part.height ?? 1, part.radialSegments ?? 16);
     case 'sphere':
@@ -101,39 +182,36 @@ export function createAircraftPart(part: AircraftVisualPart): THREE.Group {
 }
 
 /** Build a hard-surface aircraft from independently editable, hierarchical parts. */
-export function createModularAircraft(config: AircraftVisualConfig): THREE.Group {
-  if (config.version !== 1 || !Array.isArray(config.parts)) throw new Error('Unsupported aircraft visual config');
+export function createModularAircraft(input: AircraftVisualInput): THREE.Group {
+  const config = normalizeAircraftVisualConfig(input);
   const root = new THREE.Group();
   root.name = config.name ?? 'Aircraft';
   const nodes = new Map<string, THREE.Group>();
-  const partsById = new Map<string, AircraftVisualPart>();
-  for (const part of config.parts) {
-    if (!part.id || nodes.has(part.id)) throw new Error(`Aircraft visual part IDs must be unique: ${part.id}`);
-    nodes.set(part.id, createAircraftPart(part));
-    partsById.set(part.id, part);
+  for (const component of config.components) {
+    const node = new THREE.Group();
+    node.name = component.name;
+    node.userData.componentId = component.id;
+    node.position.set(...vec(component.position, [0, 0, 0]));
+    node.rotation.set(...vec(component.rotation, [0, 0, 0]));
+    node.scale.set(...vec(component.scale, [1, 1, 1]));
+    nodes.set(component.id, node);
   }
-  // Reject cyclic parent references before attaching nodes; otherwise a cycle can
-  // detach the entire aircraft from the root and silently produce an empty model.
-  for (const part of config.parts) {
-    const visited = new Set<string>([part.id]);
-    let parentId = part.parent;
-    while (parentId) {
-      if (visited.has(parentId)) throw new Error(`Circular aircraft part hierarchy involving "${part.id}"`);
-      visited.add(parentId);
-      parentId = partsById.get(parentId)?.parent;
-    }
+  for (const component of config.components) {
+    const node = nodes.get(component.id)!;
+    const parent = component.parent ? nodes.get(component.parent) : root;
+    if (!parent) throw new Error(`孤兒組件：${component.name}`);
+    parent.add(node);
   }
   for (const part of config.parts) {
-    const node = nodes.get(part.id)!;
-    const parent = part.parent ? nodes.get(part.parent) : undefined;
-    // Missing parents fall back to the aircraft root instead of losing geometry.
-    (parent && parent !== node ? parent : root).add(node);
+    const component = nodes.get(part.componentId);
+    if (!component) throw new Error(`孤兒細節：${part.name ?? part.id}`);
+    component.add(createAircraftPart(part));
   }
   return root;
 }
 
 /** Editable fallback layout used by aircraft without a dedicated visuals JSON file. */
-export function createProceduralAircraftConfig(id: number): AircraftVisualConfig {
+export function createProceduralAircraftConfig(id: number): LegacyAircraftVisualConfig {
   const palette = ['#738d83', '#8d9b92', '#586d78', '#536b78', '#899c88', '#59666b', '#7d8c95', '#596c75'];
   const body = palette[id % palette.length];
   const wing = palette[(id + 2) % palette.length];
@@ -144,7 +222,7 @@ export function createProceduralAircraftConfig(id: number): AircraftVisualConfig
   const span = 2.5 + (id % 5) * 0.25;
   const sweep = delta ? 1.35 : 0.35 + (id % 4) * 0.18;
   const rear = delta ? 1.8 : 0.95 + (id % 3) * 0.2;
-  const parts: AircraftVisualPart[] = [
+  const parts: LegacyAircraftVisualPart[] = [
     { id: 'fuselage', shape: 'cylinder', radiusTop: 0.27, radiusBottom: 0.39, height: 6.2, radialSegments: 20, rotation: [0, 0, -Math.PI / 2], color: body },
     { id: 'nose', shape: 'cone', radius: 0.27, height: 1.35, radialSegments: 20, position: [3.72, 0, 0], rotation: [0, 0, -Math.PI / 2], color: '#b9d2c4' },
     { id: 'rear-fairing', shape: 'cone', radius: 0.31, height: 0.95, radialSegments: 20, position: [-3.45, 0, 0], rotation: [0, 0, Math.PI / 2], color: body },
