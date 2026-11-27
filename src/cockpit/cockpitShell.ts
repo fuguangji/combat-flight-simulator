@@ -8,21 +8,11 @@
  */
 import { headShift, variantFor } from './panelVariants';
 import { knobAngle, knobDrag, wrapValue } from './knob';
-import { CockpitVisualRenderer } from './cockpitVisual';
-import type { AircraftVisualInput } from '../aircraft/builder/modularAircraft';
-import type { AircraftAnimationInput } from '../aircraft/builder/aircraftAnimation';
-import { loadAircraftVisualConfig } from '../aircraft/builder/visualRepository';
 
 export interface CockpitShell {
   /** Switch the panel to the look of the given aircraft key. */
   setAircraft(key: string): void;
-  /** `fovY` (radians) is the 3D camera's current vertical field of view; omit to use raw angles. */
-  setHeadPose(yaw: number, pitch: number, fovY?: number): void;
   setFlightReadout(altitude: number, speedKt: number, heading: number): void;
-  /** Apply the exact V1/V2 visual JSON loaded by the shared aircraft repository. */
-  setVisualConfig(config: AircraftVisualInput | null): void;
-  setAnimationControls(input: AircraftAnimationInput): void;
-  updateAnimations(deltaSeconds: number): void;
 }
 
 /** CSS perspective distance in px; the pilot's eye is this far in front of the screen plane. */
@@ -254,7 +244,7 @@ export function mountCockpitShell(): CockpitShell {
       .canopy-post.right {right:1%;}
     }
   `;
-  document.head.append(style);
+  style.textContent += `\n    /* Flight geometry is rendered from editor V2 meshes, not a CSS 3D approximation. */\n    #cockpit-airframe { transform:none !important; transform-style:flat !important; }\n    #cockpit-visual-model,.canopy-post,.canopy-arch { display:none !important; }\n    #cockpit-console { background:transparent !important; border:0 !important; box-shadow:none !important; }\n    #cockpit-console:before { display:none !important; }\n  `;\n  document.head.append(style);
 
   const shell = document.createElement('div');
   shell.id = 'cockpit-shell';
@@ -412,8 +402,6 @@ export function mountCockpitShell(): CockpitShell {
     }
   });
 
-  let lastYaw = Number.NaN;
-  let lastPitch = Number.NaN;
   let lastReadout = "";
   let readoutEl: HTMLElement | null = null;
   const dials = {
@@ -425,69 +413,19 @@ export function mountCockpitShell(): CockpitShell {
     el?.style.setProperty('--needle', `${-135 + Math.max(0, Math.min(1, frac)) * 270}deg`);
   };
   window.addEventListener('cfs:aircraft', (e) => api.setAircraft(String((e as CustomEvent<string>).detail)));
-  let lastShiftX = Number.NaN;
-  let lastShiftY = Number.NaN;
   const api: CockpitShell = {
     setAircraft: (key) => {
       const v = variantFor(key);
       shell.dataset.layout = v.layout;
       shell.dataset.canopy = v.canopy;
       shell.dataset.seats = String(v.seats);
-      try {
-        const visualConfig = loadAircraftVisualConfig(key);
-        visualRenderer.setConfig(visualConfig);
-        shell.dataset.customModel = visualConfig ? 'true' : 'false';
-      } catch (error) {
-        visualRenderer.setConfig(null);
-        shell.dataset.customModel = 'false';
-        console.warn(`[CockpitVisual] ${key} 載入失敗，使用內建座艙：`, error);
-      }
-      shell.style.setProperty('--cp-accent', v.accent);
+      shell.dataset.customModel = 'true';\n      shell.style.setProperty('--cp-accent', v.accent);
       shell.style.setProperty('--cp-body', v.body);
       shell.style.setProperty('--cp-trim', v.trim);
       const plate = shell.querySelector('#cockpit-plate');
       if (plate) plate.textContent = v.seats === 2 ? `${v.plate} · 前後雙座` : v.plate;
       shell.querySelector<HTMLElement>('#cockpit-dials')?.setAttribute('data-count', String(v.dials));
     },
-    setHeadPose: (yaw, pitch, fovY) => {
-      const sh = headShift(yaw, pitch);
-      const sx = Math.round(sh.x * 2) / 2;
-      const sy = Math.round(sh.y * 2) / 2;
-      if (sx !== lastShiftX || sy !== lastShiftY) {
-        lastShiftX = sx;
-        lastShiftY = sy;
-        const st = document.documentElement.style;
-        st.setProperty('--head-x', `${sx}px`);
-        st.setProperty('--head-y', `${sy}px`);
-      }
-      // The cockpit rotates about the pilot's eye (transform-origin z = perspective distance), so
-      // everything behind the eye plane (z < PERSPECTIVE) swings the way the outside world does:
-      // a rightward look (+yaw) moves the cockpit left, an upward look (+pitch) moves it down.
-      // Both CSS angles are therefore positive for a positive head angle.
-      // Writing a custom property on <html> invalidates style for the whole document, so skip
-      // frames where nothing changed (the common case).
-      const pxPerTan = fovY && fovY > 0.05 && fovY < 3 ? window.innerHeight / 2 / Math.tan(fovY / 2) : PERSPECTIVE;
-      const cssYaw = panelAngle(yaw, pxPerTan);
-      const cssPitch = panelAngle(pitch, pxPerTan);
-      if (cssYaw === lastYaw && cssPitch === lastPitch) return;
-      lastYaw = cssYaw;
-      lastPitch = cssPitch;
-      const root = document.documentElement.style;
-      root.setProperty('--head-yaw', `${cssYaw}rad`);
-      root.setProperty('--head-pitch', `${cssPitch}rad`);
-    },
-    setVisualConfig: (config) => {
-      try {
-        visualRenderer.setConfig(config);
-        shell.dataset.customModel = config ? 'true' : 'false';
-      } catch (error) {
-        visualRenderer.setConfig(null);
-        shell.dataset.customModel = 'false';
-        console.warn('[CockpitVisual] 座艙模型載入失敗，保留內建儀表：', error);
-      }
-    },
-    setAnimationControls: (input) => visualRenderer.setControls(input),
-    updateAnimations: (deltaSeconds) => visualRenderer.update(deltaSeconds),
     setFlightReadout: (altitude, speedKt, heading) => {
       readoutEl ??= shell.querySelector<HTMLElement>('#cockpit-flight-readout');
       if (!readoutEl) return;
