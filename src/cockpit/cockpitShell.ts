@@ -12,7 +12,6 @@ export interface CockpitShell {
   setFlightReadout(altitude: number, speedKt: number, heading: number): void;
 }
 
-const PERSPECTIVE = 1600;
 export function mountCockpitShell(): CockpitShell {
   const existing = document.getElementById('cockpit-shell');
   if (existing) existing.remove();
