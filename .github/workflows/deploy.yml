@@ -31,6 +31,9 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
+      - name: Generate editor V2 aircraft visual assets
+        run: node scripts/generate-visual-assets.mjs
+
       - name: Add WebAssembly target
         run: rustup target add wasm32-unknown-unknown
 
