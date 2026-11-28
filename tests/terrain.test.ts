@@ -41,6 +41,15 @@ describe('terrain sampler', () => {
     expect((counts.get('water') ?? 0) / total).toBeLessThan(0.4);
   });
 
+  it('adds coherent medium and near-field relief to the base terrain', () => {
+    const a = sampleTerrain(12345, -6789);
+    const b = sampleTerrain(12345 + 18, -6789 + 11);
+    const c = sampleTerrain(12345 + 900, -6789 + 700);
+    expect(Number.isFinite(a.height + b.height + c.height)).toBe(true);
+    expect(Math.abs(a.height - b.height)).toBeLessThan(180);
+    expect(Math.abs(a.height - c.height)).toBeGreaterThan(0.01);
+  });
+
   it('classifies anything below sea level as water', () => {
     let seen = 0;
     for (let x = -30000; x <= 30000; x += 500) {
@@ -85,7 +94,7 @@ describe('shader parity guard', () => {
     const sea = `${SEA_LEVEL.toFixed(1)}`;
     expect(TERRAIN_GLSL).toContain(`const float SEA = ${sea};`);
     expect(TERRAIN_WGSL).toContain(`const SEA: f32 = ${sea};`);
-    for (const k of ['0.1031', '0.000055', '0.00022', '0.00014', '0.0011', '0.00007', '0.00031', '0.00009', '0.0004', '31.7, 11.3', '91.3, 47.7']) {
+    for (const k of ['0.1031', '0.000055', '0.00022', '0.00014', '0.0011', '0.00007', '0.00031', '0.00009', '0.0004', '0.000085', '0.0038', '0.012', '31.7, 11.3', '91.3, 47.7']) {
       expect(TERRAIN_GLSL, `GLSL ${k}`).toContain(k);
       expect(TERRAIN_WGSL, `WGSL ${k}`).toContain(k);
     }
