@@ -80,7 +80,7 @@ export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadR
   const model = createModularAircraft(config);
   model.scale.setScalar(1.05);
   model.userData.aircraftKey = key;
-  model.userData.visualSource = path ?? 'procedural-v2-generated';
+  model.userData.visualSource = embedded ? 'embedded-aircraft-data' : path ?? 'procedural-v2-generated';
   model.userData.visualSchemaVersion = config.version;
   model.userData.visualMigratedFromLegacy = raw.version === 1;
   return { config, model, source: embedded ? 'embedded-aircraft-data' : path ?? 'procedural-v2-generated', migratedFromLegacy: raw.version === 1 };
