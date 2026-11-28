@@ -28,6 +28,9 @@ export class CockpitSceneControls {
       { label: 'WAYPOINT', action: () => click('#nav-next') },
       { label: 'AIRFIELD', action: () => click('#nav-site') },
       { label: 'APPROACH', action: () => click('#landing-guide-toggle'), toggle: true },
+      { label: 'MFD FLIGHT', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'FLIGHT' } })) },
+      { label: 'MFD SYSTEM', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'SYSTEM' } })) },
+      { label: 'MFD SENSOR', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'SENSOR' } })) },
     ]));
     this.aircraftView.setCockpitControls(this.groups);
     this.host.addEventListener('pointerdown', this.onPointerDown, true);
@@ -36,6 +39,18 @@ export class CockpitSceneControls {
     this.style.dataset.cfs3dControls = 'true';
     this.style.textContent = `
       body.touch #cockpit-shell { display:none !important; }
+      body:not(.touch)[data-mode="flying"] #cockpit-shell,
+      body:not(.touch)[data-mode="flying"] #navigation-display,
+      body:not(.touch)[data-mode="flying"] #contact-status,
+      body:not(.touch)[data-mode="flying"] #landing-guidance-ui,
+      body:not(.touch)[data-mode="flying"] #panel-toggles,
+      body:not(.touch)[data-mode="flying"] #cockpit-dashboard,
+      body:not(.touch)[data-mode="crashed"] #cockpit-shell,
+      body:not(.touch)[data-mode="crashed"] #navigation-display,
+      body:not(.touch)[data-mode="crashed"] #contact-status,
+      body:not(.touch)[data-mode="crashed"] #landing-guidance-ui,
+      body:not(.touch)[data-mode="crashed"] #panel-toggles,
+      body:not(.touch)[data-mode="crashed"] #cockpit-dashboard { display:none !important; }
       body[data-mode="flying"] #cockpit-shell .cockpit-switches button,
       body[data-mode="flying"] #cockpit-shell .cockpit-config summary,
       body[data-mode="flying"] #cockpit-dashboard button,
