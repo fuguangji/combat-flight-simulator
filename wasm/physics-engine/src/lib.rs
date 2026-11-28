@@ -61,6 +61,7 @@ static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
 static mut SCENE: Vec<f32> = Vec::new();
 static mut PARAMS: Vec<f64> = Vec::new();
+static mut SITES: Vec<f64> = Vec::new();
 
 /// WebAssembly is single-threaded here (one worker owns the instance), so this global is safe.
 fn sim() -> &'static mut Sim {
@@ -173,6 +174,18 @@ fn install(params: AircraftParams) {
         fresh.set_world(world);
         *slot = Some(fresh);
     }
+}
+
+/// Reserve room for runtime site data: 4 floats per runway and 9 per carrier.
+#[no_mangle]
+pub extern "C" fn sim_sites_alloc(floats: u32) -> *mut f64 {
+    unsafe { let buf=&mut *core::ptr::addr_of_mut!(SITES); buf.clear(); buf.resize(floats as usize,0.0); buf.as_mut_ptr() }
+}
+
+#[no_mangle]
+pub extern "C" fn sim_sites_commit(runway_count:u32,carrier_count:u32)->u32 {
+    let ok=unsafe { let buf=&*core::ptr::addr_of!(SITES); let rn=(runway_count as usize).saturating_mul(4); let cn=(carrier_count as usize).saturating_mul(9); if rn+cn>buf.len(){false}else{sites::install(&buf[..rn],&buf[rn..rn+cn])} };
+    ok as u32
 }
 
 /// Reserve room for `floats` f32 values of scene data and return its address in linear memory.
