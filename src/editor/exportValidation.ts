@@ -1,10 +1,10 @@
 import { AircraftDefinition, aircraftRegistry } from '../aircraft/registry';
 import {
   createModularAircraft,
+  createProceduralAircraftConfig,
   normalizeAircraftVisualConfig,
   type AircraftVisualInput,
 } from '../aircraft/builder/modularAircraft';
-import { loadAircraftVisualConfig } from '../aircraft/builder/visualRepository';
 
 const disposeModel = (model: ReturnType<typeof createModularAircraft>): void => {
   model.traverse((object) => {
@@ -38,8 +38,7 @@ export function validateEditorImportPayload(raw: unknown): void {
 
     const visual = aircraft.visual
       ? normalizeAircraftVisualConfig(aircraft.visual)
-      : loadAircraftVisualConfig(aircraft.key);
-    if (!visual) throw new Error(`機型 ${aircraft.key} 找不到可用的視覺模型`);
+      : normalizeAircraftVisualConfig(createProceduralAircraftConfig(aircraft.id));
     if (visual.aircraftKey && visual.aircraftKey !== aircraft.key) {
       throw new Error(`視覺模型識別碼不符：機型為「${aircraft.key}」，模型卻標示「${visual.aircraftKey}」`);
     }
