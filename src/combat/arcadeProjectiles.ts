@@ -335,7 +335,9 @@ export class ArcadeProjectileSystem {
     const distance = this.latestSnapshot
       ? Math.hypot(site.x - this.latestSnapshot.position[0], site.z - this.latestSnapshot.position[2]) / 1000
       : null;
-    current.textContent = `${site.name} · ${site.kind === 'carrier' ? '航艦' : '機場'} · ${distance === null ? '—' : distance.toFixed(1) + ' km'}`;
+    const side = site.faction === 'friendly' ? '友軍' : '敵軍';
+    const threat = site.threat === 'elevated' ? ' · 高威脅' : '';
+    current.textContent = `${side} · ${site.name} · ${site.kind === 'carrier' ? '航艦' : '機場'}${threat} · ${distance === null ? '—' : distance.toFixed(1) + ' km'}`;
     current.title = site.name;
     current.dataset.active = String(site.id === this.landingSiteId && this.landingApproachActive);
   }
@@ -613,7 +615,7 @@ export class ArcadeProjectileSystem {
       const x = cx + (across / Math.max(distance, 1)) * radius * scale;
       const y = cy - (ahead / Math.max(distance, 1)) * radius * scale;
       const active = site.id === this.landingSiteId && this.landingApproachActive;
-      ctx.strokeStyle = active ? '#7dff9a' : '#f4f7f2';
+      ctx.strokeStyle = active ? '#7dff9a' : site.faction === 'friendly' ? '#7dff9a' : '#ff7777';
       ctx.lineWidth = active ? 2 : 1;
       ctx.beginPath();
       ctx.moveTo(x, y - 5);
