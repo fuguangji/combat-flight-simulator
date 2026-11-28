@@ -27,11 +27,11 @@ float tNoise(vec2 p) {
 }
 float terrainBase(vec2 p) {
   float r = 1.0 - abs(tNoise(p * 0.00014) * 2.0 - 1.0);
-  let broad = (tNoise(p * 0.000055) - 0.5) * 900.0;
-  let medium = (tNoise(p * 0.00022) - 0.5) * 420.0;
-  let ridges = r * r * r * 420.0;
-  let valleyNoise = abs(tNoise(p * 0.000085 + vec2(17.1, -9.4)) * 2.0 - 1.0);
-  let valleys = -pow(valleyNoise, 5.0) * 115.0;
+  float broad = (tNoise(p * 0.000055) - 0.5) * 900.0;
+  float medium = (tNoise(p * 0.00022) - 0.5) * 420.0;
+  float ridges = r * r * r * 420.0;
+  float valleyNoise = abs(tNoise(p * 0.000085 + vec2(17.1, -9.4)) * 2.0 - 1.0);
+  float valleys = -pow(valleyNoise, 5.0) * 115.0;
   return broad + medium + ridges + valleys;
 }
 float terrainFine(vec2 p) {
