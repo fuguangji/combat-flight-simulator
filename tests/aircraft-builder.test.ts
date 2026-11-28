@@ -180,6 +180,32 @@ describe('modular aircraft component hierarchy', () => {
     expect(model.children[0].children[0].children[0].name).toBe('cannon-body');
   });
 
+
+  it('builds advanced rounded, capsule, lathe and serialized boolean mesh geometry', () => {
+    const advanced: AircraftVisualConfig = {
+      version: 2,
+      components: [{ id: 'root', name: '根' }],
+      parts: [
+        { id: 'rounded', componentId: 'root', shape: 'roundedBox', width: 1, height: 0.5, depth: 0.4, bevelSize: 0.08, bevelThickness: 0.03, bevelSegments: 3 },
+        { id: 'capsule', componentId: 'root', shape: 'capsule', radius: 0.2, height: 0.8, radialSegments: 24 },
+        { id: 'lathe', componentId: 'root', shape: 'lathe', profile: [[0.2,-0.5],[0.35,0],[0.15,0.5]], radialSegments: 32 },
+        { id: 'boolean-result', componentId: 'root', shape: 'mesh', meshVertices: [0,0,0, 1,0,0, 0,1,0], meshIndices: [0,1,2] },
+      ],
+    };
+    const model = createModularAircraft(advanced);
+    expect(model.children[0].children).toHaveLength(4);
+    expect((model.children[0].children[0] as THREE.Group).children[0]).toBeInstanceOf(THREE.Mesh);
+    expect(((model.children[0].children[3] as THREE.Group).children[0] as THREE.Mesh).geometry.index?.count).toBe(3);
+  });
+
+  it('rejects invalid serialized boolean mesh indices', () => {
+    const invalid = {
+      version: 2, components: [{ id: 'root', name: '根' }],
+      parts: [{ id: 'mesh', componentId: 'root', shape: 'mesh', meshVertices: [0,0,0, 1,0,0, 0,1,0], meshIndices: [0,1,9] }],
+    } as unknown as AircraftVisualConfig;
+    expect(() => createModularAircraft(invalid)).toThrow(/Mesh part/);
+  });
+
   it('animates only components with explicit visual animation bindings', () => {
     const config: AircraftVisualConfig = {
       version: 2,
