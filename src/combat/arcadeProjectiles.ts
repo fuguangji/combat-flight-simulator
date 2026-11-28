@@ -3,7 +3,7 @@ import { attitudeFromQuat } from '../cockpit/camera';
 import { aircraftRegistry } from '../aircraft/registry';
 import type { CameraState } from '../rendering/Renderer';
 import type { AircraftSnapshot } from '../physics/stateLayout';
-import { CombatSimulation, distanceBetween, type CombatContact, type CombatTargetKind } from './simulation';
+import { CombatSimulation, distanceBetween, type CombatContact, type CombatImpact, type CombatTargetKind } from './simulation';
 import { CombatAircraftEntity } from './aircraftEntity';
 import { SITE_MARKERS } from '../world/sites';
 import weaponCatalog from './weapons.json';
@@ -432,7 +432,7 @@ export class ArcadeProjectileSystem {
       position: this.latestSnapshot.position,
       velocity: this.latestSnapshot.velocity,
       orientation: this.latestSnapshot.orientation,
-    }, contact.id, spec.color)) {
+    }, contact.id, spec.color, { id: this.equipment, effect: spec.effect, life: spec.life })) {
       this.setMessage('目標已失效，請重新選取', 1600);
       return;
     }
@@ -636,6 +636,101 @@ export class ArcadeProjectileSystem {
     return { x: width * (0.5 + x * 0.5), y: height * (0.5 - y * 0.5), depth };
   }
 
+  private drawImpact(impact: CombatImpact, point: ProjectedPoint): void {
+    const progress = clamp(impact.age / impact.life, 0, 1);
+    const expansion = 0.28 + progress * 1.65;
+    const radius = clamp(impact.radius * 120 / point.depth, 3, 32) * expansion;
+    const fade = (1 - progress) ** 1.35;
+    const ctx = this.ctx;
+
+    ctx.save();
+    ctx.globalAlpha = fade;
+    if (impact.kind === 'missile' || impact.kind === 'aircraft') {
+      const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, radius);
+      glow.addColorStop(0, '#fff8d4');
+      glow.addColorStop(0.2, impact.color);
+      glow.addColorStop(0.58, `${impact.color}a8`);
+      glow.addColorStop(1, `${impact.color}00`);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = impact.color;
+    ctx.lineWidth = Math.max(1, radius * 0.09);
+    ctx.lineCap = 'round';
+    const ring = (scale: number, yScale = 1): void => {
+      ctx.beginPath();
+      ctx.ellipse(point.x, point.y, radius * scale, radius * scale * yScale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+    const rayBurst = (count: number, inner: number, outer: number, phase = 0): void => {
+      ctx.beginPath();
+      for (let i = 0; i < count; i++) {
+        const angle = phase + (i / count) * Math.PI * 2;
+        ctx.moveTo(point.x + Math.cos(angle) * radius * inner, point.y + Math.sin(angle) * radius * inner);
+        ctx.lineTo(point.x + Math.cos(angle) * radius * outer, point.y + Math.sin(angle) * radius * outer);
+      }
+      ctx.stroke();
+    };
+
+    switch (impact.effect) {
+      case 'PULSE BURST':
+        ring(0.7);
+        ring(1.05, 0.72);
+        break;
+      case 'COMET TRAIL':
+        ctx.beginPath();
+        ctx.ellipse(point.x - radius * 0.34, point.y - radius * 0.16, radius * 1.2, radius * 0.36, -0.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ring(0.56);
+        break;
+      case 'EMBER ARC':
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, radius * (0.55 + i * 0.18), i * 1.9, i * 1.9 + Math.PI * 1.15);
+          ctx.stroke();
+        }
+        break;
+      case 'TIDAL RING':
+        ring(0.9, 0.44);
+        ring(1.3, 0.62);
+        break;
+      case 'SPARK DART':
+        rayBurst(8, 0.2, 1.15, Math.PI / 8);
+        break;
+      case 'STATIC WAVE':
+        ring(0.58);
+        ring(1.02);
+        ring(1.38);
+        break;
+      case 'SKY LANCE':
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y - radius * 1.8);
+        ctx.lineTo(point.x, point.y + radius * 0.7);
+        ctx.stroke();
+        ring(0.8, 0.55);
+        break;
+      case 'FROST TRACE':
+        rayBurst(6, 0.25, 1.25, Math.PI / 6);
+        ring(0.72);
+        break;
+      case 'IMPACT HALO':
+        ring(1.15, 0.5);
+        ring(0.6, 0.32);
+        break;
+      case 'PHOENIX WAKE':
+        rayBurst(12, 0.35, 1.45, -Math.PI / 2);
+        ring(0.72);
+        break;
+      default:
+        ring(1);
+    }
+    if (impact.kind === 'cannon') rayBurst(6, 0.25, 1.1, impact.age * 8);
+    ctx.restore();
+  }
+
   private readonly frame = (now: number): void => {
     const dt = Math.min((now - this.lastFrameTime) / 1000, 0.05);
     this.lastFrameTime = now;
@@ -723,20 +818,39 @@ export class ArcadeProjectileSystem {
     for (const missile of this.simulation.missiles) {
       const point = this.project(missile.position, camera, w, h);
       if (!point || point.x < -10 || point.x > w + 10 || point.y < -10 || point.y > h + 10) continue;
-      const previous = this.project(missile.previousPosition, camera, w, h);
       ctx.save();
-      if (previous) {
+      for (let i = 1; i < missile.trail.length; i++) {
+        const previous = this.project(missile.trail[i - 1], camera, w, h);
+        const current = this.project(missile.trail[i], camera, w, h);
+        if (!previous || !current) continue;
+        ctx.globalAlpha = (i / missile.trail.length) * 0.68;
         ctx.strokeStyle = missile.color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1 + (i / missile.trail.length) * 2.2;
+        ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(previous.x, previous.y);
-        ctx.lineTo(point.x, point.y);
+        ctx.lineTo(current.x, current.y);
         ctx.stroke();
       }
+      const velocityTip = this.project([
+        missile.position[0] + missile.velocity[0] * 0.012,
+        missile.position[1] + missile.velocity[1] * 0.012,
+        missile.position[2] + missile.velocity[2] * 0.012,
+      ], camera, w, h);
+      const direction = velocityTip ? Math.atan2(velocityTip.y - point.y, velocityTip.x - point.x) : 0;
+      ctx.globalAlpha = 1;
       ctx.fillStyle = missile.color;
       ctx.shadowColor = missile.color;
-      ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(point.x, point.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 10;
+      ctx.translate(point.x, point.y);
+      ctx.rotate(direction);
+      ctx.beginPath();
+      ctx.moveTo(6, 0);
+      ctx.lineTo(-4, -2);
+      ctx.lineTo(-2, 0);
+      ctx.lineTo(-4, 2);
+      ctx.closePath();
+      ctx.fill();
       ctx.restore();
     }
 
@@ -747,7 +861,10 @@ export class ArcadeProjectileSystem {
       if (!previous) continue;
       ctx.save();
       ctx.strokeStyle = '#ffe7a3';
-      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#ffb84d';
+      ctx.shadowBlur = 5;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
       ctx.globalAlpha = 0.9;
       ctx.beginPath();
       ctx.moveTo(previous.x, previous.y);
@@ -759,15 +876,17 @@ export class ArcadeProjectileSystem {
     for (const impact of this.simulation.impacts) {
       const point = this.project(impact.position, camera, w, h);
       if (!point || point.x < -60 || point.x > w + 60 || point.y < -60 || point.y > h + 60) continue;
-      const fade = impact.age < 0.8 ? 1 : 0.72;
-      const radius = clamp(impact.radius * 120 / point.depth, 3, 28);
       ctx.save();
-      ctx.globalAlpha = fade * 0.68;
-      ctx.fillStyle = '#17120e';
-      ctx.strokeStyle = impact.color;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.ellipse(point.x, point.y, radius, radius * 0.45, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (impact.kind !== 'cannon') {
+        const craterRadius = clamp(impact.radius * 80 / point.depth, 2, 20);
+        ctx.globalAlpha = Math.max(0, 0.38 * (1 - impact.age / impact.life));
+        ctx.fillStyle = '#17120e';
+        ctx.beginPath();
+        ctx.ellipse(point.x, point.y, craterRadius, craterRadius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
+      this.drawImpact(impact, point);
     }
 
     if (now < this.messageUntil) {

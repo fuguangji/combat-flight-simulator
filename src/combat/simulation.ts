@@ -7,9 +7,16 @@ export interface CombatContact {
   className: string;
   kind: CombatTargetKind;
   position: Vec3;
+  previousPosition: Vec3;
   velocity: Vec3;
   health: number;
   alive: boolean;
+}
+
+export interface CombatMissileSpec {
+  id?: string;
+  effect?: string;
+  life?: number;
 }
 
 export interface CombatMissile {
@@ -18,9 +25,13 @@ export interface CombatMissile {
   previousPosition: Vec3;
   velocity: Vec3;
   targetId: string;
+  equipmentId: string;
+  effect: string;
   remaining: number;
   age: number;
+  life: number;
   color: string;
+  trail: Vec3[];
 }
 
 export interface CombatBullet {
@@ -40,7 +51,11 @@ export interface CombatImpact {
   position: Vec3;
   radius: number;
   age: number;
+  life: number;
   color: string;
+  kind: 'missile' | 'cannon' | 'aircraft';
+  effect: string;
+  equipmentId: string;
 }
 
 export interface CombatAircraft {
@@ -62,6 +77,19 @@ const addScaled = (a: Vec3, b: Vec3, scale: number): Vec3 => [
   a[1] + b[1] * scale,
   a[2] + b[2] * scale,
 ];
+
+const MISSILE_PROFILES: Record<string, { launchSpeed: number; acceleration: number; maxSpeed: number; turnRate: number }> = {
+  nova17: { launchSpeed: 260, acceleration: 175, maxSpeed: 780, turnRate: 2.4 },
+  meteor88: { launchSpeed: 320, acceleration: 150, maxSpeed: 1050, turnRate: 1.15 },
+  hellfire09: { launchSpeed: 220, acceleration: 115, maxSpeed: 690, turnRate: 1.05 },
+  vortex33: { launchSpeed: 245, acceleration: 135, maxSpeed: 760, turnRate: 1.35 },
+  stinger05: { launchSpeed: 285, acceleration: 190, maxSpeed: 820, turnRate: 2.8 },
+  thunder66: { launchSpeed: 250, acceleration: 155, maxSpeed: 850, turnRate: 1.7 },
+  gungnir01: { launchSpeed: 210, acceleration: 185, maxSpeed: 980, turnRate: 0.9 },
+  frostbite12: { launchSpeed: 275, acceleration: 160, maxSpeed: 810, turnRate: 2.05 },
+  ironhammer20: { launchSpeed: 195, acceleration: 120, maxSpeed: 720, turnRate: 0.85 },
+  phoenix54: { launchSpeed: 300, acceleration: 205, maxSpeed: 1020, turnRate: 1.55 },
+};
 
 export function distanceBetween(a: Vec3, b: Vec3): number {
   return length(subtract(a, b));
@@ -99,6 +127,7 @@ export class CombatSimulation {
         className,
         kind,
         position,
+        previousPosition: [...position],
         velocity: kind === 'air' ? [0, 0, 0] : [0, 0, 0],
         health,
         alive: true,
@@ -119,6 +148,7 @@ export class CombatSimulation {
   updateAirContact(id: string, position: Vec3, velocity: Vec3): void {
     const contact = this.getContact(id);
     if (!contact?.alive || contact.kind !== 'air') return;
+    contact.previousPosition = [...contact.position];
     contact.position = [...position];
     contact.velocity = [...velocity];
   }
@@ -128,21 +158,27 @@ export class CombatSimulation {
     if (contact?.alive && contact.kind === 'air') this.destroy(contact, contact.position);
   }
 
-  fireMissile(aircraft: CombatAircraft, targetId: string, color: string): boolean {
+  fireMissile(aircraft: CombatAircraft, targetId: string, color: string, spec: CombatMissileSpec = {}): boolean {
     const target = this.getContact(targetId);
     if (!target?.alive) return false;
     const forward = quatRotate(aircraft.orientation, [1, 0, 0]);
     const position = addScaled(aircraft.position, forward, 8);
-    const velocity = addScaled(aircraft.velocity, forward, 520);
+    const equipmentId = spec.id ?? 'default';
+    const profile = MISSILE_PROFILES[equipmentId] ?? { launchSpeed: 260, acceleration: 150, maxSpeed: 850, turnRate: 1.6 };
+    const velocity = addScaled(aircraft.velocity, forward, profile.launchSpeed);
     this.missiles.push({
       id: this.nextMissileId++,
       position,
       previousPosition: [...position],
       velocity,
       targetId,
+      equipmentId,
+      effect: spec.effect ?? 'COMET TRAIL',
       remaining: 12,
       age: 0,
+      life: spec.life ?? 1.2,
       color,
+      trail: [[...position]],
     });
     return true;
   }
@@ -157,7 +193,7 @@ export class CombatSimulation {
       position,
       previousPosition: [...position],
       velocity: addScaled(aircraft.velocity, forward, 1000),
-      remaining: 2,
+      remaining: 3,
     });
     return true;
   }
@@ -175,11 +211,15 @@ export class CombatSimulation {
         continue;
       }
 
-      const desired = normalize(subtract(target.position, missile.position));
       const speed = length(missile.velocity);
+      const distance = distanceBetween(target.position, missile.position);
+      const leadTime = clamp(distance / Math.max(speed, 300), 0, 2.5);
+      const intercept = addScaled(target.position, target.velocity, leadTime);
+      const desired = normalize(subtract(intercept, missile.position));
       const currentDirection = normalize(missile.velocity);
       const turnAngle = Math.acos(clamp(dot(currentDirection, desired), -1, 1));
-      const maxTurn = Math.min(turnAngle, 1.8 * step);
+      const profile = MISSILE_PROFILES[missile.equipmentId] ?? { launchSpeed: 260, acceleration: 150, maxSpeed: 850, turnRate: 1.6 };
+      const maxTurn = Math.min(turnAngle, profile.turnRate * step);
       const axisVector: Vec3 = [
         currentDirection[1] * desired[2] - currentDirection[2] * desired[1],
         currentDirection[2] * desired[0] - currentDirection[0] * desired[2],
@@ -200,13 +240,27 @@ export class CombatSimulation {
             currentDirection[2] * Math.cos(maxTurn) + (turnAxis[0] * currentDirection[1] - turnAxis[1] * currentDirection[0]) * Math.sin(maxTurn),
           ]);
       missile.age += step;
-      const thrust = missile.age < 2.5 ? 100 * step : 0;
+      const acceleratedSpeed = Math.min(profile.maxSpeed, speed + (missile.age < 2.2 ? profile.acceleration * step : 0));
       missile.previousPosition = [...missile.position];
-      missile.velocity = [direction[0] * Math.min(900, speed + thrust), direction[1] * Math.min(900, speed + thrust) - 9.81 * step, direction[2] * Math.min(900, speed + thrust)];
+      missile.velocity = [
+        direction[0] * acceleratedSpeed,
+        direction[1] * acceleratedSpeed - 9.81 * step,
+        direction[2] * acceleratedSpeed,
+      ];
       missile.position = addScaled(missile.position, missile.velocity, step);
+      missile.trail.push([...missile.position]);
+      if (missile.trail.length > 14) missile.trail.shift();
 
-      if (this.segmentHits(missile.previousPosition, missile.position, target.position, target.kind === 'air' ? 36 : 52)) {
-        this.destroy(target, target.position);
+      const hitPoint = this.movingSphereHit(missile.previousPosition, missile.position, target, target.kind === 'air' ? 36 : 52);
+      if (hitPoint) {
+        this.destroy(target, hitPoint, {
+          kind: 'missile',
+          color: missile.color,
+          radius: target.kind === 'ground' ? 58 : 26,
+          life: missile.life,
+          effect: missile.effect,
+          equipmentId: missile.equipmentId,
+        });
         this.projectileHits.push({ targetId: target.id, weapon: 'missile' });
         this.missiles.splice(i, 1);
         continue;
@@ -218,12 +272,19 @@ export class CombatSimulation {
       const bullet = this.bullets[i];
       bullet.remaining -= step;
       bullet.previousPosition = [...bullet.position];
+      bullet.velocity[0] *= 1 - 0.015 * step;
       bullet.velocity[1] -= 9.81 * step;
+      bullet.velocity[2] *= 1 - 0.015 * step;
       bullet.position = addScaled(bullet.position, bullet.velocity, step);
       let hit: CombatContact | undefined;
+      let hitPoint: Vec3 | undefined;
       for (const contact of this.contacts) {
-        if (contact.alive && contact.kind === 'air' &&
-          this.segmentHits(bullet.previousPosition, bullet.position, contact.position, 12)) {
+        if (contact.alive && (hitPoint = this.movingSphereHit(
+          bullet.previousPosition,
+          bullet.position,
+          contact,
+          contact.kind === 'air' ? 18 : 24,
+        ))) {
           hit = contact;
           break;
         }
@@ -231,37 +292,71 @@ export class CombatSimulation {
       if (hit) {
         hit.health -= 1;
         this.projectileHits.push({ targetId: hit.id, weapon: 'cannon' });
-        if (hit.health <= 0) this.destroy(hit, hit.position);
+        if (hit.health <= 0) {
+          this.destroy(hit, hitPoint!, {
+            kind: 'cannon',
+            color: '#ffe7a3',
+            radius: hit.kind === 'ground' ? 24 : 14,
+            life: 0.42,
+            effect: 'CANNON BURST',
+            equipmentId: 'cannon',
+          });
+        } else {
+          this.addImpact(hitPoint!, {
+            kind: 'cannon',
+            color: '#ffe7a3',
+            radius: 11,
+            life: 0.28,
+            effect: 'CANNON BURST',
+            equipmentId: 'cannon',
+          });
+        }
         this.bullets.splice(i, 1);
         continue;
       }
       if (bullet.remaining <= 0 || bullet.position[1] <= 0) this.bullets.splice(i, 1);
     }
 
-    for (const impact of this.impacts) impact.age += step;
+    for (let i = this.impacts.length - 1; i >= 0; i--) {
+      this.impacts[i].age += step;
+      if (this.impacts[i].age >= this.impacts[i].life) this.impacts.splice(i, 1);
+    }
   }
 
   drainProjectileHits(): CombatProjectileHit[] {
     return this.projectileHits.splice(0);
   }
 
-  private segmentHits(start: Vec3, end: Vec3, point: Vec3, radius: number): boolean {
-    const segment = subtract(end, start);
+  private movingSphereHit(start: Vec3, end: Vec3, contact: CombatContact, radius: number): Vec3 | null {
+    const relativeStart = subtract(start, contact.previousPosition);
+    const relativeEnd = subtract(end, contact.position);
+    const segment = subtract(relativeEnd, relativeStart);
     const lengthSquared = dot(segment, segment);
-    const fromStart = subtract(point, start);
+    const fromStart = subtract([0, 0, 0], relativeStart);
     const t = lengthSquared > 1e-6 ? clamp(dot(fromStart, segment) / lengthSquared, 0, 1) : 0;
-    return distanceBetween(addScaled(start, segment, t), point) <= radius;
+    if (distanceBetween(addScaled(relativeStart, segment, t), [0, 0, 0]) > radius) return null;
+    return addScaled(start, subtract(end, start), t);
   }
 
-  private destroy(contact: CombatContact, position: Vec3): void {
+  private addImpact(position: Vec3, impact: Omit<CombatImpact, 'position' | 'age'>): void {
+    this.impacts.push({ position: [...position], age: 0, ...impact });
+  }
+
+  private destroy(
+    contact: CombatContact,
+    position: Vec3,
+    impact?: Omit<CombatImpact, 'position' | 'age'>,
+  ): void {
     if (!contact.alive) return;
     contact.alive = false;
     this.destroyedCount += 1;
-    this.impacts.push({
-      position: [...position],
+    this.addImpact(position, impact ?? {
       radius: contact.kind === 'ground' ? 58 : 26,
-      age: 0,
+      life: 2.4,
       color: contact.kind === 'ground' ? '#ff9b56' : '#ffc56b',
+      kind: 'aircraft',
+      effect: 'AIRCRAFT EXPLOSION',
+      equipmentId: 'aircraft',
     });
   }
 }
