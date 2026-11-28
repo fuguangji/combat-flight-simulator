@@ -65,6 +65,7 @@ export class CockpitMfd {
     const pageTexture = this.makeBezelLabel('MAP  ·  FLIGHT  ·  SYSTEM');
     const pageMaterial = new THREE.MeshBasicMaterial({ map: pageTexture, transparent: true, side: THREE.DoubleSide });
     this.pageLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.028), pageMaterial);
+    this.pageLabel.userData.cockpitMfd = true;
     this.pageLabel.rotation.x = -Math.PI / 2;
     this.pageLabel.position.set(-0.012, 0.17, 0);
     this.group.add(this.pageLabel);
@@ -94,6 +95,7 @@ export class CockpitMfd {
       new THREE.BoxGeometry(0.34, 0.215, 0.035),
       new THREE.MeshStandardMaterial({ color: 0x101814, metalness: 0.66, roughness: 0.42 }),
     );
+    body.userData.cockpitMfd = true;
     body.position.y = 0;
     housing.add(body);
 
@@ -101,6 +103,7 @@ export class CockpitMfd {
       new THREE.BoxGeometry(0.318, 0.193, 0.008),
       new THREE.MeshStandardMaterial({ color: 0x26342d, metalness: 0.72, roughness: 0.3 }),
     );
+    bezel.userData.cockpitMfd = true;
     bezel.position.y = 0.021;
     housing.add(bezel);
 
@@ -108,6 +111,7 @@ export class CockpitMfd {
       new THREE.PlaneGeometry(0.296, 0.17),
       new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, toneMapped: false }),
     );
+    glass.userData.cockpitMfd = true;
     glass.rotation.x = -Math.PI / 2;
     glass.position.y = 0.026;
     housing.add(glass);
@@ -118,6 +122,7 @@ export class CockpitMfd {
     );
     for (const x of [-0.15, 0.15]) for (const z of [-0.09, 0.09]) {
       const screw = screws.clone();
+      screw.userData.cockpitMfd = true;
       screw.position.set(x, 0.022, z);
       housing.add(screw);
     }
@@ -159,9 +164,9 @@ export class CockpitMfd {
 
   private onKeyDown = (event: KeyboardEvent): void => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.code === 'F1') this.setPage('FLIGHT');
-    else if (event.code === 'F2') this.setPage('SYSTEM');
-    else if (event.code === 'F3') this.setPage('SENSOR');
+    if (event.code === 'F1' || event.code === 'Digit1') this.setPage('FLIGHT');
+    else if (event.code === 'F2' || event.code === 'Digit2') this.setPage('SYSTEM');
+    else if (event.code === 'F3' || event.code === 'Digit3') this.setPage('SENSOR');
   };
 
   private onFlightStart = (): void => {
