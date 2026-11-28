@@ -27,7 +27,9 @@ describe('procedural landing-site network', () => {
   });
   it('places every carrier footprint in water and keeps sites separated', () => {
     for(const c of CARRIERS) for(let dx=-850;dx<=850;dx+=425) for(let dz=-1250;dz<=1250;dz+=625)
-      expect(sampleTerrain(c.cx+dx,c.cz+dz).biome,c.id).toBe('water');
+      const sample=sampleTerrain(c.cx+dx,c.cz+dz);
+      expect(sample.biome,c.id).toBe('water');
+      expect(sample.height,c.id).toBeLessThan(SEA_LEVEL);
     for(let i=0;i<SITE_MARKERS.length;i++) for(let j=i+1;j<SITE_MARKERS.length;j++)
       expect(Math.hypot(SITE_MARKERS[i].x-SITE_MARKERS[j].x,SITE_MARKERS[i].z-SITE_MARKERS[j].z)).toBeGreaterThanOrEqual(11_000);
     for(let i=0;i<RUNWAYS.length;i++) for(let j=i+1;j<RUNWAYS.length;j++)
