@@ -66,8 +66,8 @@ export class CockpitMfd {
     const pageMaterial = new THREE.MeshBasicMaterial({ map: pageTexture, transparent: true, side: THREE.DoubleSide });
     this.pageLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.028), pageMaterial);
     this.pageLabel.userData.cockpitMfd = true;
-    this.pageLabel.rotation.set(-Math.PI / 2, Math.PI / 2, 0, 'YXZ');
-    this.pageLabel.position.set(-0.012, 0.17, 0);
+    this.pageLabel.rotation.set(0, -Math.PI / 2, 0);
+    this.pageLabel.position.set(-0.11, -0.13, 0);
     this.group.add(this.pageLabel);
 
     this.drawLeft();
@@ -88,44 +88,19 @@ export class CockpitMfd {
   private addScreen(name: string, texture: THREE.CanvasTexture, lateral: number): void {
     const housing = new THREE.Group();
     housing.name = name;
-    // Dashboard coordinates are shared with the physical switch-bank anchors.
-    housing.position.set(-0.018, 0.245, lateral);
-
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.215, 0.035, 0.34),
-      new THREE.MeshStandardMaterial({ color: 0x101814, metalness: 0.66, roughness: 0.42 }),
-    );
-    body.userData.cockpitMfd = true;
-    body.position.y = 0;
-    housing.add(body);
-
-    const bezel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.193, 0.008, 0.318),
-      new THREE.MeshStandardMaterial({ color: 0x26342d, metalness: 0.72, roughness: 0.3 }),
-    );
-    bezel.userData.cockpitMfd = true;
-    bezel.position.y = 0.021;
-    housing.add(bezel);
+    // The procedural cockpit already contains a physical display housing at
+    // x=-0.105, y=0.08, z=±0.39 relative to the instrument-panel body.
+    housing.position.set(-0.105, 0.08, lateral);
 
     const glass = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.296, 0.17),
+      new THREE.PlaneGeometry(0.40, 0.28),
       new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, toneMapped: false }),
     );
     glass.userData.cockpitMfd = true;
-    glass.rotation.set(-Math.PI / 2, Math.PI / 2, 0, 'YXZ');
-    glass.position.y = 0.026;
+    // Body +X points forward. The screen normal points -X toward the pilot.
+    glass.rotation.set(0, -Math.PI / 2, 0);
+    glass.position.x = -0.029;
     housing.add(glass);
-
-    const screws = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.004, 0.004, 0.003, 8),
-      new THREE.MeshStandardMaterial({ color: 0x9aa69c, metalness: 0.9, roughness: 0.22 }),
-    );
-    for (const x of [-0.15, 0.15]) for (const z of [-0.09, 0.09]) {
-      const screw = screws.clone();
-      screw.userData.cockpitMfd = true;
-      screw.position.set(x, 0.022, z);
-      housing.add(screw);
-    }
     this.group.add(housing);
   }
 
