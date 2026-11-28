@@ -62,11 +62,11 @@ export class CockpitMfd {
     this.addScreen('MFD-NAV', this.leftTexture, -0.255);
     this.addScreen('MFD-FLIGHT', this.rightTexture, 0.255);
 
-    const pageTexture = this.makeBezelLabel('MAP  ·  FLIGHT  ·  SYSTEM');
+    const pageTexture = this.makeBezelLabel('MAP  ·  FLIGHT  ·  SYSTEM  ·  SENSOR');
     const pageMaterial = new THREE.MeshBasicMaterial({ map: pageTexture, transparent: true, side: THREE.DoubleSide });
     this.pageLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.028), pageMaterial);
     this.pageLabel.userData.cockpitMfd = true;
-    this.pageLabel.rotation.x = -Math.PI / 2;
+    this.pageLabel.rotation.set(-Math.PI / 2, Math.PI / 2, 0, 'YXZ');
     this.pageLabel.position.set(-0.012, 0.17, 0);
     this.group.add(this.pageLabel);
 
@@ -92,7 +92,7 @@ export class CockpitMfd {
     housing.position.set(-0.018, 0.245, lateral);
 
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.34, 0.215, 0.035),
+      new THREE.BoxGeometry(0.215, 0.035, 0.34),
       new THREE.MeshStandardMaterial({ color: 0x101814, metalness: 0.66, roughness: 0.42 }),
     );
     body.userData.cockpitMfd = true;
@@ -100,7 +100,7 @@ export class CockpitMfd {
     housing.add(body);
 
     const bezel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.318, 0.193, 0.008),
+      new THREE.BoxGeometry(0.193, 0.008, 0.318),
       new THREE.MeshStandardMaterial({ color: 0x26342d, metalness: 0.72, roughness: 0.3 }),
     );
     bezel.userData.cockpitMfd = true;
@@ -112,7 +112,7 @@ export class CockpitMfd {
       new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, toneMapped: false }),
     );
     glass.userData.cockpitMfd = true;
-    glass.rotation.x = -Math.PI / 2;
+    glass.rotation.set(-Math.PI / 2, Math.PI / 2, 0, 'YXZ');
     glass.position.y = 0.026;
     housing.add(glass);
 
