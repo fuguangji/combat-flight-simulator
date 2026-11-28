@@ -1,1813 +1,1696 @@
 {
   "version": 2,
-  "id": 15,
-  "key": "apollo-castle-37",
-  "displayName": "Apollo-Castle37 太陽神堡壘37",
-  "description": "重型支援平台，遊戲中強調耐久、載荷與多引擎冗餘風格，機動性較低。",
-  "role": "重型攻擊機",
-  "features": "四發風格／重裝甲外觀／重載荷",
-  "specs": {
-    "emptyMassKg": 25000,
-    "mtowKg": 60000,
-    "payloadKg": 20000,
-    "fuelKg": 15000,
-    "cruiseBurnKgMin": 84,
-    "boostBurnKgMin": 84,
-    "maxMach": 1.7,
-    "gPositive": 6.5,
-    "gNegative": -2,
-    "thrustKN": 600,
-    "ceilingM": 17000,
-    "rangeKm": 1400
-  },
-  "cockpit": {
-    "eyeOffset": [
-      -0.72,
-      1.05,
-      0
-    ],
-    "fovDeg": 70
-  },
-  "physics": {
-    "empty_mass": 25000,
-    "fuel_capacity": 15000,
-    "inertia_x": 99344,
-    "inertia_y": 660123,
-    "inertia_z": 583904,
-    "ixy": 9259,
-    "wing_area": 49,
-    "span": 12.36,
-    "chord": 4.23,
-    "max_thrust_sl": 600000,
-    "ab_thrust_sl": 600000,
-    "tsfc_mil": 0.000023,
-    "tsfc_ab": 0.000056,
-    "spool_up": 0.99,
-    "spool_down": 0.7,
-    "cl0": 0,
-    "cl_alpha": 4.5,
-    "alpha_stall": 0.3,
-    "post_stall_cl": 1.1,
-    "post_stall_cd": 2,
-    "cd0": 0.022,
-    "induced_k": 0.12,
-    "cd_wave": 0.055,
-    "cy_beta": 0.8,
-    "cm0": 0.03,
-    "cm_alpha": -0.6,
-    "cl_beta": 0.08,
-    "cn_beta": 0.12,
-    "cl_p": -0.35,
-    "cm_q": -12,
-    "cn_r": -1,
-    "cl_r": 0.1,
-    "cn_aileron": 0.004,
-    "cl_rudder": 0.006,
-    "cm_elevator": 0.25,
-    "cl_aileron": 0.04,
-    "cn_rudder": 0.05,
-    "actuator_tau": 0.07,
-    "g_limit_pos": 6.5,
-    "g_limit_neg": -2,
-    "max_q": 103333,
-    "max_mach": 1.7,
-    "start_altitude": 3060,
-    "start_speed": 260,
-    "start_alpha": 0.05,
-    "start_throttle": 0.34,
-    "hull_radius": 1,
-    "hull": [
-      [
-        7.5,
+  "name": "Apollo-Castle37 太陽神堡壘37",
+  "aircraftKey": "apollo-castle-37",
+  "components": [
+    {
+      "id": "aircraft-root",
+      "name": "飛機本體"
+    },
+    {
+      "id": "component-fuselage",
+      "name": "fuselage",
+      "parent": "aircraft-root",
+      "position": [
+        0,
         0,
         0
       ],
-      [
-        -7,
+      "rotation": [
         0,
-        0
-      ],
-      [
-        -1,
         0,
-        -4.55
+        -1.5707963267948966
       ],
-      [
-        -1,
-        0,
-        4.55
-      ],
-      [
-        -6.5,
-        2.6,
-        0
-      ],
-      [
-        0,
-        -1,
-        0
-      ],
-      [
+      "scale": [
         1,
-        1.2,
-        0
+        1,
+        1
       ]
-    ]
-  },
-  "visual": {
-    "version": 2,
-    "name": "Apollo-Castle37 太陽神堡壘37",
-    "aircraftKey": "apollo-castle-37",
-    "components": [
-      {
-        "id": "aircraft-root",
-        "name": "飛機本體"
-      },
-      {
-        "id": "component-fuselage",
-        "name": "fuselage",
-        "parent": "aircraft-root",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          -1.5707963267948966
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-nose",
-        "name": "nose",
-        "parent": "aircraft-root",
-        "position": [
-          2.95,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          -1.5707963267948966
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-rear-fairing",
-        "name": "rear-fairing",
-        "parent": "aircraft-root",
-        "position": [
-          -3.45,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          1.5707963267948966
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-canopy",
-        "name": "canopy",
-        "parent": "aircraft-root",
-        "position": [
-          0,
-          0.67,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1.55,
-          0.68,
-          0.86
-        ],
-        "animation": {
-          "channel": "canopy",
-          "axis": "z",
-          "min": 0,
-          "max": 0.62
-        }
-      },
-      {
-        "id": "component-instrument-rail",
-        "name": "instrument-rail",
-        "parent": "aircraft-root",
-        "position": [
-          -0.35,
-          0.27,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          -0.02
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-main-wing--1",
-        "name": "main-wing--1",
-        "parent": "aircraft-root",
-        "position": [
-          0,
-          -0.12,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-canard--1",
-        "name": "canard--1",
-        "parent": "aircraft-root",
-        "position": [
-          1.65,
-          -0.02,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          0.52,
-          1,
-          0.62
-        ]
-      },
-      {
-        "id": "component-main-wing-1",
-        "name": "main-wing-1",
-        "parent": "aircraft-root",
-        "position": [
-          0,
-          -0.12,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-canard-1",
-        "name": "canard-1",
-        "parent": "aircraft-root",
-        "position": [
-          1.65,
-          -0.02,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          0.52,
-          1,
-          0.62
-        ]
-      },
-      {
-        "id": "component-vertical-fin-1",
-        "name": "vertical-fin-1",
-        "parent": "aircraft-root",
-        "position": [
-          0,
-          0.15,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-engine-nozzle-1",
-        "name": "engine-nozzle-1",
-        "parent": "aircraft-root",
-        "position": [
-          -2.75,
-          -0.02,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          1.5707963267948966
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-engine-inner-1",
-        "name": "engine-inner-1",
-        "parent": "aircraft-root",
-        "position": [
-          -3.17,
-          -0.02,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          1.5707963267948966
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-floor",
-        "name": "cockpit-floor",
-        "parent": "aircraft-root",
-        "position": [
-          -0.2,
-          -0.22,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-sidewall-left",
-        "name": "cockpit-sidewall-left",
-        "parent": "aircraft-root",
-        "position": [
-          -0.15,
-          0.12,
-          -0.7
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-sidewall-right",
-        "name": "cockpit-sidewall-right",
-        "parent": "aircraft-root",
-        "position": [
-          -0.15,
-          0.12,
-          0.7
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-seat-base",
-        "name": "cockpit-seat-base",
-        "parent": "aircraft-root",
-        "position": [
-          -0.62,
-          0.06,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-seat-back",
-        "name": "cockpit-seat-back",
-        "parent": "aircraft-root",
-        "position": [
-          -0.9,
-          0.5,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          -0.12
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-seat-headrest",
-        "name": "cockpit-seat-headrest",
-        "parent": "aircraft-root",
-        "position": [
-          -1.01,
-          1,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-panel-body",
-        "name": "cockpit-panel-body",
-        "parent": "aircraft-root",
-        "position": [
-          0.88,
-          0.48,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          -0.16
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-display-left",
-        "name": "cockpit-display-left",
-        "parent": "aircraft-root",
-        "position": [
-          0.775,
-          0.56,
-          -0.39
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-display-right",
-        "name": "cockpit-display-right",
-        "parent": "aircraft-root",
-        "position": [
-          0.775,
-          0.56,
-          0.39
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-center-display",
-        "name": "cockpit-center-display",
-        "parent": "aircraft-root",
-        "position": [
-          0.77,
-          0.82,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "component-cockpit-control-stick",
-        "name": "cockpit-control-stick",
-        "parent": "aircraft-root",
-        "position": [
-          0.02,
-          0.03,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ],
-        "animation": {
-          "channel": "pitch",
-          "axis": "z",
-          "min": -0.16,
-          "max": 0.16
-        }
-      },
-      {
-        "id": "component-cockpit-gear-lever",
-        "name": "cockpit-gear-lever",
-        "parent": "aircraft-root",
-        "position": [
-          -0.08,
-          0.13,
-          -0.48
-        ],
-        "rotation": [
-          0,
-          0,
-          -0.2
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ],
-        "animation": {
-          "channel": "gear",
-          "axis": "z",
-          "min": 0,
-          "max": -0.42
-        }
-      },
-      {
-        "id": "component-cockpit-gear-knob",
-        "name": "cockpit-gear-knob",
-        "parent": "aircraft-root",
-        "position": [
-          -0.08,
+    },
+    {
+      "id": "component-nose",
+      "name": "nose",
+      "parent": "aircraft-root",
+      "position": [
+        2.95,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -1.5707963267948966
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-rear-fairing",
+      "name": "rear-fairing",
+      "parent": "aircraft-root",
+      "position": [
+        -3.45,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-canopy",
+      "name": "canopy",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0.67,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.55,
+        0.68,
+        0.86
+      ],
+      "animation": {
+        "channel": "canopy",
+        "axis": "z",
+        "min": 0,
+        "max": 0.62
+      }
+    },
+    {
+      "id": "component-instrument-rail",
+      "name": "instrument-rail",
+      "parent": "aircraft-root",
+      "position": [
+        -0.35,
+        0.27,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.02
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-main-wing--1",
+      "name": "main-wing--1",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        -0.12,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-canard--1",
+      "name": "canard--1",
+      "parent": "aircraft-root",
+      "position": [
+        1.65,
+        -0.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.52,
+        1,
+        0.62
+      ]
+    },
+    {
+      "id": "component-main-wing-1",
+      "name": "main-wing-1",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        -0.12,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-canard-1",
+      "name": "canard-1",
+      "parent": "aircraft-root",
+      "position": [
+        1.65,
+        -0.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.52,
+        1,
+        0.62
+      ]
+    },
+    {
+      "id": "component-vertical-fin-1",
+      "name": "vertical-fin-1",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0.15,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-engine-nozzle-1",
+      "name": "engine-nozzle-1",
+      "parent": "aircraft-root",
+      "position": [
+        -2.75,
+        -0.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-engine-inner-1",
+      "name": "engine-inner-1",
+      "parent": "aircraft-root",
+      "position": [
+        -3.17,
+        -0.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1.5707963267948966
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-floor",
+      "name": "cockpit-floor",
+      "parent": "aircraft-root",
+      "position": [
+        -0.2,
+        -0.22,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-sidewall-left",
+      "name": "cockpit-sidewall-left",
+      "parent": "aircraft-root",
+      "position": [
+        -0.15,
+        0.12,
+        -0.7
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-sidewall-right",
+      "name": "cockpit-sidewall-right",
+      "parent": "aircraft-root",
+      "position": [
+        -0.15,
+        0.12,
+        0.7
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-seat-base",
+      "name": "cockpit-seat-base",
+      "parent": "aircraft-root",
+      "position": [
+        -0.62,
+        0.06,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-seat-back",
+      "name": "cockpit-seat-back",
+      "parent": "aircraft-root",
+      "position": [
+        -0.9,
+        0.5,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.12
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-seat-headrest",
+      "name": "cockpit-seat-headrest",
+      "parent": "aircraft-root",
+      "position": [
+        -1.01,
+        1,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-panel-body",
+      "name": "cockpit-panel-body",
+      "parent": "aircraft-root",
+      "position": [
+        0.88,
+        0.48,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.16
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-display-left",
+      "name": "cockpit-display-left",
+      "parent": "aircraft-root",
+      "position": [
+        0.775,
+        0.56,
+        -0.39
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-display-right",
+      "name": "cockpit-display-right",
+      "parent": "aircraft-root",
+      "position": [
+        0.775,
+        0.56,
+        0.39
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-center-display",
+      "name": "cockpit-center-display",
+      "parent": "aircraft-root",
+      "position": [
+        0.77,
+        0.82,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-control-stick",
+      "name": "cockpit-control-stick",
+      "parent": "aircraft-root",
+      "position": [
+        0.02,
+        0.03,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "animation": {
+        "channel": "pitch",
+        "axis": "z",
+        "min": -0.16,
+        "max": 0.16
+      }
+    },
+    {
+      "id": "component-cockpit-gear-lever",
+      "name": "cockpit-gear-lever",
+      "parent": "aircraft-root",
+      "position": [
+        -0.08,
+        0.13,
+        -0.48
+      ],
+      "rotation": [
+        0,
+        0,
+        -0.2
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "animation": {
+        "channel": "gear",
+        "axis": "z",
+        "min": 0,
+        "max": -0.42
+      }
+    },
+    {
+      "id": "component-cockpit-gear-knob",
+      "name": "cockpit-gear-knob",
+      "parent": "aircraft-root",
+      "position": [
+        -0.08,
+        0.25,
+        -0.48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-stick-grip",
+      "name": "cockpit-stick-grip",
+      "parent": "aircraft-root",
+      "position": [
+        0.02,
+        0.26,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-console-left",
+      "name": "cockpit-console-left",
+      "parent": "aircraft-root",
+      "position": [
+        -0.05,
+        0.08,
+        -0.69
+      ],
+      "rotation": [
+        0,
+        0,
+        0.05
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-console-right",
+      "name": "cockpit-console-right",
+      "parent": "aircraft-root",
+      "position": [
+        -0.05,
+        0.08,
+        0.69
+      ],
+      "rotation": [
+        0,
+        0,
+        0.05
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-canopy-frame",
+      "name": "cockpit-canopy-frame",
+      "parent": "aircraft-root",
+      "position": [
+        0,
+        0.67,
+        0
+      ],
+      "rotation": [
+        1.5707963267948966,
+        0,
+        0
+      ],
+      "scale": [
+        1.8,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-canopy-rail-left",
+      "name": "cockpit-canopy-rail-left",
+      "parent": "aircraft-root",
+      "position": [
+        -0.2,
+        0.72,
+        -0.72
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "component-cockpit-canopy-rail-right",
+      "name": "cockpit-canopy-rail-right",
+      "parent": "aircraft-root",
+      "position": [
+        -0.2,
+        0.72,
+        0.72
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "id": "fuselage",
+      "shape": "cylinder",
+      "radiusTop": 0.27,
+      "radiusBottom": 0.39,
+      "height": 6.2,
+      "radialSegments": 20,
+      "color": "#ff8614",
+      "componentId": "component-fuselage",
+      "position": [
+        0,
+        -1.45,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1.21,
+        1
+      ],
+      "name": "fuselage",
+      "width": 1,
+      "depth": 0.12,
+      "radius": 1.26,
+      "innerRadius": 0.325,
+      "tube": 0.05,
+      "tubularSegments": 20,
+      "bevelSize": 0,
+      "bevelThickness": 0.03,
+      "bevelSegments": 3,
+      "profile": [
+        [
           0.25,
-          -0.48
+          -0.5
         ],
-        "rotation": [
-          0,
-          0,
+        [
+          0.4,
           0
         ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          0.2,
+          0.5
         ]
-      },
-      {
-        "id": "component-cockpit-stick-grip",
-        "name": "cockpit-stick-grip",
-        "parent": "aircraft-root",
-        "position": [
-          0.02,
-          0.26,
+      ],
+      "vertices": [
+        [
+          1,
           0
         ],
-        "rotation": [
+        [
           0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
           1
+        ],
+        [
+          -1,
+          0
         ]
-      },
-      {
-        "id": "component-cockpit-console-left",
-        "name": "cockpit-console-left",
-        "parent": "aircraft-root",
-        "position": [
-          -0.05,
-          0.08,
-          -0.69
+      ],
+      "metalness": 0.68,
+      "roughness": 0.32,
+      "opacity": 1,
+      "visible": true
+    },
+    {
+      "id": "nose",
+      "shape": "cone",
+      "radius": 0.27,
+      "height": 1.35,
+      "radialSegments": 20,
+      "color": "#ff1414",
+      "componentId": "component-nose",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "name": "nose",
+      "width": 1,
+      "depth": 0.12,
+      "innerRadius": 0.17550000000000002,
+      "radiusTop": 0.27,
+      "radiusBottom": 0.27,
+      "tube": 0.05,
+      "tubularSegments": 20,
+      "bevelSize": 0,
+      "bevelThickness": 0.03,
+      "bevelSegments": 3,
+      "profile": [
+        [
+          0.25,
+          -0.5
         ],
-        "rotation": [
-          0,
-          0,
-          0.05
+        [
+          0.4,
+          0
         ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          0.2,
+          0.5
         ]
-      },
-      {
-        "id": "component-cockpit-console-right",
-        "name": "cockpit-console-right",
-        "parent": "aircraft-root",
-        "position": [
-          -0.05,
-          0.08,
-          0.69
-        ],
-        "rotation": [
-          0,
-          0,
-          0.05
-        ],
-        "scale": [
+      ],
+      "vertices": [
+        [
           1,
-          1,
+          0
+        ],
+        [
+          0,
           1
+        ],
+        [
+          -1,
+          0
         ]
-      },
-      {
-        "id": "component-cockpit-canopy-frame",
-        "name": "cockpit-canopy-frame",
-        "parent": "aircraft-root",
-        "position": [
-          0,
-          0.67,
+      ],
+      "metalness": 0.68,
+      "roughness": 0.32,
+      "opacity": 1,
+      "visible": true
+    },
+    {
+      "id": "rear-fairing",
+      "shape": "cone",
+      "radius": 0.31,
+      "height": 0.95,
+      "radialSegments": 20,
+      "color": "#596c75",
+      "componentId": "component-rear-fairing",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "canopy",
+      "shape": "sphere",
+      "radius": 1,
+      "radialSegments": 24,
+      "color": "#73b9c6",
+      "opacity": 0.14,
+      "metalness": 0.08,
+      "roughness": 0.12,
+      "componentId": "component-canopy",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "instrument-rail",
+      "shape": "box",
+      "width": 1.05,
+      "height": 0.025,
+      "depth": 0.04,
+      "color": "#b9d2c4",
+      "componentId": "component-instrument-rail",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "main-wing--1",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.12,
+      "color": "#ff9214",
+      "vertices": [
+        [
+          1.05,
           0
         ],
-        "rotation": [
-          1.5707963267948966,
-          0,
-          0
+        [
+          -0.33999999999999997,
+          -2.5
         ],
-        "scale": [
-          1.8,
-          1,
-          1
+        [
+          -1.1101999999999999,
+          -2.4
+        ],
+        [
+          -1.42,
+          0
         ]
-      },
-      {
-        "id": "component-cockpit-canopy-rail-left",
-        "name": "cockpit-canopy-rail-left",
-        "parent": "aircraft-root",
-        "position": [
-          -0.2,
-          0.72,
-          -0.72
+      ],
+      "componentId": "component-main-wing--1",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        3
+      ],
+      "name": "main-wing--1",
+      "width": 1,
+      "height": 1,
+      "radius": 0.5,
+      "innerRadius": 0.325,
+      "radiusTop": 0.3,
+      "radiusBottom": 0.3,
+      "tube": 0.05,
+      "radialSegments": 16,
+      "tubularSegments": 16,
+      "bevelSize": 0,
+      "bevelThickness": 0.03,
+      "bevelSegments": 3,
+      "profile": [
+        [
+          0.25,
+          -0.5
         ],
-        "rotation": [
-          0,
-          0,
+        [
+          0.4,
           0
         ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          0.2,
+          0.5
         ]
-      },
-      {
-        "id": "component-cockpit-canopy-rail-right",
-        "name": "cockpit-canopy-rail-right",
-        "parent": "aircraft-root",
-        "position": [
-          -0.2,
-          0.72,
-          0.72
-        ],
-        "rotation": [
-          0,
-          0,
+      ],
+      "metalness": 0.68,
+      "roughness": 0.32,
+      "opacity": 1,
+      "visible": true
+    },
+    {
+      "id": "canard--1",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.1,
+      "color": "#9aafa3",
+      "vertices": [
+        [
+          0.65,
           0
         ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          0.25,
+          -1.1
+        ],
+        [
+          -0.42,
+          -1.1
+        ],
+        [
+          -0.75,
+          0
         ]
-      }
-    ],
-    "parts": [
-      {
-        "id": "fuselage",
-        "shape": "cylinder",
-        "radiusTop": 0.27,
-        "radiusBottom": 0.39,
-        "height": 6.2,
-        "radialSegments": 20,
-        "color": "#ff8614",
-        "componentId": "component-fuselage",
-        "position": [
-          0,
-          -1.45,
+      ],
+      "componentId": "component-canard--1",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "main-wing-1",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.12,
+      "color": "#ff9214",
+      "vertices": [
+        [
+          1.05,
           0
         ],
-        "rotation": [
-          0,
-          0,
+        [
+          -0.33999999999999997,
+          2.5
+        ],
+        [
+          -1.1101999999999999,
+          2.4
+        ],
+        [
+          -1.42,
           0
-        ],
-        "scale": [
-          1,
-          1.21,
-          1
-        ],
-        "name": "fuselage",
-        "width": 1,
-        "depth": 0.12,
-        "radius": 1.26,
-        "innerRadius": 0.325,
-        "tube": 0.05,
-        "tubularSegments": 20,
-        "bevelSize": 0,
-        "bevelThickness": 0.03,
-        "bevelSegments": 3,
-        "profile": [
-          [
-            0.25,
-            -0.5
-          ],
-          [
-            0.4,
-            0
-          ],
-          [
-            0.2,
-            0.5
-          ]
-        ],
-        "vertices": [
-          [
-            1,
-            0
-          ],
-          [
-            0,
-            1
-          ],
-          [
-            -1,
-            0
-          ]
-        ],
-        "metalness": 0.68,
-        "roughness": 0.32,
-        "opacity": 1,
-        "visible": true
-      },
-      {
-        "id": "nose",
-        "shape": "cone",
-        "radius": 0.27,
-        "height": 1.35,
-        "radialSegments": 20,
-        "color": "#ff1414",
-        "componentId": "component-nose",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ],
-        "name": "nose",
-        "width": 1,
-        "depth": 0.12,
-        "innerRadius": 0.17550000000000002,
-        "radiusTop": 0.27,
-        "radiusBottom": 0.27,
-        "tube": 0.05,
-        "tubularSegments": 20,
-        "bevelSize": 0,
-        "bevelThickness": 0.03,
-        "bevelSegments": 3,
-        "profile": [
-          [
-            0.25,
-            -0.5
-          ],
-          [
-            0.4,
-            0
-          ],
-          [
-            0.2,
-            0.5
-          ]
-        ],
-        "vertices": [
-          [
-            1,
-            0
-          ],
-          [
-            0,
-            1
-          ],
-          [
-            -1,
-            0
-          ]
-        ],
-        "metalness": 0.68,
-        "roughness": 0.32,
-        "opacity": 1,
-        "visible": true
-      },
-      {
-        "id": "rear-fairing",
-        "shape": "cone",
-        "radius": 0.31,
-        "height": 0.95,
-        "radialSegments": 20,
-        "color": "#596c75",
-        "componentId": "component-rear-fairing",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
         ]
-      },
-      {
-        "id": "canopy",
-        "shape": "sphere",
-        "radius": 1,
-        "radialSegments": 24,
-        "color": "#73b9c6",
-        "opacity": 0.14,
-        "metalness": 0.08,
-        "roughness": 0.12,
-        "componentId": "component-canopy",
-        "position": [
-          0,
-          0,
+      ],
+      "componentId": "component-main-wing-1",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        3
+      ],
+      "name": "main-wing-1",
+      "width": 1,
+      "height": 1,
+      "radius": 0.5,
+      "innerRadius": 0.325,
+      "radiusTop": 0.3,
+      "radiusBottom": 0.3,
+      "tube": 0.05,
+      "radialSegments": 16,
+      "tubularSegments": 16,
+      "bevelSize": 0,
+      "bevelThickness": 0.03,
+      "bevelSegments": 3,
+      "profile": [
+        [
+          0.25,
+          -0.5
+        ],
+        [
+          0.4,
           0
         ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          0.2,
+          0.5
         ]
-      },
-      {
-        "id": "instrument-rail",
-        "shape": "box",
-        "width": 1.05,
-        "height": 0.025,
-        "depth": 0.04,
-        "color": "#b9d2c4",
-        "componentId": "component-instrument-rail",
-        "position": [
-          0,
-          0,
+      ],
+      "metalness": 0.68,
+      "roughness": 0.32,
+      "opacity": 1,
+      "visible": true
+    },
+    {
+      "id": "canard-1",
+      "shape": "polygon",
+      "plane": "xz",
+      "depth": 0.1,
+      "color": "#9aafa3",
+      "vertices": [
+        [
+          0.65,
           0
         ],
-        "rotation": [
-          0,
-          0,
-          0
+        [
+          0.25,
+          1.1
         ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          -0.42,
+          1.1
+        ],
+        [
+          -0.75,
+          0
         ]
-      },
-      {
-        "id": "main-wing--1",
-        "shape": "polygon",
-        "plane": "xz",
-        "depth": 0.12,
-        "color": "#ff9214",
-        "vertices": [
-          [
-            1.05,
-            0
-          ],
-          [
-            -0.33999999999999997,
-            -2.5
-          ],
-          [
-            -1.1101999999999999,
-            -2.4
-          ],
-          [
-            -1.42,
-            0
-          ]
+      ],
+      "componentId": "component-canard-1",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "vertical-fin-1",
+      "shape": "polygon",
+      "plane": "xy",
+      "depth": 0.12,
+      "color": "#596c75",
+      "vertices": [
+        [
+          -2.5,
+          0.18
         ],
-        "componentId": "component-main-wing--1",
-        "position": [
-          0,
-          0,
-          0
+        [
+          -1.2,
+          1.5
         ],
-        "rotation": [
-          0,
-          0,
-          0
+        [
+          -0.75,
+          1.42
         ],
-        "scale": [
-          1,
-          1,
-          3
-        ],
-        "name": "main-wing--1",
-        "width": 1,
-        "height": 1,
-        "radius": 0.5,
-        "innerRadius": 0.325,
-        "radiusTop": 0.3,
-        "radiusBottom": 0.3,
-        "tube": 0.05,
-        "radialSegments": 16,
-        "tubularSegments": 16,
-        "bevelSize": 0,
-        "bevelThickness": 0.03,
-        "bevelSegments": 3,
-        "profile": [
-          [
-            0.25,
-            -0.5
-          ],
-          [
-            0.4,
-            0
-          ],
-          [
-            0.2,
-            0.5
-          ]
-        ],
-        "metalness": 0.68,
-        "roughness": 0.32,
-        "opacity": 1,
-        "visible": true
-      },
-      {
-        "id": "canard--1",
-        "shape": "polygon",
-        "plane": "xz",
-        "depth": 0.1,
-        "color": "#9aafa3",
-        "vertices": [
-          [
-            0.65,
-            0
-          ],
-          [
-            0.25,
-            -1.1
-          ],
-          [
-            -0.42,
-            -1.1
-          ],
-          [
-            -0.75,
-            0
-          ]
-        ],
-        "componentId": "component-canard--1",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          -0.85,
+          0.12
         ]
-      },
-      {
-        "id": "main-wing-1",
-        "shape": "polygon",
-        "plane": "xz",
-        "depth": 0.12,
-        "color": "#ff9214",
-        "vertices": [
-          [
-            1.05,
-            0
-          ],
-          [
-            -0.33999999999999997,
-            2.5
-          ],
-          [
-            -1.1101999999999999,
-            2.4
-          ],
-          [
-            -1.42,
-            0
-          ]
+      ],
+      "componentId": "component-vertical-fin-1",
+      "position": [
+        -5.35,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        3.141592653589793,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "name": "vertical-fin-1",
+      "width": 1,
+      "height": 1,
+      "radius": 0.5,
+      "innerRadius": 0.325,
+      "radiusTop": 0.3,
+      "radiusBottom": 0.3,
+      "tube": 0.05,
+      "radialSegments": 16,
+      "tubularSegments": 16,
+      "bevelSize": 0,
+      "bevelThickness": 0.03,
+      "bevelSegments": 3,
+      "profile": [
+        [
+          0.25,
+          -0.5
         ],
-        "componentId": "component-main-wing-1",
-        "position": [
-          0,
-          0,
+        [
+          0.4,
           0
         ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          3
-        ],
-        "name": "main-wing-1",
-        "width": 1,
-        "height": 1,
-        "radius": 0.5,
-        "innerRadius": 0.325,
-        "radiusTop": 0.3,
-        "radiusBottom": 0.3,
-        "tube": 0.05,
-        "radialSegments": 16,
-        "tubularSegments": 16,
-        "bevelSize": 0,
-        "bevelThickness": 0.03,
-        "bevelSegments": 3,
-        "profile": [
-          [
-            0.25,
-            -0.5
-          ],
-          [
-            0.4,
-            0
-          ],
-          [
-            0.2,
-            0.5
-          ]
-        ],
-        "metalness": 0.68,
-        "roughness": 0.32,
-        "opacity": 1,
-        "visible": true
-      },
-      {
-        "id": "canard-1",
-        "shape": "polygon",
-        "plane": "xz",
-        "depth": 0.1,
-        "color": "#9aafa3",
-        "vertices": [
-          [
-            0.65,
-            0
-          ],
-          [
-            0.25,
-            1.1
-          ],
-          [
-            -0.42,
-            1.1
-          ],
-          [
-            -0.75,
-            0
-          ]
-        ],
-        "componentId": "component-canard-1",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
+        [
+          0.2,
+          0.5
         ]
-      },
-      {
-        "id": "vertical-fin-1",
-        "shape": "polygon",
-        "plane": "xy",
-        "depth": 0.12,
-        "color": "#596c75",
-        "vertices": [
-          [
-            -2.5,
-            0.18
-          ],
-          [
-            -1.2,
-            1.5
-          ],
-          [
-            -0.75,
-            1.42
-          ],
-          [
-            -0.85,
-            0.12
-          ]
-        ],
-        "componentId": "component-vertical-fin-1",
-        "position": [
-          -5.35,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          3.141592653589793,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ],
-        "name": "vertical-fin-1",
-        "width": 1,
-        "height": 1,
-        "radius": 0.5,
-        "innerRadius": 0.325,
-        "radiusTop": 0.3,
-        "radiusBottom": 0.3,
-        "tube": 0.05,
-        "radialSegments": 16,
-        "tubularSegments": 16,
-        "bevelSize": 0,
-        "bevelThickness": 0.03,
-        "bevelSegments": 3,
-        "profile": [
-          [
-            0.25,
-            -0.5
-          ],
-          [
-            0.4,
-            0
-          ],
-          [
-            0.2,
-            0.5
-          ]
-        ],
-        "metalness": 0.68,
-        "roughness": 0.32,
-        "opacity": 1,
-        "visible": true
-      },
-      {
-        "id": "engine-nozzle-1",
-        "shape": "cylinder",
-        "radiusTop": 0.19,
-        "radiusBottom": 0.24,
-        "height": 0.8,
-        "radialSegments": 16,
-        "color": "#273c3a",
-        "metalness": 0.9,
-        "roughness": 0.24,
-        "componentId": "component-engine-nozzle-1",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "engine-inner-1",
-        "shape": "cylinder",
-        "radius": 0.13,
-        "height": 0.035,
-        "radialSegments": 16,
-        "color": "#6a9d8c",
-        "componentId": "component-engine-inner-1",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-floor",
-        "shape": "box",
-        "width": 2.8,
-        "height": 0.16,
-        "depth": 1.55,
-        "color": "#202a2e",
-        "metalness": 0.28,
-        "roughness": 0.72,
-        "componentId": "component-cockpit-floor",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-sidewall-left",
-        "shape": "box",
-        "width": 2.35,
-        "height": 0.62,
-        "depth": 0.12,
-        "color": "#39464b",
-        "metalness": 0.28,
-        "roughness": 0.72,
-        "componentId": "component-cockpit-sidewall-left",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-sidewall-right",
-        "shape": "box",
-        "width": 2.35,
-        "height": 0.62,
-        "depth": 0.12,
-        "color": "#39464b",
-        "metalness": 0.28,
-        "roughness": 0.72,
-        "componentId": "component-cockpit-sidewall-right",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-seat-base",
-        "shape": "box",
-        "width": 0.82,
-        "height": 0.2,
-        "depth": 0.78,
-        "color": "#303b3b",
-        "metalness": 0.28,
-        "roughness": 0.72,
-        "componentId": "component-cockpit-seat-base",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-seat-back",
-        "shape": "box",
-        "width": 0.2,
-        "height": 0.88,
-        "depth": 0.78,
-        "color": "#263232",
-        "metalness": 0.22,
-        "roughness": 0.78,
-        "componentId": "component-cockpit-seat-back",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-seat-headrest",
-        "shape": "box",
-        "width": 0.2,
-        "height": 0.24,
-        "depth": 0.42,
-        "color": "#45514d",
-        "metalness": 0.18,
-        "roughness": 0.82,
-        "componentId": "component-cockpit-seat-headrest",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-panel-body",
-        "shape": "box",
-        "width": 0.2,
-        "height": 0.72,
-        "depth": 1.48,
-        "color": "#151d22",
-        "metalness": 0.45,
-        "roughness": 0.48,
-        "componentId": "component-cockpit-panel-body",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-display-left",
-        "shape": "box",
-        "width": 0.055,
-        "height": 0.31,
-        "depth": 0.43,
-        "color": "#102d32",
-        "metalness": 0.18,
-        "roughness": 0.22,
-        "componentId": "component-cockpit-display-left",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-display-right",
-        "shape": "box",
-        "width": 0.055,
-        "height": 0.31,
-        "depth": 0.43,
-        "color": "#102d32",
-        "metalness": 0.18,
-        "roughness": 0.22,
-        "componentId": "component-cockpit-display-right",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-center-display",
-        "shape": "box",
-        "width": 0.05,
-        "height": 0.2,
-        "depth": 0.25,
-        "color": "#183c3d",
-        "metalness": 0.12,
-        "roughness": 0.24,
-        "componentId": "component-cockpit-center-display",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-control-stick",
-        "shape": "cylinder",
-        "radiusTop": 0.035,
-        "radiusBottom": 0.045,
-        "height": 0.42,
-        "color": "#65766d",
-        "metalness": 0.82,
-        "roughness": 0.28,
-        "componentId": "component-cockpit-control-stick",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-gear-lever",
-        "shape": "cylinder",
-        "radius": 0.025,
-        "height": 0.24,
-        "color": "#87968d",
-        "metalness": 0.76,
-        "roughness": 0.3,
-        "componentId": "component-cockpit-gear-lever",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-gear-knob",
-        "shape": "sphere",
-        "radius": 0.06,
-        "color": "#a4b6a9",
-        "metalness": 0.42,
-        "roughness": 0.36,
-        "componentId": "component-cockpit-gear-knob",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-stick-grip",
-        "shape": "sphere",
-        "radius": 0.095,
-        "color": "#1c2824",
-        "metalness": 0.32,
-        "roughness": 0.5,
-        "componentId": "component-cockpit-stick-grip",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-console-left",
-        "shape": "box",
-        "width": 1.6,
-        "height": 0.2,
-        "depth": 0.28,
-        "color": "#303d38",
-        "metalness": 0.38,
-        "roughness": 0.58,
-        "componentId": "component-cockpit-console-left",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-console-right",
-        "shape": "box",
-        "width": 1.6,
-        "height": 0.2,
-        "depth": 0.28,
-        "color": "#303d38",
-        "metalness": 0.38,
-        "roughness": 0.58,
-        "componentId": "component-cockpit-console-right",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-canopy-frame",
-        "shape": "torus",
-        "radius": 0.82,
-        "tube": 0.035,
-        "color": "#657b80",
-        "metalness": 0.72,
-        "roughness": 0.3,
-        "componentId": "component-cockpit-canopy-frame",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-canopy-rail-left",
-        "shape": "box",
-        "width": 2.25,
-        "height": 0.045,
-        "depth": 0.045,
-        "color": "#6c8277",
-        "metalness": 0.72,
-        "roughness": 0.3,
-        "componentId": "component-cockpit-canopy-rail-left",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "id": "cockpit-canopy-rail-right",
-        "shape": "box",
-        "width": 2.25,
-        "height": 0.045,
-        "depth": 0.045,
-        "color": "#6c8277",
-        "metalness": 0.72,
-        "roughness": 0.3,
-        "componentId": "component-cockpit-canopy-rail-right",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotation": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      }
-    ]
-  }
+      ],
+      "metalness": 0.68,
+      "roughness": 0.32,
+      "opacity": 1,
+      "visible": true
+    },
+    {
+      "id": "engine-nozzle-1",
+      "shape": "cylinder",
+      "radiusTop": 0.19,
+      "radiusBottom": 0.24,
+      "height": 0.8,
+      "radialSegments": 16,
+      "color": "#273c3a",
+      "metalness": 0.9,
+      "roughness": 0.24,
+      "componentId": "component-engine-nozzle-1",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "engine-inner-1",
+      "shape": "cylinder",
+      "radius": 0.13,
+      "height": 0.035,
+      "radialSegments": 16,
+      "color": "#6a9d8c",
+      "componentId": "component-engine-inner-1",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-floor",
+      "shape": "box",
+      "width": 2.8,
+      "height": 0.16,
+      "depth": 1.55,
+      "color": "#202a2e",
+      "metalness": 0.28,
+      "roughness": 0.72,
+      "componentId": "component-cockpit-floor",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-sidewall-left",
+      "shape": "box",
+      "width": 2.35,
+      "height": 0.62,
+      "depth": 0.12,
+      "color": "#39464b",
+      "metalness": 0.28,
+      "roughness": 0.72,
+      "componentId": "component-cockpit-sidewall-left",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-sidewall-right",
+      "shape": "box",
+      "width": 2.35,
+      "height": 0.62,
+      "depth": 0.12,
+      "color": "#39464b",
+      "metalness": 0.28,
+      "roughness": 0.72,
+      "componentId": "component-cockpit-sidewall-right",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-seat-base",
+      "shape": "box",
+      "width": 0.82,
+      "height": 0.2,
+      "depth": 0.78,
+      "color": "#303b3b",
+      "metalness": 0.28,
+      "roughness": 0.72,
+      "componentId": "component-cockpit-seat-base",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-seat-back",
+      "shape": "box",
+      "width": 0.2,
+      "height": 0.88,
+      "depth": 0.78,
+      "color": "#263232",
+      "metalness": 0.22,
+      "roughness": 0.78,
+      "componentId": "component-cockpit-seat-back",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-seat-headrest",
+      "shape": "box",
+      "width": 0.2,
+      "height": 0.24,
+      "depth": 0.42,
+      "color": "#45514d",
+      "metalness": 0.18,
+      "roughness": 0.82,
+      "componentId": "component-cockpit-seat-headrest",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-panel-body",
+      "shape": "box",
+      "width": 0.2,
+      "height": 0.72,
+      "depth": 1.48,
+      "color": "#151d22",
+      "metalness": 0.45,
+      "roughness": 0.48,
+      "componentId": "component-cockpit-panel-body",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-display-left",
+      "shape": "box",
+      "width": 0.055,
+      "height": 0.31,
+      "depth": 0.43,
+      "color": "#102d32",
+      "metalness": 0.18,
+      "roughness": 0.22,
+      "componentId": "component-cockpit-display-left",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-display-right",
+      "shape": "box",
+      "width": 0.055,
+      "height": 0.31,
+      "depth": 0.43,
+      "color": "#102d32",
+      "metalness": 0.18,
+      "roughness": 0.22,
+      "componentId": "component-cockpit-display-right",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-center-display",
+      "shape": "box",
+      "width": 0.05,
+      "height": 0.2,
+      "depth": 0.25,
+      "color": "#183c3d",
+      "metalness": 0.12,
+      "roughness": 0.24,
+      "componentId": "component-cockpit-center-display",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-control-stick",
+      "shape": "cylinder",
+      "radiusTop": 0.035,
+      "radiusBottom": 0.045,
+      "height": 0.42,
+      "color": "#65766d",
+      "metalness": 0.82,
+      "roughness": 0.28,
+      "componentId": "component-cockpit-control-stick",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-gear-lever",
+      "shape": "cylinder",
+      "radius": 0.025,
+      "height": 0.24,
+      "color": "#87968d",
+      "metalness": 0.76,
+      "roughness": 0.3,
+      "componentId": "component-cockpit-gear-lever",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-gear-knob",
+      "shape": "sphere",
+      "radius": 0.06,
+      "color": "#a4b6a9",
+      "metalness": 0.42,
+      "roughness": 0.36,
+      "componentId": "component-cockpit-gear-knob",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-stick-grip",
+      "shape": "sphere",
+      "radius": 0.095,
+      "color": "#1c2824",
+      "metalness": 0.32,
+      "roughness": 0.5,
+      "componentId": "component-cockpit-stick-grip",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-console-left",
+      "shape": "box",
+      "width": 1.6,
+      "height": 0.2,
+      "depth": 0.28,
+      "color": "#303d38",
+      "metalness": 0.38,
+      "roughness": 0.58,
+      "componentId": "component-cockpit-console-left",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-console-right",
+      "shape": "box",
+      "width": 1.6,
+      "height": 0.2,
+      "depth": 0.28,
+      "color": "#303d38",
+      "metalness": 0.38,
+      "roughness": 0.58,
+      "componentId": "component-cockpit-console-right",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-canopy-frame",
+      "shape": "torus",
+      "radius": 0.82,
+      "tube": 0.035,
+      "color": "#657b80",
+      "metalness": 0.72,
+      "roughness": 0.3,
+      "componentId": "component-cockpit-canopy-frame",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-canopy-rail-left",
+      "shape": "box",
+      "width": 2.25,
+      "height": 0.045,
+      "depth": 0.045,
+      "color": "#6c8277",
+      "metalness": 0.72,
+      "roughness": 0.3,
+      "componentId": "component-cockpit-canopy-rail-left",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cockpit-canopy-rail-right",
+      "shape": "box",
+      "width": 2.25,
+      "height": 0.045,
+      "depth": 0.045,
+      "color": "#6c8277",
+      "metalness": 0.72,
+      "roughness": 0.3,
+      "componentId": "component-cockpit-canopy-rail-right",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  ]
 }
