@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import viperSample from '../aircraft/visuals/viper-t21.json';
 import { AircraftModelController } from '../aircraft/builder/aircraftAnimation';
 import {
@@ -40,6 +41,8 @@ let selectedComponentId = 'aircraft-root';
 let history: AircraftVisualConfig[] = [];
 let historyIndex = -1;
 let toastTimer = 0;
+let booleanOperation: 'union' | 'subtract' | 'intersect' | null = null;
+let booleanFirstId: string | null = null;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x121720);
@@ -153,7 +156,7 @@ const renderModel = (): void => {
   $('selection-status').textContent = selectedPart() ? `細節：${selectedPart()!.name ?? selectedPart()!.id}` : `組件：${config.components.find((item) => item.id === selectedComponentId)?.name ?? '未選取'}`;
 };
 
-const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', cylinder: '▤', hollowCylinder: '◉', cone: '△', sphere: '●', torus: '◎', polygon: '⬡' };
+const shapeSymbol: Record<AircraftPartShape, string> = { box: '▧', roundedBox: '▣', cylinder: '▤', hollowCylinder: '◉', cone: '△', sphere: '●', capsule: '◍', torus: '◎', polygon: '⬡', lathe: '◉', mesh: '◆' };
 const renderPartsList = (): void => {
   partsList.replaceChildren();
   const byId = new Map(config.components.map((component) => [component.id, component]));
@@ -257,6 +260,10 @@ const fillInspector = (): void => {
   setValue('dim-radius-bottom', part.radiusBottom ?? part.radius ?? 0.3);
   setValue('dim-tube', part.tube ?? 0.05);
   setValue('dim-segments', part.radialSegments ?? part.tubularSegments ?? 16);
+  setValue('dim-bevel', part.bevelSize ?? 0);
+  setValue('dim-bevel-thickness', part.bevelThickness ?? 0.03);
+  setValue('dim-bevel-segments', part.bevelSegments ?? 3);
+  setValue('part-profile', JSON.stringify(part.profile ?? [[0.25,-0.5],[0.4,0],[0.2,0.5]], null, 2));
   setValue('part-vertices', JSON.stringify(part.vertices ?? [[1, 0], [0, 1], [-1, 0]], null, 2));
   setValue('part-color', part.color ?? '#738d83');
   setValue('part-metalness', part.metalness ?? 0.68);
@@ -275,11 +282,75 @@ const selectComponent = (id: string): void => {
   renderModel();
 };
 const selectPart = (id: string | null): void => {
+  if (id && booleanOperation) { applyBooleanPick(id); return; }
   selectedId = id;
   if (id) selectedComponentId = config.parts.find((part) => part.id === id)?.componentId ?? selectedComponentId;
   renderPartsList();
   fillInspector();
   renderModel();
+};
+
+
+const beginBoolean = (operation: 'union' | 'subtract' | 'intersect'): void => {
+  const source = selectedPart();
+  if (!source) { notify('請先選取第一個幾何物件'); return; }
+  booleanOperation = operation;
+  booleanFirstId = source.id;
+  const labels = { union: '聯集', subtract: '差集', intersect: '交集' };
+  $('boolean-status').textContent = `已選第一個物件「${partLabel(source)}」；再點選同組件中的第二個物件以執行${labels[operation]}。`;
+  notify('請在模型清單或 3D 預覽中選第二個物件');
+};
+const cancelBoolean = (): void => {
+  booleanOperation = null; booleanFirstId = null;
+  $('boolean-status').textContent = '選取同一組件中的兩個物件進行布林運算。';
+};
+const applyBooleanPick = (secondId: string): void => {
+  if (!booleanOperation || !booleanFirstId) return;
+  if (secondId === booleanFirstId) { notify('請選擇另一個物件'); return; }
+  const a = config.parts.find((part) => part.id === booleanFirstId);
+  const b = config.parts.find((part) => part.id === secondId);
+  if (!a || !b) { cancelBoolean(); notify('找不到指定物件'); return; }
+  if (a.componentId !== b.componentId) { notify('布林運算目前要求兩個物件位於同一組件'); return; }
+  try {
+    const makeBrush = (part: AircraftVisualPart): Brush => {
+      const group = createAircraftPart(part);
+      const mesh = group.children[0] as THREE.Mesh;
+      const geometry = mesh.geometry.clone();
+      const matrix = new THREE.Matrix4().compose(
+        new THREE.Vector3(...(part.position ?? [0,0,0])),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(...(part.rotation ?? [0,0,0]))),
+        new THREE.Vector3(...(part.scale ?? [1,1,1])),
+      );
+      geometry.applyMatrix4(matrix);
+      const brush = new Brush(geometry, new THREE.MeshStandardMaterial({ color: part.color ?? '#8795a8' }));
+      brush.updateMatrixWorld(true);
+      group.traverse((node) => { const child = node as THREE.Mesh; if (child.geometry) child.geometry.dispose(); if (child.material && !Array.isArray(child.material)) child.material.dispose(); });
+      return brush;
+    };
+    const evaluator = new Evaluator();
+    const first = makeBrush(a), second = makeBrush(b);
+    const op = booleanOperation === 'union' ? ADDITION : booleanOperation === 'subtract' ? SUBTRACTION : INTERSECTION;
+    const result = evaluator.evaluate(first, second, op);
+    const geometry = result.geometry;
+    const positions = geometry.getAttribute('position').array as ArrayLike<number>;
+    const index = geometry.index?.array;
+    const meshVertices = Array.from(positions);
+    const meshIndices = index ? Array.from(index) : Array.from({ length: meshVertices.length / 3 }, (_, i) => i);
+    const resultPart: AircraftVisualPart = {
+      id: uniqueId(`boolean-${booleanOperation}`),
+      name: `布林${booleanOperation === 'union' ? '聯集' : booleanOperation === 'subtract' ? '差集' : '交集'}結果`,
+      shape: 'mesh', componentId: a.componentId, position: [0,0,0], rotation: [0,0,0], scale: [1,1,1],
+      meshVertices, meshIndices, color: a.color ?? '#8795a8', metalness: a.metalness ?? .68, roughness: a.roughness ?? .32,
+    };
+    config.parts = config.parts.filter((part) => part.id !== a.id && part.id !== b.id);
+    config.parts.push(resultPart);
+    geometry.dispose(); first.geometry.dispose(); second.geometry.dispose();
+    cancelBoolean(); saveHistory(); persist(); selectPart(resultPart.id);
+    notify('布林運算完成；原始兩個物件已替換為可匯出的網格');
+  } catch (error) {
+    notify(error instanceof Error ? `布林運算失敗：${error.message}` : '布林運算失敗');
+    cancelBoolean();
+  }
 };
 
 const commitEdit = (): void => {
@@ -311,6 +382,14 @@ const commitEdit = (): void => {
   part.tube = Math.max(.01, readNumber('dim-tube', .05));
   part.radialSegments = Math.max(3, Math.min(96, Math.round(readNumber('dim-segments', 16))));
   part.tubularSegments = part.radialSegments;
+  part.bevelSize = Math.max(0, readNumber('dim-bevel', 0));
+  part.bevelThickness = Math.max(0, readNumber('dim-bevel-thickness', 0.03));
+  part.bevelSegments = Math.max(1, Math.min(12, Math.round(readNumber('dim-bevel-segments', 3))));
+  try {
+    const profile = JSON.parse(($('part-profile') as HTMLTextAreaElement).value) as unknown;
+    if (!Array.isArray(profile) || profile.length < 2 || !profile.every((point) => Array.isArray(point) && point.length === 2 && point.every((v) => typeof v === 'number' && Number.isFinite(v)) && point[0] >= 0)) throw new Error('旋轉曲面截面必須至少包含兩組 [非負半徑, Y]');
+    part.profile = profile as [number, number][];
+  } catch (error) { notify(error instanceof Error ? error.message : '截面 JSON 格式錯誤'); return; }
   try {
     const vertices = JSON.parse(($('part-vertices') as HTMLTextAreaElement).value) as unknown;
     if (!Array.isArray(vertices) || vertices.length < 3 || !vertices.every((point) => Array.isArray(point) && point.length === 2 && point.every((v) => typeof v === 'number' && Number.isFinite(v)))) {
@@ -351,8 +430,8 @@ const addPart = (shape: AircraftPartShape): void => {
   }
   const index = config.parts.length + 1;
   const shapeNames: Record<AircraftPartShape, string> = {
-    box: '方塊', cylinder: '圓柱', hollowCylinder: '空心圓筒',
-    cone: '圓錐', sphere: '球體', torus: '圓環', polygon: '擠出輪廓',
+    box: '方塊', roundedBox: '圓角方體', cylinder: '圓柱', hollowCylinder: '空心圓筒',
+    cone: '圓錐', sphere: '球體', capsule: '膠囊體', torus: '圓環', polygon: '擠出輪廓', lathe: '旋轉曲面', mesh: '布林網格',
   };
   const part: AircraftVisualPart = {
     id: uniqueId(`${shape}-${index}`),
@@ -364,6 +443,9 @@ const addPart = (shape: AircraftPartShape): void => {
     metalness: .68,
     roughness: .32,
   };
+  if (shape === 'roundedBox') { part.width = 1; part.height = .6; part.depth = .6; part.bevelSize = .08; part.bevelThickness = .03; part.bevelSegments = 3; }
+  if (shape === 'capsule') { part.radius = .25; part.height = .8; part.radialSegments = 24; }
+  if (shape === 'lathe') { part.profile = [[.22,-.5],[.38,-.25],[.42,.15],[.18,.5]]; part.radialSegments = 32; }
   if (shape === 'hollowCylinder') {
     part.radius = 0.5;
     part.innerRadius = 0.32;
@@ -584,6 +666,8 @@ $('json-copy').addEventListener('click', () => {
 });
 
 document.querySelectorAll<HTMLButtonElement>('[data-add-detail]').forEach((button) => button.addEventListener('click', () => addPart(button.dataset.addDetail as AircraftPartShape)));
+document.querySelectorAll<HTMLButtonElement>('[data-boolean]').forEach((button) => button.addEventListener('click', () => beginBoolean(button.dataset.boolean as 'union' | 'subtract' | 'intersect')));
+$('boolean-cancel').addEventListener('click', cancelBoolean);
 $('add-component').addEventListener('click', addComponent);
 $('add-cannon').addEventListener('click', addCannonVisual);
 $('add-cockpit').addEventListener('click', addCockpitInterior);
