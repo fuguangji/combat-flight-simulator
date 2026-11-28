@@ -124,11 +124,10 @@ export class AircraftView {
       const id = object.userData.componentId;
       if (typeof id === 'string') components.set(id, object);
     });
-    const anchor = components.get('instrument-panel')
-      ?? components.get('component-cockpit-panel-body')
-      ?? components.get('component-instrument-panel')
-      ?? components.get('cockpit-interior')
-      ?? this.model;
+    const preferred = ['instrument-panel', 'component-cockpit-panel-body', 'component-instrument-panel'];
+    const exact = preferred.map((id) => components.get(id)).find((item) => item !== undefined);
+    const fuzzy = [...components.entries()].find(([id]) => preferred.some((candidate) => id.toLowerCase().includes(candidate.toLowerCase())));
+    const anchor = exact ?? fuzzy?.[1] ?? components.get('cockpit-interior') ?? this.model;
     anchor.add(this.mfd.group);
     this.syncMfdVisibility();
     this.model.updateMatrixWorld(true);
