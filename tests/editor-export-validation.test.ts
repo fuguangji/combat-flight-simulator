@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateEditorImportPayload } from '../src/editor/exportValidation';
-import { createProceduralAircraftConfig } from '../src/aircraft/builder/modularAircraft';
+import { loadAircraftVisualConfig } from '../src/aircraft/builder/visualRepository';
 
 const aircraftModules = import.meta.glob('../src/aircraft/data/*.json', {
   eager: true,
@@ -11,8 +11,9 @@ describe('editor JSON export validation', () => {
   it('accepts complete aircraft JSON with the visual model nested under visual', () => {
     const source = Object.values(aircraftModules).find((aircraft) => aircraft.key === 'apollo-castle-37');
     expect(source).toBeDefined();
-    const visual = createProceduralAircraftConfig(15);
-    const exportPayload = { ...source!, visual: { ...visual, aircraftKey: 'apollo-castle-37' } };
+    const visual = loadAircraftVisualConfig('apollo-castle-37');
+    expect(visual).not.toBeNull();
+    const exportPayload = { ...source!, visual: { ...visual!, aircraftKey: 'apollo-castle-37' } };
 
     expect(() => validateEditorImportPayload(JSON.parse(JSON.stringify(exportPayload)))).not.toThrow();
   });
