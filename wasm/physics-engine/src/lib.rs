@@ -55,7 +55,7 @@ use collision::World;
 use flight::{Controls, Sim};
 
 pub const STATE_LEN: usize = 40;
-pub const API_VERSION: u32 = 6;
+pub const API_VERSION: u32 = 7;
 
 static mut SIM: Option<Sim> = None;
 static mut OUT: [f64; STATE_LEN] = [0.0; STATE_LEN];
