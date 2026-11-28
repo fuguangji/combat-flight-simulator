@@ -47,6 +47,15 @@ export class AircraftModelController {
       const max = animation.max ?? Math.PI / 4;
       const base = node.rotation[axis];
       this.bindings.push({ node, axis, channel: animation.channel, min, max, base, current: base });
+      // The cockpit stick is a two-axis visual control: pitch and roll both move it.
+      if (component.id.toLowerCase().includes('control-stick') && animation.channel === 'pitch') {
+        const crossAxis: AircraftAnimationAxis = axis === 'x' ? 'z' : 'x';
+        const crossBase = node.rotation[crossAxis];
+        this.bindings.push({
+          node, axis: crossAxis, channel: 'roll',
+          min: -0.13, max: 0.13, base: crossBase, current: crossBase,
+        });
+      }
     }
   }
 
