@@ -16,7 +16,7 @@
         <button id="undo" class="subtle" title="復原">↶ 復原</button>
         <button id="redo" class="subtle" title="重做">↷ 重做</button>
         <button id="import" class="subtle">貼上 JSON</button>
-        <button id="export" class="primary">複製 JSON</button>
+        <button id="export" class="primary">匯出完整機型 JSON</button>
       </div>
     </header>
 
@@ -49,14 +49,14 @@
         </div>
         <div id="parts-list" class="parts-list" aria-label="模型零件清單"></div>
         <div class="panel-foot">
-          <button id="load-viper" class="wide">載入 Viper T21 範例</button>
+          <button id="load-viper" class="wide subtle">載入獨立 Viper T21 範例</button>
           <button id="clear-model" class="wide subtle">清空模型</button>
         </div>
       </aside>
 
       <section class="viewport-panel">
         <div class="viewport-toolbar">
-          <div><span class="eyebrow">3D 編輯視窗</span><input id="model-name-input" class="model-name-input" type="text" value="Untitled Aircraft" aria-label="模型名稱" /><input id="model-key-input" class="model-key-input" type="text" placeholder="機型 Key（如 viper-t21）" aria-label="遊戲機型識別鍵" /></div>
+          <div><span class="eyebrow">遊戲機型資料</span><select id="aircraft-select" aria-label="選擇遊戲機型"></select><button id="load-aircraft" type="button">載入機型資料</button><span class="eyebrow">3D 編輯視窗</span><input id="model-name-input" class="model-name-input" type="text" value="Untitled Aircraft" aria-label="模型名稱" /><input id="model-key-input" class="model-key-input" type="text" placeholder="機型 Key（如 viper-t21）" aria-label="遊戲機型識別鍵" /></div>
           <div class="view-actions">
             <button id="view-reset" title="重設視角">重設視角</button>
             <button id="toggle-grid" class="active">格線</button>
@@ -68,7 +68,7 @@
           <ul>
             <li><b>座標：</b>+X 機首、+Y 上方、+Z 飛機右側；尺寸單位為公尺。</li>
             <li><b>組件：</b>先選取所屬組件再新增細節；活動部件的組件原點應放在旋轉樞軸。</li>
-            <li><b>座艙：</b>駕駛員視點 <code>cockpit.eyeOffset</code> 設定在機型資料，不屬於本頁匯出的視覺 JSON。</li>
+            <li><b>座艙：</b>駕駛員視點 <code>cockpit.eyeOffset</code> 與視覺模型都保存在同一份 <code>src/aircraft/data/&lt;key&gt;.json</code>。</li>
             <li><b>完成前：</b>旋轉檢查各方向與零件位置，並複製 JSON 備份。</li>
           </ul>
         </section>
@@ -139,7 +139,7 @@
           </div>
           <label class="check-line"><input id="part-visible" type="checkbox" /> 顯示此零件</label>
         </form>
-        <div class="panel-foot inspector-foot"><p id="autosave-status">本機編輯暫存已啟用</p><p>模型會自動暫存在此瀏覽器。JSON 可直接複製到其他裝置。</p></div>
+        <div class="panel-foot inspector-foot"><p id="autosave-status">本機編輯暫存已啟用</p><p>模型會依機型 Key 暫存。匯出時會保留 physics、cockpit、specs，並將視覺模型寫入 visual。</p></div>
       </aside>
     </main>
     <section id="json-panel" class="json-panel" hidden aria-label="JSON 文字匯入與匯出"><div class="json-card"><div class="json-heading"><strong id="json-title">模型 JSON</strong><button id="json-close" type="button" class="subtle">關閉</button></div><p id="json-help">可直接貼上或複製以下文字，不需要建立檔案。</p><p id="json-error" class="json-error" role="alert" hidden></p><textarea id="json-text" spellcheck="false" rows="18" placeholder="在此貼上模型 JSON…"></textarea><div class="json-actions"><button id="json-load" class="primary">載入文字</button><button id="json-copy">複製文字</button></div></div></section>
