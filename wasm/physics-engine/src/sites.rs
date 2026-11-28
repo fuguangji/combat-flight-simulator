@@ -27,15 +27,21 @@ pub const LAND_NONE:u8=0;
 pub const LAND_RUNWAY:u8=1;
 pub const LAND_DECK:u8=2;
 
-static mut RUNTIME_RUNWAYS: [Runway;16] = [
-    Runway{cx:-5000.0,cz:-3500.0,half_wid:30.0,half_len:1200.0},
-    Runway{cx:4300.0,cz:2500.0,half_wid:30.0,half_len:1200.0},
-    Runway{cx:0.0,cz:0.0,half_wid:0.0,half_len:0.0};14
-];
-static mut RUNTIME_CARRIERS: [Carrier;16] = [
-    Carrier{cx:CARRIER_CX,cz:CARRIER_CZ,half_len:CARRIER_HALF_LEN,half_wid:CARRIER_HALF_WID,deck_y:CARRIER_DECK_Y,island_x:ISLAND_X,island_z:ISLAND_Z,island_half:ISLAND_HALF,island_h:ISLAND_H},
-    Carrier{cx:0.0,cz:0.0,half_len:0.0,half_wid:0.0,deck_y:0.0,island_x:0.0,island_z:0.0,island_half:0.0,island_h:0.0};15
-];
+const EMPTY_RUNWAY:Runway=Runway{cx:0.0,cz:0.0,half_wid:0.0,half_len:0.0};
+const EMPTY_CARRIER:Carrier=Carrier{cx:0.0,cz:0.0,half_len:0.0,half_wid:0.0,deck_y:0.0,island_x:0.0,island_z:0.0,island_half:0.0,island_h:0.0};
+const fn default_runways()->[Runway;16]{
+    let mut values=[EMPTY_RUNWAY;16];
+    values[0]=Runway{cx:-5000.0,cz:-3500.0,half_wid:30.0,half_len:1200.0};
+    values[1]=Runway{cx:4300.0,cz:2500.0,half_wid:30.0,half_len:1200.0};
+    values
+}
+const fn default_carriers()->[Carrier;16]{
+    let mut values=[EMPTY_CARRIER;16];
+    values[0]=Carrier{cx:CARRIER_CX,cz:CARRIER_CZ,half_len:CARRIER_HALF_LEN,half_wid:CARRIER_HALF_WID,deck_y:CARRIER_DECK_Y,island_x:ISLAND_X,island_z:ISLAND_Z,island_half:ISLAND_HALF,island_h:ISLAND_H};
+    values
+}
+static mut RUNTIME_RUNWAYS:[Runway;16]=default_runways();
+static mut RUNTIME_CARRIERS:[Carrier;16]=default_carriers();
 static mut RUNWAY_COUNT:usize=2;
 static mut CARRIER_COUNT:usize=1;
 
