@@ -244,11 +244,19 @@ export class CockpitMfd {
     });
     ctx.fillStyle = s.stallWarning ? '#ffc56b' : '#a8ffc9';
     ctx.font = 'bold 15px ui-monospace, monospace';
+    ctx.textAlign = 'left';
     ctx.fillText(s.stallWarning ? 'STALL WARNING' : s.afterburner ? 'ENGINE BOOST' : 'FLIGHT NORMAL', 26, 292);
     if (this.landing) {
       ctx.textAlign = 'right';
       ctx.fillStyle = '#ffc56b';
       ctx.fillText(`APPROACH ${this.landing.phase ?? ''} · ${((this.landing.distanceToThreshold ?? 0) / 1000).toFixed(1)} KM`, 488, 292);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#d5eddd';
+      ctx.font = '13px ui-monospace, monospace';
+      ctx.fillText(
+        `LOC ${Math.round(this.landing.lateralError ?? 0)} m  ·  G/S ${Math.round(this.landing.glideError ?? 0)} m  ·  TARGET ALT ${Math.round(this.landing.targetAltitude ?? 0)} m`,
+        26, 312,
+      );
     }
   }
 
