@@ -19,9 +19,9 @@
 
 ## 2. V2 檔案結構
 
-每架飛機的專屬模型放在：
+每架飛機的完整資料以 `src/aircraft/data/<aircraft-key>.json` 為唯一正式入口。視覺模型放在同一檔案的 `visual` 欄位，與 `physics`、`cockpit`、`specs` 並列。編輯器會直接載入註冊表內的機型，匯出完整 JSON 時保留原有飛行與座艙資料，並更新 `visual`。請將匯出結果完整取代對應的機型 JSON 檔。
 
-`src/aircraft/visuals/<aircraft-key>.json`
+舊版 `src/aircraft/visuals/<aircraft-key>.json` 仍作為相容來源；遊戲優先讀取機型資料內的 `visual`，再回退到舊檔，最後才使用程序化模型。尚未內嵌視覺模型的機型，編輯器與遊戲都會使用相同的程序化生成器。
 
 基本結構：
 
