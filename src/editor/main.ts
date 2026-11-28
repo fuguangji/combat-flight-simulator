@@ -16,6 +16,7 @@ import {
   type AircraftVisualPart,
   type AircraftPartShape,
 } from '../aircraft/builder/modularAircraft';
+import { validateEditorImportPayload } from './exportValidation';
 import './style.css';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -687,17 +688,44 @@ $('load-aircraft').addEventListener('click', () => {
 
 const jsonPanel = $('json-panel');
 const jsonText = $('json-text') as HTMLTextAreaElement;
+const jsonStatus = $('json-error');
+const setJsonStatus = (message: string, success = false): void => {
+  jsonStatus.textContent = message;
+  jsonStatus.hidden = !message;
+  jsonStatus.className = success ? 'json-success' : 'json-error';
+};
 const openJsonPanel = (mode: 'import' | 'export'): void => {
   $('json-title').textContent = mode === 'import' ? '貼上模型 JSON' : '模型 JSON（可複製）';
   $('json-help').textContent = mode === 'import'
-    ? '可貼上完整 src/aircraft/data/<key>.json（含 physics、cockpit、visual），也相容舊版純視覺 JSON。'
+    ? '可貼上完整 src/aircraft/data/<key>.json（含 physics、cockpit、specs、visual），也相容純視覺 V2 JSON。載入前會先執行與匯出相同的驗證。'
     : activeAircraft
-      ? `完整機型資料：保留 ${activeAircraft.key} 的 physics、cockpit、specs，並將目前模型寫入 visual。請用此內容完整取代 src/aircraft/data/${activeAircraft.key}.json。`
+      ? `完整機型資料：保留 ${activeAircraft.key} 的 physics、cockpit、specs，並將目前模型寫入 visual。通過驗證後可直接完整取代 src/aircraft/data/${activeAircraft.key}.json。`
       : '目前沒有選取正式機型，僅匯出獨立視覺 JSON。';
   const exportData = activeAircraft ? { ...activeAircraft, visual: { ...config, aircraftKey: activeAircraft.key } } : config;
-  jsonText.value = mode === 'export' ? JSON.stringify(exportData, null, 2) : '';
+  const copyButton = $('json-copy') as HTMLButtonElement;
+  copyButton.disabled = true;
+  jsonText.value = '';
+  setJsonStatus('');
+  if (mode === 'export') {
+    const serialized = JSON.stringify(exportData, null, 2);
+    try {
+      // Validate the exact serialized payload through the same parser/model builder used on import.
+      validateEditorImportPayload(JSON.parse(serialized) as unknown);
+      jsonText.value = serialized;
+      copyButton.disabled = false;
+      setJsonStatus(
+        activeAircraft
+          ? `驗證通過：完整機型、視覺 V2 與 3D 模型建立均正常。這份 JSON 可直接貼入 src/aircraft/data/${activeAircraft.key}.json。`
+          : '驗證通過：純視覺 V2 格式與 3D 模型建立均正常，可以直接複製。',
+        true,
+      );
+    } catch (error) {
+      jsonText.value = serialized;
+      setJsonStatus(`匯出驗證失敗，已停用複製。請先修正問題：\n${error instanceof Error ? error.message : '未知驗證錯誤'}`);
+    }
+  }
   ($('json-load') as HTMLButtonElement).hidden = mode !== 'import';
-  ($('json-copy') as HTMLButtonElement).hidden = mode !== 'export';
+  copyButton.hidden = mode !== 'export';
   jsonPanel.hidden = false;
   jsonText.focus();
 };
@@ -707,6 +735,7 @@ $('json-close').addEventListener('click', () => { jsonPanel.hidden = true; });
 $('json-load').addEventListener('click', () => {
   try {
     const parsed = JSON.parse(jsonText.value) as AircraftVisualInput | AircraftJson;
+    validateEditorImportPayload(parsed);
     if ('physics' in parsed && parsed.physics && 'key' in parsed) {
       const aircraft = parsed as AircraftJson;
       const valid = validateAircraftRecord(aircraft);
@@ -722,13 +751,11 @@ $('json-load').addEventListener('click', () => {
       activeAircraft = null;
       loadConfig(parsed as AircraftVisualInput, '舊版獨立視覺 JSON 載入成功');
     }
-    $('json-error').textContent = '';
-    $('json-error').hidden = true;
+    setJsonStatus('');
     jsonPanel.hidden = true;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'JSON 格式錯誤';
-    $('json-error').textContent = message;
-    $('json-error').hidden = false;
+    setJsonStatus(message);
     notify(message);
   }
 });
