@@ -105,6 +105,7 @@ describe('combat simulation', () => {
     sim.reset(aircraft.position, 0);
     const site = sim.getContact('SITE-01')!;
     site.position = [0, 0, -2000];
+    site.previousPosition = [...site.position];
 
     sim.fireMissile(aircraft, site.id, '#ff985c');
     for (let i = 0; i < 120 && site.alive; i++) sim.update(0.05);
