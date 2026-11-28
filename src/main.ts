@@ -5,6 +5,7 @@ import { detectCapabilities } from './core/capabilities';
 import { CameraRig, attitudeFromQuat } from './cockpit/camera';
 import { mountCockpitShell } from './cockpit/cockpitShell';
 import { AircraftView } from './cockpit/aircraftView';
+import { CockpitSceneControls } from './cockpit/sceneControls';
 import { INITIAL_WAYPOINT, NavigationDisplay } from './navigation/navigation';
 import { Hud } from './cockpit/hud';
 import { PanelToggles } from './ui/panelToggles';
@@ -482,6 +483,7 @@ async function boot(): Promise<void> {
   window.addEventListener('cfs:canopy-toggle', () => { visualCanopy = visualCanopy < 0.5 ? 1 : 0; });
   new PanelToggles();
   new NavigationDisplay();
+  new CockpitSceneControls(stage);
   window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
   const touchMode = isTouchDevice();
   document.body.classList.toggle('touch', touchMode);
