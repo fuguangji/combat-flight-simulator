@@ -84,18 +84,18 @@ export class CockpitSceneControls {
       new THREE.BoxGeometry(1.72, 0.76, 0.075),
       new THREE.MeshStandardMaterial({ color: 0x101c17, metalness: 0.72, roughness: 0.38 }),
     );
-    board.position.set(0, -0.53, -1.42);
+    board.position.set(0, -0.30, -1.42);
     this.camera.add(board);
 
     const trim = new THREE.Mesh(
       new THREE.BoxGeometry(1.68, 0.018, 0.012),
       new THREE.MeshBasicMaterial({ color: 0x78d99a }),
     );
-    trim.position.set(0, -0.17, -1.465);
+    trim.position.set(0, 0.075, -1.465);
     this.camera.add(trim);
 
     const controls: Control[] = [
-      { label: 'PAUSE', action: () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' })) },
+      { label: 'PAUSE', action: () => { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Escape' })); } },
       { label: 'LOOK CENTER', action: () => window.dispatchEvent(new Event('cfs:look-recenter')) },
       { label: 'AUTOPILOT', action: () => window.dispatchEvent(new Event('cfs:autopilot-toggle')) },
       { label: 'GEAR', action: () => window.dispatchEvent(new Event('cfs:gear-toggle')) },
@@ -124,7 +124,7 @@ export class CockpitSceneControls {
     const gapX = 0.025;
     const gapY = 0.025;
     const startX = -((cols * buttonW + (cols - 1) * gapX) / 2) + buttonW / 2;
-    const startY = -0.23;
+    const startY = 0.015;
 
     controls.forEach((control, index) => {
       const col = index % cols;
