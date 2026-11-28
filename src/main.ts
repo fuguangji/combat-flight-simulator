@@ -483,7 +483,7 @@ async function boot(): Promise<void> {
   window.addEventListener('cfs:canopy-toggle', () => { visualCanopy = visualCanopy < 0.5 ? 1 : 0; });
   new PanelToggles();
   new NavigationDisplay();
-  new CockpitSceneControls(stage);
+  new CockpitSceneControls(stage, aircraftView);
   window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
   const touchMode = isTouchDevice();
   document.body.classList.toggle('touch', touchMode);
