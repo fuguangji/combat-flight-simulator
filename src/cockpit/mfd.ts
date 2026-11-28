@@ -58,8 +58,8 @@ export class CockpitMfd {
     this.leftTexture.anisotropy = 2;
     this.rightTexture.anisotropy = 2;
 
-    this.addScreen('MFD-NAV', this.leftTexture, -0.255);
-    this.addScreen('MFD-FLIGHT', this.rightTexture, 0.255);
+    this.addScreen('MFD-NAV', this.leftTexture, -0.39);
+    this.addScreen('MFD-FLIGHT', this.rightTexture, 0.39);
 
     this.drawLeft();
     this.drawRight(performance.now());
