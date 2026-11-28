@@ -97,6 +97,7 @@ export class CockpitSceneControls {
       // Dashboard switches face the pilot (-X); side-console switches face upward (+Y).
       materials[orientation === 'vertical' ? 1 : 2].map = face;
       materials[orientation === 'vertical' ? 1 : 2].color.set(0xffffff);
+      materials[orientation === 'vertical' ? 1 : 2].needsUpdate = true;
       const geometry = orientation === 'vertical'
         ? new THREE.BoxGeometry(depth, buttonHeight, buttonWidth)
         : new THREE.BoxGeometry(buttonWidth, buttonHeight, depth);
