@@ -18,6 +18,9 @@ export class AircraftView {
   private readonly camera = new THREE.PerspectiveCamera(60, 1, 0.01, 500);
   private model: THREE.Group | null = null;
   private controller: AircraftModelController | null = null;
+  private cockpitControlGroups: THREE.Group[] = [];
+  private readonly cockpitRaycaster = new THREE.Raycaster();
+  private readonly cockpitPointer = new THREE.Vector2();
   private disposed = false;
 
   constructor(private readonly host: HTMLElement) {
@@ -78,9 +81,66 @@ export class AircraftView {
       }
     });
     this.scene.add(this.model);
+    this.attachCockpitControls();
     this.controller = new AircraftModelController(this.model, loaded.config.components);
     this.camera.fov = definition.fovY * 180 / Math.PI;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Attach interactive control meshes to aircraft-specific cockpit components. */
+  setCockpitControls(groups: THREE.Group[]): void {
+    this.cockpitControlGroups = groups;
+    this.attachCockpitControls();
+  }
+
+  /** Return the control attached to the cockpit mesh under a screen pointer. */
+  pickCockpitControl(clientX: number, clientY: number): unknown | null {
+    if (!this.model || !this.cockpitControlGroups.length) return null;
+    const rect = this.host.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    this.cockpitPointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.camera.updateMatrixWorld(true);
+    this.cockpitRaycaster.setFromCamera(this.cockpitPointer, this.camera);
+    const targets = this.cockpitControlGroups.flatMap((group) => group.children);
+    const hit = this.cockpitRaycaster.intersectObjects(targets, true)[0];
+    return hit?.object.userData.control ?? null;
+  }
+
+  private attachCockpitControls(): void {
+    if (!this.model) return;
+    const components = new Map<string, THREE.Object3D>();
+    this.model.traverse((object) => {
+      const id = object.userData.componentId;
+      if (typeof id === 'string') components.set(id, object);
+    });
+    const findAnchor = (preferred: string[]): THREE.Object3D => {
+      for (const id of preferred) {
+        const exact = components.get(id);
+        if (exact) return exact;
+      }
+      const entries = [...components.entries()];
+      const fuzzy = entries.find(([id]) => preferred.some((candidate) => id.toLowerCase().includes(candidate.toLowerCase())));
+      if (fuzzy) return fuzzy[1];
+      const interior = components.get('cockpit-interior') ?? components.get('component-cockpit-interior');
+      return interior ?? this.model!;
+    };
+
+    const anchors: Record<string, { ids: string[]; position: [number, number, number] }> = {
+      dashboard: { ids: ['instrument-panel', 'component-cockpit-panel-body', 'component-instrument-panel'], position: [-0.115, -0.15, 0] },
+      left: { ids: ['left-console', 'component-cockpit-console-left', 'cockpit-console-left'], position: [0, 0.125, 0] },
+      right: { ids: ['right-console', 'component-cockpit-console-right', 'cockpit-console-right'], position: [0, 0.125, 0] },
+    };
+    for (const group of this.cockpitControlGroups) {
+      const key = String(group.userData.cockpitAnchor ?? 'dashboard');
+      const anchor = anchors[key] ?? anchors.dashboard;
+      group.removeFromParent();
+      group.position.set(...anchor.position);
+      findAnchor(anchor.ids).add(group);
+    }
+    this.model.updateMatrixWorld(true);
   }
 
   setControls(input: { pitch?: number; roll?: number; yaw?: number; gear?: number; flaps?: number; canopy?: number }): void {
