@@ -139,9 +139,9 @@ export class CockpitMfd {
 
   private onKeyDown = (event: KeyboardEvent): void => {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.code === 'F1' || event.code === 'Digit1') this.setPage('FLIGHT');
-    else if (event.code === 'F2' || event.code === 'Digit2') this.setPage('SYSTEM');
-    else if (event.code === 'F3' || event.code === 'Digit3') this.setPage('SENSOR');
+    if (event.code === 'F1' || event.code === 'Digit1' || event.code === 'KeyV') this.setPage('FLIGHT');
+    else if (event.code === 'F2' || event.code === 'Digit2' || event.code === 'KeyM') this.setPage('SYSTEM');
+    else if (event.code === 'F3' || event.code === 'Digit3' || event.code === 'KeyB') this.setPage('SENSOR');
   };
 
   private onFlightStart = (): void => {
@@ -336,8 +336,8 @@ export class CockpitMfd {
       if (mesh.isMesh) {
         mesh.geometry.dispose();
         const material = mesh.material;
-        if (Array.isArray(material)) material.forEach((item) => item.dispose());
-        else material.dispose();
+        if (Array.isArray(material)) material.forEach((item) => { item.map?.dispose(); item.dispose(); });
+        else { material.map?.dispose(); material.dispose(); }
       }
     });
     this.group.removeFromParent();
