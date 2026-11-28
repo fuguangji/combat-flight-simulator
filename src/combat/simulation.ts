@@ -277,7 +277,7 @@ export class CombatSimulation {
       bullet.velocity[2] *= 1 - 0.015 * step;
       bullet.position = addScaled(bullet.position, bullet.velocity, step);
       let hit: CombatContact | undefined;
-      let hitPoint: Vec3 | undefined;
+      let hitPoint: Vec3 | null | undefined;
       for (const contact of this.contacts) {
         if (contact.alive && (hitPoint = this.movingSphereHit(
           bullet.previousPosition,
