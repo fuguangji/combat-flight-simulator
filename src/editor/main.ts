@@ -695,13 +695,11 @@ const setJsonStatus = (message: string, success = false): void => {
   jsonStatus.className = success ? 'json-success' : 'json-error';
 };
 const openJsonPanel = (mode: 'import' | 'export'): void => {
-  $('json-title').textContent = mode === 'import' ? '貼上模型 JSON' : '模型 JSON（可複製）';
+  $('json-title').textContent = mode === 'import' ? '貼上視覺模型 JSON' : '視覺模型 JSON（可複製）';
   $('json-help').textContent = mode === 'import'
-    ? '可貼上完整 src/aircraft/data/<key>.json（含 physics、cockpit、specs、visual），也相容純視覺 V2 JSON。載入前會先執行與匯出相同的驗證。'
-    : activeAircraft
-      ? `完整機型資料：保留 ${activeAircraft.key} 的 physics、cockpit、specs，並將目前模型寫入 visual。通過驗證後可直接完整取代 src/aircraft/data/${activeAircraft.key}.json。`
-      : '目前沒有選取正式機型，僅匯出獨立視覺 JSON。';
-  const exportData = activeAircraft ? { ...activeAircraft, visual: { ...config, aircraftKey: activeAircraft.key } } : config;
+    ? '請貼上純視覺 V2 JSON（version、name、aircraftKey、components、parts）；也相容舊版完整機型 JSON。載入前會驗證格式並試建 3D 模型。'
+    : `只匯出目前外觀的純視覺 V2 JSON；不包含或修改 physics、cockpit、specs。請存成 src/aircraft/visuals/${activeAircraft?.key ?? config.aircraftKey ?? 'aircraft-key'}.json。`;
+  const exportData = { ...config, aircraftKey: activeAircraft?.key ?? config.aircraftKey };
   const copyButton = $('json-copy') as HTMLButtonElement;
   copyButton.disabled = true;
   jsonText.value = '';
@@ -714,9 +712,7 @@ const openJsonPanel = (mode: 'import' | 'export'): void => {
       jsonText.value = serialized;
       copyButton.disabled = false;
       setJsonStatus(
-        activeAircraft
-          ? `驗證通過：完整機型、視覺 V2 與 3D 模型建立均正常。這份 JSON 可直接貼入 src/aircraft/data/${activeAircraft.key}.json。`
-          : '驗證通過：純視覺 V2 格式與 3D 模型建立均正常，可以直接複製。',
+        `驗證通過：純視覺 V2 格式與 3D 模型建立均正常。請存成 src/aircraft/visuals/${activeAircraft?.key ?? config.aircraftKey ?? 'aircraft-key'}.json。`,
         true,
       );
     } catch (error) {
