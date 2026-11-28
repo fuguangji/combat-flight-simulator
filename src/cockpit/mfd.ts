@@ -254,36 +254,42 @@ export class CockpitMfd {
 
   private drawSystemPage(ctx: CanvasRenderingContext2D): void {
     this.drawFrame(ctx, 'AIRCRAFT SYSTEMS', 'STATUS / MONITOR');
+    const readSetting = (id: string, fallback: string): string =>
+      document.querySelector<HTMLInputElement>(`#${id}`)?.value ?? fallback;
+    const ap = document.body.dataset.autopilot === 'true';
     const items: Array<[string, string, boolean]> = [
       ['CANOPY', document.body.dataset.canopyOpen === 'true' ? 'OPEN' : 'CLOSED', document.body.dataset.canopyOpen === 'true'],
       ['LANDING GEAR', document.body.dataset.gearDown === 'true' ? 'DOWN' : 'UP', document.body.dataset.gearDown === 'true'],
-      ['AUTOPILOT', document.body.dataset.autopilot === 'true' ? 'ENGAGED' : 'STANDBY', document.body.dataset.autopilot === 'true'],
+      ['AUTOPILOT', ap ? 'ENGAGED' : 'STANDBY', ap],
+      ['AP TARGET ALT', `${readSetting('ap-alt', '3000')} m`, ap],
+      ['AP TARGET HDG', `${readSetting('ap-hdg', '000')}°`, ap],
+      ['AP THROTTLE', `${readSetting('ap-thr', '55')} %`, ap],
       ['FLIGHT COMPUTER', this.snapshot ? 'ONLINE' : 'STANDBY', Boolean(this.snapshot)],
     ];
     items.forEach(([label, value, active], index) => {
-      const y = 100 + index * 48;
+      const y = 78 + index * 31;
       ctx.fillStyle = '#729783';
-      ctx.font = '17px ui-monospace, monospace';
+      ctx.font = '14px ui-monospace, monospace';
       ctx.textAlign = 'left';
       ctx.fillText(label, 28, y);
       ctx.textAlign = 'right';
       ctx.fillStyle = active ? '#a8ffc9' : '#c0a879';
-      ctx.font = 'bold 22px ui-monospace, monospace';
+      ctx.font = 'bold 17px ui-monospace, monospace';
       ctx.fillText(value, 480, y);
       ctx.strokeStyle = 'rgba(136,255,181,.16)';
       ctx.beginPath();
-      ctx.moveTo(24, y + 14);
-      ctx.lineTo(488, y + 14);
+      ctx.moveTo(24, y + 8);
+      ctx.lineTo(488, y + 8);
       ctx.stroke();
     });
     ctx.textAlign = 'left';
     ctx.fillStyle = '#789f89';
-    ctx.font = '13px ui-monospace, monospace';
-    ctx.fillText('DISPLAY DATA IS SIMULATION TELEMETRY', 28, 286);
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.fillText('DISPLAY DATA IS SIMULATION TELEMETRY', 28, 300);
   }
 
   private drawSensorPage(ctx: CanvasRenderingContext2D, now: number): void {
-    this.drawFrame(ctx, 'SENSOR STATUS', 'TRAINING / NON-TARGET');
+    this.drawFrame(ctx, 'RADAR STATUS', 'TRAINING / NO TRACKS');
     const w = ctx.canvas.width, h = ctx.canvas.height;
     const cx = w / 2, cy = 174, radius = 102;
     ctx.strokeStyle = 'rgba(136,255,181,.32)';
@@ -316,10 +322,15 @@ export class CockpitMfd {
     ctx.fillStyle = '#a8ffc9';
     ctx.font = 'bold 16px ui-monospace, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('SENSOR DISPLAY ACTIVE', cx, 300);
+    ctx.fillText('SIMULATED SWEEP ACTIVE', cx, 288);
     ctx.fillStyle = '#8aa995';
     ctx.font = '12px ui-monospace, monospace';
-    ctx.fillText('NO TRACKS / NO TARGET CUES', cx, 282);
+    ctx.fillText('NO TRACK DATA / NO TARGET CUES', cx, 268);
+    const range = document.querySelector<HTMLInputElement>('#lock-range')?.value ?? '20';
+    const sensitivity = document.querySelector<HTMLInputElement>('#lock-sens')?.value ?? '50';
+    ctx.fillStyle = '#a8ffc9';
+    ctx.font = '14px ui-monospace, monospace';
+    ctx.fillText(`RANGE ${range} KM  ·  SENS ${sensitivity}%`, cx, 310);
   }
 
   dispose(): void {
