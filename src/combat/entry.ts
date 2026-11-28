@@ -27,7 +27,9 @@ style.textContent = `
   #contact-status .combat-section { margin-top:10px; }
   #contact-status small { display:block; margin-bottom:5px; color:rgba(210,245,220,.55); font-size:9px; }
   #contact-status .contact-actions { display:flex; gap:5px; }
-  #contact-status .landing-beacon-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+  #contact-status .landing-beacon-actions { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:5px; }
+  #contact-status #landing-beacon-current { min-width:0; color:#d8f3df; text-align:center; font-size:9px; line-height:1.35; overflow-wrap:anywhere; }
+  #contact-status .landing-beacon-actions button { padding-inline:8px; }
   #contact-status .landing-beacon-actions button[data-active="true"] { color:#06130a; background:#7dff9a; border-color:#7dff9a; }
   #contact-status button { flex:1; min-width:0; padding:7px 4px; border:1px solid rgba(125,255,154,.25); border-radius:3px; color:#b8d9c0; background:rgba(125,255,154,.05); font:10px ui-monospace,Menlo,Consolas,monospace; cursor:pointer; }
   #contact-status button[data-active="true"] { color:#07150b; background:#7dff9a; border-color:#7dff9a; }
