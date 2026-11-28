@@ -46,7 +46,13 @@ describe('combat simulation', () => {
     })).toBe(true);
     expect(target.alive).toBe(true);
     expect(sim.missiles).toHaveLength(1);
-    expect(sim.missiles[0]).toMatchObject({ equipmentId: 'meteor88', effect: 'COMET TRAIL', life: 1.4 });
+    expect(sim.missiles[0]).toMatchObject({
+      equipmentId: 'meteor88',
+      effect: 'COMET TRAIL',
+      life: 1.4,
+      remaining: 16,
+      guidance: { program: 'proportional-navigation', navigationConstant: 3.5 },
+    });
     sim.update(0.05);
     expect(sim.missiles[0].position[2]).toBeLessThan(0);
     expect(sim.missiles[0].velocity[1]).toBeLessThan(0);

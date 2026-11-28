@@ -732,8 +732,6 @@ export class ArcadeProjectileSystem {
       ctx.restore();
     }
 
-
-
     if (now < this.messageUntil) {
       ctx.save();
       ctx.textAlign = 'center';

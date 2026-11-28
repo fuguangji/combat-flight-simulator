@@ -1,4 +1,6 @@
 import { quatRotate, type Quat, type Vec3 } from '../core/math';
+import { getMissileDefinition } from './missileCatalog';
+import { guideMissile, type MissileGuidanceConfig } from './missileGuidance';
 
 export type CombatTargetKind = 'air' | 'ground';
 
@@ -26,6 +28,7 @@ export interface CombatMissile {
   velocity: Vec3;
   targetId: string;
   equipmentId: string;
+  guidance: MissileGuidanceConfig;
   effect: string;
   remaining: number;
   age: number;
@@ -77,19 +80,6 @@ const addScaled = (a: Vec3, b: Vec3, scale: number): Vec3 => [
   a[1] + b[1] * scale,
   a[2] + b[2] * scale,
 ];
-
-const MISSILE_PROFILES: Record<string, { launchSpeed: number; acceleration: number; maxSpeed: number; turnRate: number }> = {
-  nova17: { launchSpeed: 260, acceleration: 175, maxSpeed: 780, turnRate: 2.4 },
-  meteor88: { launchSpeed: 320, acceleration: 150, maxSpeed: 1050, turnRate: 1.15 },
-  hellfire09: { launchSpeed: 220, acceleration: 115, maxSpeed: 690, turnRate: 1.05 },
-  vortex33: { launchSpeed: 245, acceleration: 135, maxSpeed: 760, turnRate: 1.35 },
-  stinger05: { launchSpeed: 285, acceleration: 190, maxSpeed: 820, turnRate: 2.8 },
-  thunder66: { launchSpeed: 250, acceleration: 155, maxSpeed: 850, turnRate: 1.7 },
-  gungnir01: { launchSpeed: 210, acceleration: 185, maxSpeed: 980, turnRate: 0.9 },
-  frostbite12: { launchSpeed: 275, acceleration: 160, maxSpeed: 810, turnRate: 2.05 },
-  ironhammer20: { launchSpeed: 195, acceleration: 120, maxSpeed: 720, turnRate: 0.85 },
-  phoenix54: { launchSpeed: 300, acceleration: 205, maxSpeed: 1020, turnRate: 1.55 },
-};
 
 export function distanceBetween(a: Vec3, b: Vec3): number {
   return length(subtract(a, b));
@@ -164,8 +154,8 @@ export class CombatSimulation {
     const forward = quatRotate(aircraft.orientation, [1, 0, 0]);
     const position = addScaled(aircraft.position, forward, 8);
     const equipmentId = spec.id ?? 'default';
-    const profile = MISSILE_PROFILES[equipmentId] ?? { launchSpeed: 260, acceleration: 150, maxSpeed: 850, turnRate: 1.6 };
-    const velocity = addScaled(aircraft.velocity, forward, profile.launchSpeed);
+    const definition = getMissileDefinition(equipmentId);
+    const velocity = addScaled(aircraft.velocity, forward, definition.launchSpeed);
     this.missiles.push({
       id: this.nextMissileId++,
       position,
@@ -173,8 +163,9 @@ export class CombatSimulation {
       velocity,
       targetId,
       equipmentId,
+      guidance: definition.guidance,
       effect: spec.effect ?? 'COMET TRAIL',
-      remaining: 12,
+      remaining: definition.flightTime,
       age: 0,
       life: spec.life ?? 1.2,
       color,
@@ -212,14 +203,17 @@ export class CombatSimulation {
       }
 
       const speed = length(missile.velocity);
-      const distance = distanceBetween(target.position, missile.position);
-      const leadTime = clamp(distance / Math.max(speed, 300), 0, 2.5);
-      const intercept = addScaled(target.position, target.velocity, leadTime);
-      const desired = normalize(subtract(intercept, missile.position));
+      const desired = guideMissile({
+        position: missile.position,
+        velocity: missile.velocity,
+        targetPosition: target.position,
+        targetVelocity: target.velocity,
+        deltaTime: step,
+      }, missile.guidance);
       const currentDirection = normalize(missile.velocity);
       const turnAngle = Math.acos(clamp(dot(currentDirection, desired), -1, 1));
-      const profile = MISSILE_PROFILES[missile.equipmentId] ?? { launchSpeed: 260, acceleration: 150, maxSpeed: 850, turnRate: 1.6 };
-      const maxTurn = Math.min(turnAngle, profile.turnRate * step);
+      const definition = getMissileDefinition(missile.equipmentId);
+      const maxTurn = Math.min(turnAngle, definition.turnRate * step);
       const axisVector: Vec3 = [
         currentDirection[1] * desired[2] - currentDirection[2] * desired[1],
         currentDirection[2] * desired[0] - currentDirection[0] * desired[2],
@@ -240,7 +234,10 @@ export class CombatSimulation {
             currentDirection[2] * Math.cos(maxTurn) + (turnAxis[0] * currentDirection[1] - turnAxis[1] * currentDirection[0]) * Math.sin(maxTurn),
           ]);
       missile.age += step;
-      const acceleratedSpeed = Math.min(profile.maxSpeed, speed + (missile.age < 2.2 ? profile.acceleration * step : 0));
+      const acceleratedSpeed = Math.min(
+        definition.maxSpeed,
+        speed + (missile.age < 2.2 ? definition.acceleration * step : 0),
+      );
       missile.previousPosition = [...missile.position];
       missile.velocity = [
         direction[0] * acceleratedSpeed,

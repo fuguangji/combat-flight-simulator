@@ -1,12 +1,7 @@
 import * as THREE from 'three';
 import type { CameraState } from '../rendering/Renderer';
+import { getMissileDefinition } from './missileCatalog';
 import type { CombatBullet, CombatImpact, CombatMissile } from './simulation';
-
-interface MissileVisualProfile {
-  length: number;
-  radius: number;
-  fins: number;
-}
 
 interface ImpactVisualProfile {
   rings: number;
@@ -24,6 +19,7 @@ interface MissileVisual {
 
 interface BulletVisual {
   body: THREE.Group;
+  tracer: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
 }
 
 interface ImpactVisual {
@@ -34,19 +30,6 @@ interface ImpactVisual {
   particles: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial> | null;
 }
-
-const MISSILE_PROFILES: Record<string, MissileVisualProfile> = {
-  nova17: { length: 2.5, radius: 0.14, fins: 3 },
-  meteor88: { length: 4.2, radius: 0.2, fins: 4 },
-  hellfire09: { length: 3.4, radius: 0.24, fins: 4 },
-  vortex33: { length: 3.7, radius: 0.22, fins: 3 },
-  stinger05: { length: 2.2, radius: 0.12, fins: 4 },
-  thunder66: { length: 3.3, radius: 0.17, fins: 4 },
-  gungnir01: { length: 5.2, radius: 0.28, fins: 4 },
-  frostbite12: { length: 3.1, radius: 0.15, fins: 3 },
-  ironhammer20: { length: 4.5, radius: 0.3, fins: 4 },
-  phoenix54: { length: 4.7, radius: 0.18, fins: 3 },
-};
 
 const IMPACT_PROFILES: Record<string, ImpactVisualProfile> = {
   'PULSE BURST': { rings: 2, rays: 8, particles: 12 },
@@ -66,8 +49,8 @@ const IMPACT_PROFILES: Record<string, ImpactVisualProfile> = {
 const MISSILE_BODY = new THREE.CylinderGeometry(0.7, 1, 0.62, 8);
 const MISSILE_NOSE = new THREE.ConeGeometry(0.7, 0.55, 8);
 const MISSILE_FIN = new THREE.BoxGeometry(1.05, 0.08, 0.42);
-const BULLET_BODY = new THREE.CylinderGeometry(0.045, 0.065, 7, 6);
-const BULLET_CORE = new THREE.SphereGeometry(0.085, 8, 6);
+const BULLET_BODY = new THREE.CylinderGeometry(0.045, 0.065, 0.48, 6);
+const BULLET_CORE = new THREE.SphereGeometry(0.07, 8, 6);
 const IMPACT_SHELL = new THREE.SphereGeometry(1, 16, 12);
 const UNIT_Z = new THREE.Vector3(0, 0, 1);
 
@@ -202,7 +185,7 @@ export class CombatProjectileScene {
   }
 
   private createMissile(missile: CombatMissile): MissileVisual {
-    const profile = MISSILE_PROFILES[missile.equipmentId] ?? { length: 3.2, radius: 0.18, fins: 4 };
+    const profile = getMissileDefinition(missile.equipmentId).model;
     const root = new THREE.Group();
     const color = colorValue(missile.color);
     const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -270,10 +253,21 @@ export class CombatProjectileScene {
     body.rotation.x = Math.PI / 2;
     root.add(body);
     const core = new THREE.Mesh(BULLET_CORE, material);
-    core.position.z = 3.4;
+    core.position.z = 0.2;
     root.add(core);
-    this.scene.add(root);
-    return { body: root };
+    const tracer = new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({
+        color: 0xffd17e,
+        transparent: true,
+        opacity: 0.56,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    tracer.frustumCulled = false;
+    this.scene.add(root, tracer);
+    return { body: root, tracer };
   }
 
   private createImpact(impact: CombatImpact): ImpactVisual {
@@ -379,6 +373,10 @@ export class CombatProjectileScene {
     visual.body.position.set(...bullet.position);
     const direction = new THREE.Vector3(...bullet.velocity).normalize();
     visual.body.quaternion.setFromUnitVectors(UNIT_Z, direction.lengthSq() > 0 ? direction : UNIT_Z);
+    visual.tracer.geometry.setFromPoints([
+      new THREE.Vector3(...bullet.previousPosition),
+      new THREE.Vector3(...bullet.position),
+    ]);
   }
 
   private updateImpact(impact: CombatImpact, visual: ImpactVisual): void {
@@ -422,11 +420,13 @@ export class CombatProjectileScene {
   }
 
   private removeBullet(visual: BulletVisual): void {
-    this.scene.remove(visual.body);
+    this.scene.remove(visual.body, visual.tracer);
     visual.body.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) return;
       disposeMaterial(object.material);
     });
+    visual.tracer.geometry.dispose();
+    visual.tracer.material.dispose();
   }
 
   private removeImpact(visual: ImpactVisual): void {
