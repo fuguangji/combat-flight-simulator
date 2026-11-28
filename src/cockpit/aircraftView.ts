@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { AircraftDefinition } from '../aircraft/registry';
 import { loadAircraftVisual } from '../aircraft/builder/visualRepository';
 import { AircraftModelController } from '../aircraft/builder/aircraftAnimation';
+import { CockpitMfd } from './mfd';
 
 /**
  * Renders the editor-authored aircraft hierarchy around the pilot's actual eye point.
@@ -19,6 +20,7 @@ export class AircraftView {
   private model: THREE.Group | null = null;
   private controller: AircraftModelController | null = null;
   private cockpitControlGroups: THREE.Group[] = [];
+  private readonly mfd = new CockpitMfd();
   private readonly cockpitRaycaster = new THREE.Raycaster();
   private readonly cockpitPointer = new THREE.Vector2();
   private disposed = false;
@@ -58,6 +60,7 @@ export class AircraftView {
     this.camera.position.set(0, 0, 0);
     this.resize();
     new ResizeObserver(() => this.resize()).observe(host);
+    window.addEventListener('cfs:touch-mode', this.syncMfdVisibility);
   }
 
   setAircraft(definition: AircraftDefinition): void {
@@ -82,6 +85,7 @@ export class AircraftView {
     });
     this.scene.add(this.model);
     this.attachCockpitControls();
+    this.attachMfd();
     this.controller = new AircraftModelController(this.model, loaded.config.components);
     this.camera.fov = definition.fovY * 180 / Math.PI;
     this.camera.updateProjectionMatrix();
@@ -107,6 +111,27 @@ export class AircraftView {
     const targets = this.cockpitControlGroups.flatMap((group) => group.children);
     const hit = this.cockpitRaycaster.intersectObjects(targets, true)[0];
     return hit?.object.userData.control ?? null;
+  }
+
+  private syncMfdVisibility = (): void => {
+    this.mfd.group.visible = !document.body.classList.contains('touch');
+  };
+
+  private attachMfd(): void {
+    if (!this.model) return;
+    const components = new Map<string, THREE.Object3D>();
+    this.model.traverse((object) => {
+      const id = object.userData.componentId;
+      if (typeof id === 'string') components.set(id, object);
+    });
+    const anchor = components.get('instrument-panel')
+      ?? components.get('component-cockpit-panel-body')
+      ?? components.get('component-instrument-panel')
+      ?? components.get('cockpit-interior')
+      ?? this.model;
+    anchor.add(this.mfd.group);
+    this.syncMfdVisibility();
+    this.model.updateMatrixWorld(true);
   }
 
   private attachCockpitControls(): void {
@@ -175,6 +200,8 @@ export class AircraftView {
     this.disposed = true;
     this.disposeModel();
     this.renderer.dispose();
+    this.mfd.dispose();
+    window.removeEventListener('cfs:touch-mode', this.syncMfdVisibility);
     this.canvas.remove();
   }
 
@@ -191,7 +218,7 @@ export class AircraftView {
     this.scene.remove(this.model);
     this.model.traverse((object) => {
       const mesh = object as THREE.Mesh;
-      if (!mesh.isMesh) return;
+      if (!mesh.isMesh || mesh.userData.cockpitMfd) return;
       mesh.geometry.dispose();
       if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
       else mesh.material.dispose();
