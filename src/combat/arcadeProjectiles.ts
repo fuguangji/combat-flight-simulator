@@ -121,7 +121,11 @@ export class ArcadeProjectileSystem {
     window.addEventListener('cfs:flight-snapshot', (event) => this.onSnapshot(event as FlightSnapshotEvent));
     window.addEventListener('cfs:landing-approach-state', (event) => {
       const state = (event as CustomEvent<{ active?: boolean; siteId?: string | null }>).detail;
-      if (state?.siteId) this.landingSiteId = state.siteId;
+      if (state?.siteId) {
+        this.landingSiteId = state.siteId;
+        const index = SITE_MARKERS.findIndex((site) => site.id === state.siteId);
+        if (index >= 0) this.landingSiteIndex = index;
+      }
       this.landingApproachActive = Boolean(state?.active);
       this.updatePanel(true);
     });
