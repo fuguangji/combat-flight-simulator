@@ -160,6 +160,7 @@ const renderModel = (): void => {
   }
   setValue('model-name-input', config.name || 'Untitled Aircraft');
   setValue('model-key-input', config.aircraftKey ?? '');
+  ($('model-key-input') as HTMLInputElement).disabled = Boolean(activeAircraft);
   $('selection-status').textContent = selectedPart() ? `細節：${selectedPart()!.name ?? selectedPart()!.id}` : `組件：${config.components.find((item) => item.id === selectedComponentId)?.name ?? '未選取'}`;
 };
 
@@ -847,6 +848,7 @@ $('model-key-input').addEventListener('change', () => {
     setValue('model-key-input', config.aircraftKey ?? '');
     return;
   }
+  if (activeAircraft) { notify('正式機型 Key 請透過上方機型選擇器切換'); setValue('model-key-input', activeAircraft.key); return; }
   if (key) config.aircraftKey = key;
   else delete config.aircraftKey;
   saveHistory();
