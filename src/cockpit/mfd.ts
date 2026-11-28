@@ -67,7 +67,7 @@ export class CockpitMfd {
     this.pageLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.028), pageMaterial);
     this.pageLabel.userData.cockpitMfd = true;
     this.pageLabel.rotation.set(0, -Math.PI / 2, 0);
-    this.pageLabel.position.set(-0.11, -0.13, 0);
+    this.pageLabel.position.set(0.74, 0.36, 0);
     this.group.add(this.pageLabel);
 
     this.drawLeft();
@@ -90,7 +90,7 @@ export class CockpitMfd {
     housing.name = name;
     // The procedural cockpit already contains a physical display housing at
     // x=-0.105, y=0.08, z=±0.39 relative to the instrument-panel body.
-    housing.position.set(-0.105, 0.08, lateral);
+    housing.position.set(0.775, 0.56, lateral);
 
     const glass = new THREE.Mesh(
       new THREE.PlaneGeometry(0.40, 0.28),
