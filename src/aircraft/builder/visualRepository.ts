@@ -51,7 +51,6 @@ export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | nu
     config.aircraftKey = config.aircraftKey ?? key;
     return config;
   }
-  const definition = aircraftRegistry.find(key);
   if (!definition) return null;
   const config = addFallbackAnimations(normalizeAircraftVisualConfig(createProceduralAircraftConfig(definition.id)));
   config.name = definition.displayName;
