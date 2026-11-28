@@ -336,7 +336,7 @@ export class ArcadeProjectileSystem {
       ? Math.hypot(site.x - this.latestSnapshot.position[0], site.z - this.latestSnapshot.position[2]) / 1000
       : null;
     const side = site.faction === 'friendly' ? '友軍' : '敵軍';
-    const threat = site.threat === 'elevated' ? ' · 高威脅' : '';
+    const threat = site.strikeCapable ? ' · 具打擊能力' : site.threat === 'elevated' ? ' · 高威脅' : '';
     current.textContent = `${side} · ${site.name} · ${site.kind === 'carrier' ? '航艦' : '機場'}${threat} · ${distance === null ? '—' : distance.toFixed(1) + ' km'}`;
     current.title = site.name;
     current.dataset.active = String(site.id === this.landingSiteId && this.landingApproachActive);
