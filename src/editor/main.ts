@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import viperSample from '../aircraft/visuals/viper-t21.json';
 import { aircraftRegistry, AircraftDefinition, type AircraftJson } from '../aircraft/registry';
-import { createProceduralAircraftConfig } from '../aircraft/builder/modularAircraft';
+import { loadAircraftVisualConfig } from '../aircraft/builder/visualRepository';
 const aircraftDataModules = import.meta.glob('../aircraft/data/*.json', { eager: true, import: 'default' }) as Record<string, AircraftJson>;
 const aircraftDataByKey = new Map(Object.values(aircraftDataModules).map((aircraft) => [aircraft.key, aircraft]));
 import { AircraftModelController } from '../aircraft/builder/aircraftAnimation';
@@ -649,7 +649,7 @@ const validateAircraftRecord = (aircraft: AircraftJson): AircraftJson => {
 const makeAircraftVisual = (aircraft: AircraftJson): AircraftVisualConfig => {
   const visual = aircraft.visual
     ? normalizeAircraftVisualConfig(aircraft.visual)
-    : normalizeAircraftVisualConfig(createProceduralAircraftConfig(aircraft.id));
+    : loadAircraftVisualConfig(aircraft.key) ?? normalizeAircraftVisualConfig({ version: 1, name: aircraft.displayName, aircraftKey: aircraft.key, parts: [] });
   visual.aircraftKey = aircraft.key;
   visual.name = aircraft.displayName;
   return visual;
