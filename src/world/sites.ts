@@ -1,118 +1,132 @@
 /**
- * Landing sites: two airports (one runway each) and one carrier. All invented for this game.
- *
- * Runways and the carrier deck run along the world z axis (north-south). The same numbers are
- * mirrored in `wasm/physics-engine/src/sites.rs` (a test compares them) and drive the ground and
- * object shaders through the generated snippets below, so the drawn runway is the collision runway.
+ * Deterministic procedural landing-site network.
+ * One seed builds all runways/carriers; the same definitions feed rendering, navigation and WASM.
  */
+import { SEA_LEVEL, sampleTerrain } from '../terrain/procedural';
+
+export type Faction = 'friendly' | 'hostile';
+export type SiteThreat = 'none' | 'elevated';
 export interface Runway {
-  id: string;
-  name: string;
-  /** Centre (world x, z). */
-  cx: number;
-  cz: number;
-  /** Half length along z and half width along x (m). */
-  halfLen: number;
-  halfWid: number;
+  id: string; name: string; cx: number; cz: number; halfLen: number; halfWid: number;
+  faction: Faction;
 }
-
 export interface Carrier {
-  id: string;
-  name: string;
-  cx: number;
-  cz: number;
-  halfLen: number;
-  halfWid: number;
-  /** Flight-deck height above the sea (m). */
-  deckY: number;
-  /** Island superstructure: a solid box beside the deck. */
-  islandX: number;
-  islandZ: number;
-  islandHalf: number;
-  islandH: number;
+  id: string; name: string; cx: number; cz: number; halfLen: number; halfWid: number;
+  deckY: number; islandX: number; islandZ: number; islandHalf: number; islandH: number;
+  faction: Faction; threat: SiteThreat;
 }
-
-export const RUNWAYS: readonly Runway[] = [
-  { id: 'alpha', name: '朝霧機場 ASAGIRI', cx: -5000, cz: -3500, halfLen: 1200, halfWid: 30 },
-  { id: 'bravo', name: '雲嶺機場 UNREI', cx: 4300, cz: 2500, halfLen: 1200, halfWid: 30 },
-];
-
-export const CARRIER: Carrier = {
-  id: 'carrier',
-  name: '海燕號 PETREL',
-  cx: 0,
-  cz: -3000,
-  halfLen: 175,
-  halfWid: 35,
-  deckY: 24,
-  islandX: 42,
-  islandZ: -53,
-  islandHalf: 7,
-  islandH: 46,
-};
-
-/** Touchdown limits (also enforced by the physics core). */
-export const LANDING = {
-  maxSink: 5, // m/s
-  maxRollDeg: 10,
-  minPitchDeg: -3,
-  maxPitchDeg: 18,
-  maxSpeed: 95, // m/s (~185 kt)
-  maxHeadingDeg: 25, // off the runway / deck axis (either direction)
-} as const;
-
 export interface SiteMarker {
-  id: string;
-  name: string;
-  kind: 'airport' | 'carrier';
-  x: number;
-  z: number;
+  id: string; name: string; kind: 'airport' | 'carrier'; x: number; z: number;
+  faction: Faction; threat: SiteThreat;
 }
+export const WORLD_SITE_SEED = 0x51a7c3;
+const RUNWAY_HALF_LEN = 950;
+const RUNWAY_HALF_WID = 34;
+const CARRIER_HALF_LEN = 190;
+const CARRIER_HALF_WID = 42;
+const MIN_AIRPORT_SPACING = 15_000;
+const MIN_CARRIER_SPACING = 18_000;
+const MIN_SITE_SPACING = 11_000;
 
+function random32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a; t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const distance = (a: {x:number;z:number}, b: {x:number;z:number}): number => Math.hypot(a.x-b.x,a.z-b.z);
+
+function runwaySiteIsSuitable(x: number, z: number): boolean {
+  let lo = Infinity, hi = -Infinity;
+  // Sample the whole runway and apron corridor. A candidate must be dry and locally level.
+  for (let along = -900; along <= 900; along += 300) {
+    for (let across = -180; across <= 180; across += 90) {
+      const t = sampleTerrain(x + across, z + along, WORLD_SITE_SEED);
+      if (t.biome === 'water' || t.height <= SEA_LEVEL + 28 || t.height > 650) return false;
+      lo = Math.min(lo, t.height); hi = Math.max(hi, t.height);
+    }
+  }
+  return hi - lo <= 105;
+}
+function carrierSiteIsSuitable(x: number, z: number): boolean {
+  for (let dx = -850; dx <= 850; dx += 425) {
+    for (let dz = -1250; dz <= 1250; dz += 625) {
+      if (sampleTerrain(x + dx, z + dz, WORLD_SITE_SEED).biome !== 'water') return false;
+    }
+  }
+  return true;
+}
+function chooseSites(): { runways: Runway[]; carriers: Carrier[] } {
+  const rnd = random32(WORLD_SITE_SEED);
+  const runways: Runway[] = [];
+  const carriers: Carrier[] = [];
+  const candidates: {x:number;z:number}[] = [];
+  for (let i=0; i<2400; i++) candidates.push({x:(rnd()*2-1)*34_000,z:(rnd()*2-1)*34_000});
+  for (const p of candidates) {
+    if (runways.length >= 3) break;
+    if (!runwaySiteIsSuitable(p.x,p.z)) continue;
+    if (runways.some(r=>distance(p,{x:r.cx,z:r.cz})<MIN_AIRPORT_SPACING)) continue;
+    if (carriers.some(c=>distance(p,{x:c.cx,z:c.cz})<MIN_SITE_SPACING)) continue;
+    const index=runways.length;
+    runways.push({
+      id:`airfield-${index+1}`, name:['朝霧機場 ASAGIRI','雲嶺機場 UNREI','長風機場 CHOFU'][index],
+      cx:Math.round(p.x/50)*50, cz:Math.round(p.z/50)*50,
+      halfLen:RUNWAY_HALF_LEN, halfWid:RUNWAY_HALF_WID, faction:index===1?'hostile':'friendly',
+    });
+  }
+  for (const p of candidates) {
+    if (carriers.length >= 4) break;
+    if (!carrierSiteIsSuitable(p.x,p.z)) continue;
+    if (carriers.some(c=>distance(p,{x:c.cx,z:c.cz})<MIN_CARRIER_SPACING)) continue;
+    if (runways.some(r=>distance(p,{x:r.cx,z:r.cz})<MIN_SITE_SPACING)) continue;
+    const index=carriers.length;
+    const faction=index===1||index===3?'hostile':'friendly';
+    carriers.push({
+      id:`carrier-${index+1}`, name:['海燕號 PETREL','玄鯨號 ORCA','蒼鷺號 HERON','夜潮號 NIGHTTIDE'][index],
+      cx:Math.round(p.x/50)*50, cz:Math.round(p.z/50)*50,
+      halfLen:CARRIER_HALF_LEN, halfWid:CARRIER_HALF_WID, deckY:24,
+      islandX:50, islandZ:-58, islandHalf:8, islandH:48,
+      faction, threat:faction==='hostile' && index===3?'elevated':'none',
+    });
+  }
+  if (runways.length < 2 || carriers.length < 2) throw new Error(`World site generation failed: ${runways.length} airfields, ${carriers.length} carriers`);
+  return {runways,carriers};
+}
+const generated = chooseSites();
+export const RUNWAYS: readonly Runway[] = generated.runways;
+export const CARRIERS: readonly Carrier[] = generated.carriers;
+/** Compatibility alias for systems that need the first carrier's deck dimensions. */
+export const CARRIER: Carrier = CARRIERS[0];
+export const LANDING = {
+  maxSink: 5, maxRollDeg: 10, minPitchDeg: -3, maxPitchDeg: 18, maxSpeed: 95, maxHeadingDeg: 25,
+} as const;
 export const SITE_MARKERS: readonly SiteMarker[] = [
-  ...RUNWAYS.map((r): SiteMarker => ({ id: r.id, name: r.name, kind: 'airport', x: r.cx, z: r.cz })),
-  { id: CARRIER.id, name: CARRIER.name, kind: 'carrier', x: CARRIER.cx, z: CARRIER.cz },
+  ...RUNWAYS.map((r): SiteMarker => ({id:r.id,name:r.name,kind:'airport',x:r.cx,z:r.cz,faction:r.faction,threat:'none'})),
+  ...CARRIERS.map((c): SiteMarker => ({id:c.id,name:c.name,kind:'carrier',x:c.cx,z:c.cz,faction:c.faction,threat:c.threat})),
 ];
-
-/** True when (x, z) lies in an airport's apron zone (no random towers there). */
-export function inAirportZone(x: number, z: number, margin = 0): boolean {
-  return RUNWAYS.some((r) => Math.abs(x - r.cx) <= 420 + margin && Math.abs(z - r.cz) <= r.halfLen + 500 + margin);
+export function inAirportZone(x:number,z:number,margin=0):boolean {
+  return RUNWAYS.some(r=>Math.abs(x-r.cx)<=460+margin && Math.abs(z-r.cz)<=r.halfLen+520+margin);
 }
-
-/** Airport buildings (hangars, terminal, tower), beside the runway. [x, z, width, height] */
-export function airportBuildings(): number[][] {
-  const out: number[][] = [];
-  for (const r of RUNWAYS) {
-    const side = r.cx < 0 ? 1 : -1; // apron on the side facing the map centre
-    const x0 = r.cx + side * 150;
-    const specs: [number, number, number][] = [
-      [-780, 46, 16], [-640, 46, 16], [-500, 46, 16], // hangars
-      [-120, 70, 22], // terminal
-      [60, 24, 12], [190, 24, 12], // fuel / service
-      [330, 14, 60], // control tower
-    ];
-    for (const [dz, w, h] of specs) out.push([x0, r.cz + dz, w, h]);
+export function airportBuildings():number[][] {
+  const out:number[][]=[];
+  for(const r of RUNWAYS){
+    const side=r.cx<0?1:-1, x0=r.cx+side*190;
+    const specs:[number,number,number][]=[[-620,54,18],[-470,54,18],[-320,54,18],[-80,76,24],[100,28,14],[240,28,14],[390,18,66]];
+    for(const [dz,w,h] of specs) out.push([x0,r.cz+dz,w,h]);
   }
   return out;
 }
-
-/**
- * Render-only carrier parts, encoded into the 4-float instance format (x, z, size, height):
- * a negative size marks a non-colliding-in-the-box-world part, `fract(-size) * 4` is its kind
- * (1 = deck hull, 2 = island) and `floor(-size)` the footprint. The physics core models the
- * carrier itself (see sites.rs), and its box world skips non-positive sizes.
- */
-export const KIND_DECK = 1;
-export const KIND_ISLAND = 2;
-export function carrierParts(c: Carrier = CARRIER): number[][] {
-  const out: number[][] = [];
-  const size = c.halfWid * 2;
-  const n = Math.round((c.halfLen * 2) / size);
-  for (let i = 0; i < n; i++) out.push([c.cx, c.cz - c.halfLen + size * (i + 0.5), -(size + KIND_DECK * 0.25), c.deckY]);
-  out.push([c.cx + c.islandX, c.cz + c.islandZ, -(c.islandHalf * 2 + KIND_ISLAND * 0.25), c.islandH]);
+export const KIND_DECK=1;
+export const KIND_ISLAND=2;
+export function carrierParts(c:Carrier):number[][] {
+  const out:number[][]=[], size=c.halfWid*2, n=Math.round(c.halfLen*2/size);
+  for(let i=0;i<n;i++) out.push([c.cx,c.cz-c.halfLen+size*(i+0.5),-(size+KIND_DECK*0.25),c.deckY]);
+  out.push([c.cx+c.islandX,c.cz+c.islandZ,-(c.islandHalf*2+KIND_ISLAND*0.25),c.islandH]);
   return out;
 }
-
 // ---------- shader snippets (GLSL and WGSL are generated from the numbers above) ----------
 
 const f = (v: number): string => (Number.isInteger(v) ? `${v}.0` : String(v));
