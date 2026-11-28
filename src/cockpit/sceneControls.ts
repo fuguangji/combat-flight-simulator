@@ -118,7 +118,6 @@ export class CockpitSceneControls {
     ];
 
     const cols = 4;
-    const rows = Math.ceil(controls.length / cols);
     const buttonW = 0.385;
     const buttonH = 0.105;
     const gapX = 0.025;
