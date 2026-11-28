@@ -130,8 +130,8 @@ export class AircraftView {
 
     const anchors: Record<string, { ids: string[]; position: [number, number, number] }> = {
       dashboard: { ids: ['instrument-panel', 'component-cockpit-panel-body', 'component-instrument-panel'], position: [-0.115, -0.15, 0] },
-      left: { ids: ['left-console', 'component-cockpit-console-left', 'cockpit-console-left'], position: [0, 0.125, 0] },
-      right: { ids: ['right-console', 'component-cockpit-console-right', 'cockpit-console-right'], position: [0, 0.125, 0] },
+      left: { ids: ['left-console', 'component-cockpit-console-left', 'cockpit-console-left'], position: [0, 0.08, 0] },
+      right: { ids: ['right-console', 'component-cockpit-console-right', 'cockpit-console-right'], position: [0, 0.08, 0] },
     };
     for (const group of this.cockpitControlGroups) {
       const key = String(group.userData.cockpitAnchor ?? 'dashboard');
