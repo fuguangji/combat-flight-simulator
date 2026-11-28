@@ -27,9 +27,18 @@ float tNoise(vec2 p) {
 }
 float terrainBase(vec2 p) {
   float r = 1.0 - abs(tNoise(p * 0.00014) * 2.0 - 1.0);
-  return (tNoise(p * 0.000055) - 0.5) * 900.0 + (tNoise(p * 0.00022) - 0.5) * 420.0 + r * r * r * 420.0;
+  let broad = (tNoise(p * 0.000055) - 0.5) * 900.0;
+  let medium = (tNoise(p * 0.00022) - 0.5) * 420.0;
+  let ridges = r * r * r * 420.0;
+  let valleyNoise = abs(tNoise(p * 0.000085 + vec2(17.1, -9.4)) * 2.0 - 1.0);
+  let valleys = -pow(valleyNoise, 5.0) * 115.0;
+  return broad + medium + ridges + valleys;
 }
-float terrainFine(vec2 p) { return (tNoise(p * 0.0011) - 0.5) * 90.0; }
+float terrainFine(vec2 p) {
+  return (tNoise(p * 0.0011) - 0.5) * 90.0
+    + (tNoise(p * 0.0038 + vec2(43.2, -21.7)) - 0.5) * 28.0
+    + (tNoise(p * 0.012 + vec2(8.6, 61.4)) - 0.5) * 8.0;
+}
 float terrainMoisture(vec2 p) {
   return tNoise(p * 0.00007 + vec2(31.7, 11.3)) * 0.7 + tNoise(p * 0.00031 + vec2(5.1, 73.9)) * 0.3;
 }
@@ -117,9 +126,18 @@ fn tNoise(p: vec2<f32>) -> f32 {
 }
 fn terrainBase(p: vec2<f32>) -> f32 {
   let r = 1.0 - abs(tNoise(p * 0.00014) * 2.0 - 1.0);
-  return (tNoise(p * 0.000055) - 0.5) * 900.0 + (tNoise(p * 0.00022) - 0.5) * 420.0 + r * r * r * 420.0;
+  let broad = (tNoise(p * 0.000055) - 0.5) * 900.0;
+  let medium = (tNoise(p * 0.00022) - 0.5) * 420.0;
+  let ridges = r * r * r * 420.0;
+  let valleyNoise = abs(tNoise(p * 0.000085 + vec2<f32>(17.1, -9.4)) * 2.0 - 1.0);
+  let valleys = -pow(valleyNoise, 5.0) * 115.0;
+  return broad + medium + ridges + valleys;
 }
-fn terrainFine(p: vec2<f32>) -> f32 { return (tNoise(p * 0.0011) - 0.5) * 90.0; }
+fn terrainFine(p: vec2<f32>) -> f32 {
+  return (tNoise(p * 0.0011) - 0.5) * 90.0
+    + (tNoise(p * 0.0038 + vec2<f32>(43.2, -21.7)) - 0.5) * 28.0
+    + (tNoise(p * 0.012 + vec2<f32>(8.6, 61.4)) - 0.5) * 8.0;
+}
 fn terrainMoisture(p: vec2<f32>) -> f32 {
   return tNoise(p * 0.00007 + vec2<f32>(31.7, 11.3)) * 0.7 + tNoise(p * 0.00031 + vec2<f32>(5.1, 73.9)) * 0.3;
 }
