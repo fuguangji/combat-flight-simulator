@@ -28,10 +28,15 @@ export class CockpitSceneControls {
       { label: 'WAYPOINT', action: () => click('#nav-next') },
       { label: 'AIRFIELD', action: () => click('#nav-site') },
       { label: 'APPROACH', action: () => click('#landing-guide-toggle'), toggle: true },
-      { label: 'MFD FLIGHT', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'FLIGHT' } })) },
-      { label: 'MFD SYSTEM', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'SYSTEM' } })) },
-      { label: 'MFD SENSOR', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'SENSOR' } })) },
+
     ]));
+    const mfdPages = this.createSwitchBank([
+      { label: 'MFD-FLT', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'FLIGHT' } })) },
+      { label: 'MFD-SYS', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'SYSTEM' } })) },
+      { label: 'MFD-SNS', action: () => window.dispatchEvent(new CustomEvent('cfs:mfd-page', { detail: { page: 'SENSOR' } })) },
+    ]);
+    mfdPages.userData.cockpitAnchor = 'left';
+    this.groups.push(mfdPages);
     this.aircraftView.setCockpitControls(this.groups);
     this.host.addEventListener('pointerdown', this.onPointerDown, true);
     window.addEventListener('cfs:touch-mode', this.onTouchMode);
