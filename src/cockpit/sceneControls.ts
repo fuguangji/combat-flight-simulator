@@ -31,6 +31,8 @@ export class CockpitSceneControls {
     ]));
     this.aircraftView.setCockpitControls(this.groups);
     this.host.addEventListener('pointerdown', this.onPointerDown, true);
+    window.addEventListener('cfs:touch-mode', this.onTouchMode);
+    this.onTouchMode();
     this.style.dataset.cfs3dControls = 'true';
     this.style.textContent = `
       body.touch #cockpit-shell { display:none !important; }
@@ -143,6 +145,11 @@ export class CockpitSceneControls {
     window.dispatchEvent(new KeyboardEvent('keyup', { code }));
   }
 
+  private onTouchMode = (): void => {
+    const desktopCockpitSwitchesVisible = !document.body.classList.contains('touch');
+    this.groups.forEach((group) => { group.visible = desktopCockpitSwitchesVisible; });
+  };
+
   private onPointerDown = (event: PointerEvent): void => {
     if (document.body.dataset.mode !== 'flying' || event.pointerType === 'touch') return;
     const control = this.aircraftView.pickCockpitControl(event.clientX, event.clientY) as Control | null;
@@ -158,6 +165,7 @@ export class CockpitSceneControls {
 
   dispose(): void {
     this.host.removeEventListener('pointerdown', this.onPointerDown, true);
+    window.removeEventListener('cfs:touch-mode', this.onTouchMode);
     this.style.remove();
     this.groups.forEach((group) => {
       group.traverse((object) => {
