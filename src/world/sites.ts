@@ -13,14 +13,14 @@ export interface Runway {
 export interface Carrier {
   id: string; name: string; cx: number; cz: number; halfLen: number; halfWid: number;
   deckY: number; islandX: number; islandZ: number; islandHalf: number; islandH: number;
-  faction: Faction; threat: SiteThreat;
+  faction: Faction; threat: SiteThreat; strikeCapable: boolean;
 }
 export interface SiteMarker {
   id: string; name: string; kind: 'airport' | 'carrier'; x: number; z: number;
-  faction: Faction; threat: SiteThreat;
+  faction: Faction; threat: SiteThreat; strikeCapable: boolean;
 }
 export const WORLD_SITE_SEED = 0x51a7c3;
-const RUNWAY_HALF_LEN = 950;
+const RUNWAY_HALF_LEN = 1200;
 const RUNWAY_HALF_WID = 34;
 const CARRIER_HALF_LEN = 190;
 const CARRIER_HALF_WID = 42;
@@ -42,9 +42,9 @@ const distance = (a: {x:number;z:number}, b: {x:number;z:number}): number => Mat
 function runwaySiteIsSuitable(x: number, z: number): boolean {
   let lo = Infinity, hi = -Infinity;
   // Sample the whole runway and apron corridor. A candidate must be dry and locally level.
-  for (let along = -900; along <= 900; along += 300) {
+  for (let along = -1200; along <= 1200; along += 300) {
     for (let across = -180; across <= 180; across += 90) {
-      const t = sampleTerrain(x + across, z + along, WORLD_SITE_SEED);
+      const t = sampleTerrain(x + across, z + along);
       if (t.biome === 'water' || t.height <= SEA_LEVEL + 28 || t.height > 650) return false;
       lo = Math.min(lo, t.height); hi = Math.max(hi, t.height);
     }
@@ -54,7 +54,8 @@ function runwaySiteIsSuitable(x: number, z: number): boolean {
 function carrierSiteIsSuitable(x: number, z: number): boolean {
   for (let dx = -850; dx <= 850; dx += 425) {
     for (let dz = -1250; dz <= 1250; dz += 625) {
-      if (sampleTerrain(x + dx, z + dz, WORLD_SITE_SEED).biome !== 'water') return false;
+      const sample = sampleTerrain(x + dx, z + dz);
+      if (sample.biome !== 'water' || sample.height >= SEA_LEVEL) return false;
     }
   }
   return true;
@@ -72,7 +73,7 @@ function chooseSites(): { runways: Runway[]; carriers: Carrier[] } {
     if (carriers.some(c=>distance(p,{x:c.cx,z:c.cz})<MIN_SITE_SPACING)) continue;
     const index=runways.length;
     runways.push({
-      id:`airfield-${index+1}`, name:['朝霧機場 ASAGIRI','雲嶺機場 UNREI','長風機場 CHOFU'][index],
+      id:index===0?'alpha':index===1?'bravo':`airfield-${index+1}`, name:['朝霧機場 ASAGIRI','雲嶺機場 UNREI','長風機場 CHOFU'][index],
       cx:Math.round(p.x/50)*50, cz:Math.round(p.z/50)*50,
       halfLen:RUNWAY_HALF_LEN, halfWid:RUNWAY_HALF_WID, faction:index===1?'hostile':'friendly',
     });
@@ -85,11 +86,11 @@ function chooseSites(): { runways: Runway[]; carriers: Carrier[] } {
     const index=carriers.length;
     const faction=index===1||index===3?'hostile':'friendly';
     carriers.push({
-      id:`carrier-${index+1}`, name:['海燕號 PETREL','玄鯨號 ORCA','蒼鷺號 HERON','夜潮號 NIGHTTIDE'][index],
+      id:index===0?'carrier':`carrier-${index+1}`, name:['海燕號 PETREL','玄鯨號 ORCA','蒼鷺號 HERON','夜潮號 NIGHTTIDE'][index],
       cx:Math.round(p.x/50)*50, cz:Math.round(p.z/50)*50,
       halfLen:CARRIER_HALF_LEN, halfWid:CARRIER_HALF_WID, deckY:24,
       islandX:50, islandZ:-58, islandHalf:8, islandH:48,
-      faction, threat:faction==='hostile' && index===3?'elevated':'none',
+      faction, threat:faction==='hostile' && index===3?'elevated':'none', strikeCapable:faction==='hostile' && index===3,
     });
   }
   if (runways.length < 2 || carriers.length < 2) throw new Error(`World site generation failed: ${runways.length} airfields, ${carriers.length} carriers`);
@@ -104,8 +105,8 @@ export const LANDING = {
   maxSink: 5, maxRollDeg: 10, minPitchDeg: -3, maxPitchDeg: 18, maxSpeed: 95, maxHeadingDeg: 25,
 } as const;
 export const SITE_MARKERS: readonly SiteMarker[] = [
-  ...RUNWAYS.map((r): SiteMarker => ({id:r.id,name:r.name,kind:'airport',x:r.cx,z:r.cz,faction:r.faction,threat:'none'})),
-  ...CARRIERS.map((c): SiteMarker => ({id:c.id,name:c.name,kind:'carrier',x:c.cx,z:c.cz,faction:c.faction,threat:c.threat})),
+  ...RUNWAYS.map((r): SiteMarker => ({id:r.id,name:r.name,kind:'airport',x:r.cx,z:r.cz,faction:r.faction,threat:'none',strikeCapable:false})),
+  ...CARRIERS.map((c): SiteMarker => ({id:c.id,name:c.name,kind:'carrier',x:c.cx,z:c.cz,faction:c.faction,threat:c.threat,strikeCapable:c.strikeCapable})),
 ];
 export function inAirportZone(x:number,z:number,margin=0):boolean {
   return RUNWAYS.some(r=>Math.abs(x-r.cx)<=460+margin && Math.abs(z-r.cz)<=r.halfLen+520+margin);

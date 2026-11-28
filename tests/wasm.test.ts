@@ -25,6 +25,8 @@ interface Exports {
   sim_step(dt: number): void;
   sim_snapshot(): number;
   sim_snapshot_len(): number;
+  sim_sites_alloc(floats: number): number;
+  sim_sites_commit(runways: number, carriers: number): number;
   sim_scene_alloc(floats: number): number;
   sim_scene_commit(count: number): number;
 }
@@ -48,6 +50,21 @@ describe.skipIf(!existsSync(wasmPath))('physics WASM module', () => {
     expect(w.sim_snapshot_len()).toBe(STATE_LEN);
     expect(w.sim_init(0)).toBe(1);
     expect(w.sim_init(999)).toBe(0);
+  });
+
+
+  it('accepts generated runway and carrier geometry through the site ABI', async () => {
+    const w = await load();
+    const values = new Float64Array([
+      1200, 2400, 36, 900,
+      -9000, 8000, 190, 42, 24, 50, -58, 8, 48,
+    ]);
+    const ptr = w.sim_sites_alloc(values.length);
+    new Float64Array(w.memory.buffer, ptr, values.length).set(values);
+    expect(w.sim_sites_commit(1, 1)).toBe(1);
+    const invalid = w.sim_sites_alloc(2);
+    new Float64Array(w.memory.buffer, invalid, 2).set([0, 0]);
+    expect(w.sim_sites_commit(1, 1)).toBe(0);
   });
 
   it('advances simulated time by exactly dt per step', async () => {

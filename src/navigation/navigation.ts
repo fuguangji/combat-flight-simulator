@@ -123,6 +123,13 @@ export class NavigationDisplay {
   }
   private selectSite(site: SiteMarker, enableApproach: boolean): void {
     this.siteIndex = SITE_MARKERS.findIndex((item) => item.id === site.id);
+    const siteButton = this.root.querySelector<HTMLButtonElement>('#nav-site');
+    if (siteButton) {
+      const side = site.faction === 'friendly' ? '友軍' : '敵軍';
+      const threat = site.strikeCapable ? ' · 具打擊能力' : site.threat === 'elevated' ? ' · 高威脅' : '';
+      siteButton.textContent = `${side} · ${site.name}${threat}`;
+      siteButton.title = `${site.kind === 'carrier' ? '航艦' : '機場'} · ${side}${threat}`;
+    }
     if (enableApproach && this.latestState) {
       const state = this.latestState;
       const approach = createLandingApproach(site, [state.x, state.y, state.z], state.heading);
@@ -226,7 +233,7 @@ export class NavigationDisplay {
     for(const site of SITE_MARKERS){
       const p=toMap(site.x,site.z);
       if(p.x<-8||p.x>w+8||p.y<-8||p.y>h+8)continue;
-      ctx.fillStyle='#f4f7f2';ctx.strokeStyle='#0b1511';ctx.lineWidth=1.5;
+      ctx.fillStyle=site.faction==='friendly'?'#7dff9a':'#ff7777';ctx.strokeStyle='#0b1511';ctx.lineWidth=1.5;
       if(site.kind==='airport'){ctx.save();ctx.translate(p.x,p.y);ctx.fillRect(-1.5,-7,3,14);ctx.fillRect(-5,-1.5,10,3);ctx.restore();}
       else{ctx.beginPath();ctx.moveTo(p.x,p.y-6);ctx.lineTo(p.x+5,p.y);ctx.lineTo(p.x,p.y+6);ctx.lineTo(p.x-5,p.y);ctx.closePath();ctx.fill();ctx.stroke();}
     }
