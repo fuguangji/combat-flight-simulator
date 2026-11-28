@@ -4,6 +4,7 @@ import viperSample from '../aircraft/visuals/viper-t21.json';
 import { AircraftModelController } from '../aircraft/builder/aircraftAnimation';
 import {
   createModularAircraft,
+  createAircraftPart,
   normalizeAircraftVisualConfig,
   type AircraftVisualConfig,
   type AircraftVisualInput,
