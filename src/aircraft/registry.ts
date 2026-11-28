@@ -1,6 +1,7 @@
 import type { Vec3 } from '../core/math';
 import { degToRad } from '../core/math';
 import physicsKeys from './physics-keys.json';
+import type { AircraftVisualInput } from './builder/modularAircraft';
 
 /**
  * Aircraft are data: one JSON file per type in `./data/`. Adding an aircraft means dropping a new
@@ -21,6 +22,8 @@ export interface AircraftJson {
   description: string;
   cockpit: { eyeOffset: [number, number, number]; fovDeg: number };
   physics: Record<string, number | number[][]>;
+  /** Optional canonical visual model; editor and runtime consume this same field. */
+  visual?: AircraftVisualInput;
   role?: string;
   features?: string;
   specs?: { emptyMassKg: number; mtowKg: number; payloadKg: number; fuelKg: number; cruiseBurnKgMin: number; boostBurnKgMin: number; maxMach: number; gPositive: number; gNegative: number; thrustKN: number; ceilingM: number; rangeKm: number };
@@ -46,6 +49,7 @@ export class AircraftDefinition {
   readonly description: string;
   readonly role: string;
   readonly features: string;
+  readonly visual?: AircraftVisualInput;
   readonly specs: NonNullable<AircraftJson['specs']>;
   /** Pilot eye position in the body frame (x forward, y up, z right), metres from the CG. */
   readonly eyeOffset: Vec3;
@@ -71,6 +75,7 @@ export class AircraftDefinition {
     this.description = json.description;
     this.role = json.role ?? '多用途航空器';
     this.features = json.features ?? '';
+    this.visual = json.visual;
     this.specs = json.specs ?? { emptyMassKg: p.empty_mass as number, mtowKg: p.empty_mass as number, payloadKg: 0, fuelKg: p.fuel_capacity as number, cruiseBurnKgMin: 0, boostBurnKgMin: 0, maxMach: p.max_mach as number, gPositive: p.g_limit_pos as number, gNegative: p.g_limit_neg as number, thrustKN: (p.max_thrust_sl as number) / 1000, ceilingM: 0, rangeKm: 0 };
     this.eyeOffset = [...json.cockpit.eyeOffset];
     this.fovY = degToRad(json.cockpit.fovDeg);
