@@ -611,6 +611,7 @@ async function boot(): Promise<void> {
     if (Number.isFinite(cfg?.headingGain)) autopilot.headingGain = Math.max(0.05, Math.min(0.5, cfg.headingGain!));
   });
   const publishAutopilotState = (): void => {
+    document.body.dataset.autopilot = String(autopilot.enabled);
     window.dispatchEvent(new CustomEvent('cfs:autopilot-state', { detail: { enabled: autopilot.enabled } }));
   };
   const disengageAutopilot = (): void => {
