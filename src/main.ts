@@ -534,6 +534,7 @@ async function boot(): Promise<void> {
   window.addEventListener('cfs:look-recenter', () => { tutorial.note('recenter'); look.recenter(); });
   const touchMode = isTouchDevice();
   document.body.classList.toggle('touch', touchMode);
+  window.dispatchEvent(new Event('cfs:touch-mode'));
   const touch = new TouchControls(document.body);
   touch.show(true); // visibility is driven by body[data-mode] in CSS
   hud.compact = touchMode;
