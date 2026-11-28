@@ -18,7 +18,6 @@ export class CockpitMfd {
   private readonly rightContext: CanvasRenderingContext2D;
   private readonly leftTexture: THREE.CanvasTexture;
   private readonly rightTexture: THREE.CanvasTexture;
-  private readonly pageLabel: THREE.Mesh;
   private page: MfdPage = 'FLIGHT';
   private snapshot: AircraftSnapshot | null = null;
   private heading = 0;
@@ -62,14 +61,6 @@ export class CockpitMfd {
     this.addScreen('MFD-NAV', this.leftTexture, -0.255);
     this.addScreen('MFD-FLIGHT', this.rightTexture, 0.255);
 
-    const pageTexture = this.makeBezelLabel('MAP  ·  FLIGHT  ·  SYSTEM  ·  SENSOR');
-    const pageMaterial = new THREE.MeshBasicMaterial({ map: pageTexture, transparent: true, side: THREE.DoubleSide });
-    this.pageLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.43, 0.028), pageMaterial);
-    this.pageLabel.userData.cockpitMfd = true;
-    this.pageLabel.rotation.set(0, -Math.PI / 2, 0);
-    this.pageLabel.position.set(0.74, 0.36, 0);
-    this.group.add(this.pageLabel);
-
     this.drawLeft();
     this.drawRight(performance.now());
     window.addEventListener('cfs:flight-snapshot', this.onFlightSnapshot);
@@ -102,22 +93,6 @@ export class CockpitMfd {
     glass.position.x = -0.029;
     housing.add(glass);
     this.group.add(housing);
-  }
-
-  private makeBezelLabel(label: string): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 64;
-    const context = canvas.getContext('2d')!;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#a8cbb5';
-    context.font = 'bold 22px ui-monospace, monospace';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillText(label, canvas.width / 2, canvas.height / 2);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
   }
 
   private onFlightSnapshot = (event: Event): void => {
