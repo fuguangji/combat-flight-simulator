@@ -11,7 +11,7 @@ describe('procedural landing-site network', () => {
     expect(CARRIERS.length).toBeGreaterThanOrEqual(2);
     expect(SITE_MARKERS.some(s => s.faction === 'friendly')).toBe(true);
     expect(SITE_MARKERS.some(s => s.faction === 'hostile')).toBe(true);
-    expect(CARRIERS.some(c => c.faction === 'hostile' && c.threat === 'elevated')).toBe(true);
+    expect(CARRIERS.some(c => c.faction === 'hostile' && c.strikeCapable)).toBe(true);
   });
   it('places all runways on contiguous dry and reasonably level land', () => {
     for (const r of RUNWAYS) {
