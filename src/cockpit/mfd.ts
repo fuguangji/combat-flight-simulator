@@ -336,8 +336,8 @@ export class CockpitMfd {
       if (mesh.isMesh) {
         mesh.geometry.dispose();
         const material = mesh.material;
-        if (Array.isArray(material)) material.forEach((item) => { item.map?.dispose(); item.dispose(); });
-        else { material.map?.dispose(); material.dispose(); }
+        if (Array.isArray(material)) material.forEach((item) => { (item as THREE.MeshBasicMaterial).map?.dispose(); item.dispose(); });
+        else { (material as THREE.MeshBasicMaterial).map?.dispose(); material.dispose(); }
       }
     });
     this.group.removeFromParent();
