@@ -52,3 +52,6 @@
 @media(max-width:900px){.modeling-notice ul{grid-template-columns:1fr;gap:3px}}
 
 .boolean-tools{padding:0 12px 12px;border-bottom:1px solid var(--line)}.boolean-tools .section-label{display:block;margin:4px 0 8px}.boolean-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.boolean-actions button{padding:7px 3px;font-size:10px}.boolean-tools small{display:block;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.5}.quick-tools{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+.json-success{padding:10px;border:1px solid rgba(110,190,145,.55);border-radius:5px;background:rgba(110,190,145,.1);color:#a8e6bf!important;white-space:pre-wrap;overflow-wrap:anywhere}
+.json-actions button:disabled{opacity:.38;cursor:not-allowed;filter:grayscale(1)}
