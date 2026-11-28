@@ -19,9 +19,9 @@
 
 ## 2. V2 檔案結構
 
-每架飛機的完整資料以 `src/aircraft/data/<aircraft-key>.json` 為唯一正式入口。視覺模型放在同一檔案的 `visual` 欄位，與 `physics`、`cockpit`、`specs` 並列。編輯器會直接載入註冊表內的機型，匯出完整 JSON 時保留原有飛行與座艙資料，並更新 `visual`。請將匯出結果完整取代對應的機型 JSON 檔。
+每架飛機的飛行與座艙資料仍以 `src/aircraft/data/<aircraft-key>.json` 為準；外觀模型則獨立儲存為 `src/aircraft/visuals/<aircraft-key>.json`。編輯器只負責外觀建模，匯出時一律輸出純視覺 V2 JSON，不會包入或改動 `physics`、`cockpit`、`specs`。請將匯出結果存入 `src/aircraft/visuals/`，不要用它取代 `data` 中的完整機型資料。
 
-舊版 `src/aircraft/visuals/<aircraft-key>.json` 仍作為相容來源；遊戲優先讀取機型資料內的 `visual`，再回退到舊檔，最後才使用程序化模型。尚未內嵌視覺模型的機型，編輯器與遊戲都會使用相同的程序化生成器。
+遊戲載入外觀時，若機型資料內有 `visual` 會優先使用；否則讀取 `src/aircraft/visuals/<aircraft-key>.json`，最後才使用程序化預設模型。新建或修改外觀時，請以獨立的 `visuals` 檔案作為編輯器匯出目標。
 
 基本結構：
 
@@ -51,7 +51,7 @@
 - `version` 必須是 `2`。
 - `components` 是階層節點；必須只有一個根節點，建議 ID 固定為 `aircraft-root`。
 - `parts` 是實際幾何；每個 part 必須指定存在的 `componentId`。
-- `aircraftKey` 必須與 `src/aircraft/data/*.json` 的 `key` 一致。
+- `aircraftKey` 必須與對應 `src/aircraft/data/*.json` 的 `key` 一致；它只用來識別這份外觀屬於哪架飛機。
 - ID 必須唯一且穩定。不要依賴清單順序來識別零件。
 
 ## 3. Component 與 Part 的分工
@@ -176,7 +176,7 @@
 
 ## 9. 匯入、匯出與生成規則
 
-- 編輯器匯出必須是 V2。
+- 編輯器匯出一律是純視覺 V2 JSON，不得包含外層完整機型的 `id`、`key`、`physics`、`cockpit` 或 `specs`。
 - 將檔案命名為 `<aircraft-key>.json`，並放進 `src/aircraft/visuals/`。
 - 專屬視覺 JSON 會優先於程序生成模型。
 - `scripts/generate-visual-assets.mjs` 會在開發、建置與 Pages CI 前，為尚無專屬檔案的機型生成 V2 預設模型；已存在的手工模型不會被覆蓋。
