@@ -69,6 +69,9 @@ export class TouchControls {
       </div>
       <div class="t-throttle" aria-label="油門"><div class="t-ab"></div><div class="t-fill"></div><div class="t-handle"></div></div>
       <div class="t-top">
+        <button type="button" class="t-btn small" data-act="autopilot" aria-label="自動駕駛">AP</button>
+        <button type="button" class="t-btn small" data-act="gear" aria-label="起落架">G</button>
+        <button type="button" class="t-btn small" data-act="canopy" aria-label="座艙罩">C</button>
         <button type="button" class="t-btn small" data-act="recenter" aria-label="視角回正">⌖</button>
         <button type="button" class="t-btn small" data-act="pause" aria-label="暫停">❚❚</button>
       </div>`;
@@ -120,6 +123,9 @@ export class TouchControls {
 
     this.root.querySelector('[data-act="pause"]')?.addEventListener('click', () => this.onPause?.());
     this.root.querySelector('[data-act="recenter"]')?.addEventListener('click', () => this.onRecenter?.());
+    this.root.querySelector('[data-act="autopilot"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:autopilot-toggle')));
+    this.root.querySelector('[data-act="gear"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:gear-toggle')));
+    this.root.querySelector('[data-act="canopy"]')?.addEventListener('click', () => window.dispatchEvent(new Event('cfs:canopy-toggle')));
   }
 
   /** Ease the control axes toward the held buttons; call once per frame while flying. */
