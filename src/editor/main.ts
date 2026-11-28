@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import viperSample from '../aircraft/visuals/viper-t21.json';
-import { aircraftRegistry, type AircraftJson } from '../aircraft/registry';
+import { aircraftRegistry, AircraftDefinition, type AircraftJson } from '../aircraft/registry';
 import { createProceduralAircraftConfig } from '../aircraft/builder/modularAircraft';
 const aircraftDataModules = import.meta.glob('../aircraft/data/*.json', { eager: true, import: 'default' }) as Record<string, AircraftJson>;
 const aircraftDataByKey = new Map(Object.values(aircraftDataModules).map((aircraft) => [aircraft.key, aircraft]));
@@ -640,7 +640,7 @@ const loadConfig = (input: AircraftVisualInput, message: string): void => {
 
 
 const validateAircraftRecord = (aircraft: AircraftJson): AircraftJson => {
-  if (!Number.isInteger(aircraft.id) || !aircraft.key || !aircraft.physics || !aircraft.cockpit) throw new Error('完整機型 JSON 缺少 id、key、physics 或 cockpit');
+  AircraftDefinition.fromJson(aircraft, `editor import: ${aircraft.key || 'unknown'}`);
   const registered = aircraftRegistry.find(aircraft.key);
   if (!registered || registered.id !== aircraft.id) throw new Error(`機型 ${aircraft.key} 不存在於目前遊戲註冊表；請勿以未知 key 覆蓋正式資料`);
   return aircraft;
