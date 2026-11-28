@@ -480,7 +480,54 @@ async function boot(): Promise<void> {
   let visualGear = 0;
   let visualCanopy = 0;
   window.addEventListener('cfs:gear-toggle', () => { visualGear = visualGear < 0.5 ? 1 : 0; });
-  window.addEventListener('cfs:canopy-toggle', () => { visualCanopy = visualCanopy < 0.5 ? 1 : 0; });
+
+  // In-flight canopy opening is deliberately a hold-to-confirm action. This is a
+  // simulator safety affordance; it does not expose a real-aircraft procedure.
+  const canopyConfirm = document.createElement('aside');
+  canopyConfirm.id = 'canopy-confirm';
+  canopyConfirm.innerHTML = '<div class="canopy-confirm-card"><b>CANOPY INTERLOCK</b><span>空中開啟座艙罩？長按確認 1 秒</span><button type="button">按住以確認開啟</button><small>放開即取消</small></div>';
+  const canopyStyle = document.createElement('style');
+  canopyStyle.textContent = `#canopy-confirm{position:fixed;inset:0;z-index:80;display:none;place-items:center;background:rgba(0,0,0,.72);font:12px ui-monospace,monospace;color:#e8f5ec}#canopy-confirm.on{display:grid}#canopy-confirm .canopy-confirm-card{display:flex;flex-direction:column;gap:12px;width:min(340px,calc(100vw - 36px));padding:20px;border:1px solid #d6a45c;background:linear-gradient(160deg,#1b2922,#050a08);box-shadow:0 14px 50px #000;text-align:center}#canopy-confirm b{color:#ffc56b;letter-spacing:.14em}#canopy-confirm button{min-height:54px;border:1px solid #ffc56b;background:linear-gradient(#584326,#21170b);color:#fff0d2;font:700 12px ui-monospace,monospace;touch-action:none}#canopy-confirm button.holding{background:#8a5d24;box-shadow:inset 0 0 0 3px #ffc56b}#canopy-confirm small{color:#9ba99f}`;
+  document.head.append(canopyStyle);
+  document.body.append(canopyConfirm);
+  const canopyConfirmButton = canopyConfirm.querySelector('button')!;
+  let canopyHoldTimer = 0;
+  const closeCanopyConfirm = (): void => {
+    window.clearTimeout(canopyHoldTimer);
+    canopyHoldTimer = 0;
+    canopyConfirm.classList.remove('on');
+    canopyConfirmButton.classList.remove('holding');
+  };
+  const applyCanopy = (open: boolean): void => {
+    visualCanopy = open ? 1 : 0;
+    document.body.dataset.canopyOpen = String(open);
+    window.dispatchEvent(new CustomEvent('cfs:canopy-state', { detail: { open } }));
+  };
+  const requestCanopyToggle = (): void => {
+    if (visualCanopy > 0.5) { applyCanopy(false); return; }
+    const airborne = Boolean(lastSnap && !lastSnap.landed && lastSnap.altitude > 10);
+    if (!airborne) { applyCanopy(true); return; }
+    canopyConfirm.classList.add('on');
+  };
+  canopyConfirmButton.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    canopyConfirmButton.setPointerCapture(event.pointerId);
+    canopyConfirmButton.classList.add('holding');
+    canopyHoldTimer = window.setTimeout(() => {
+      applyCanopy(true);
+      closeCanopyConfirm();
+    }, 1000);
+  });
+  const cancelCanopyHold = (): void => {
+    if (canopyHoldTimer) closeCanopyConfirm();
+  };
+  canopyConfirmButton.addEventListener('pointerup', cancelCanopyHold);
+  canopyConfirmButton.addEventListener('pointercancel', cancelCanopyHold);
+  canopyConfirmButton.addEventListener('lostpointercapture', cancelCanopyHold);
+  canopyConfirm.addEventListener('pointerdown', (event) => {
+    if (event.target === canopyConfirm) closeCanopyConfirm();
+  });
+  window.addEventListener('cfs:canopy-toggle', requestCanopyToggle);
   new PanelToggles();
   new NavigationDisplay();
   new CockpitSceneControls(stage, aircraftView);
@@ -780,18 +827,24 @@ async function boot(): Promise<void> {
   $<HTMLButtonElement>('btn-restart-crash').addEventListener('click', startFlight);
   $<HTMLButtonElement>('btn-home-crash').addEventListener('click', goHome);
 
-  // ---- free look: mouse turns the head only; the flight controls stay on the keyboard / nose ----
-  let dragging = false;
+  // ---- free look: desktop uses Pointer Lock; touch keeps its dedicated gesture ----
   const canLook = (): boolean => mode === 'flying' || mode === 'crashed';
-  stage.addEventListener('mousedown', (e) => {
-    if (e.button === 1) {
-      e.preventDefault();
-      look.recenter();
-    } else if (e.button === 0 && canLook()) {
-      dragging = true;
+  stage.addEventListener('click', (event) => {
+    if (touchMode || !canLook() || document.pointerLockElement === stage) return;
+    if (event.target instanceof HTMLElement && event.target.closest('button, input, summary, a')) return;
+    try {
+      const request = stage.requestPointerLock();
+      if (request && typeof request.catch === 'function') request.catch(() => {
+        statusEl.textContent = '此瀏覽器未授予滑鼠鎖定；請使用支援 Pointer Lock 的桌面瀏覽器。';
+      });
+    } catch {
+      statusEl.textContent = '此瀏覽器不支援滑鼠鎖定。';
     }
   });
-  // touch: one finger on the scene turns the head; lifting it looks ahead again
+  document.addEventListener('pointerlockchange', () => {
+    document.body.dataset.pointerLocked = String(document.pointerLockElement === stage);
+  });
+  // touch: one finger on the scene turns the head; desktop never falls back to drag.
   let lookFinger = -1;
   let lookX = 0;
   let lookY = 0;
@@ -814,13 +867,15 @@ async function boot(): Promise<void> {
   };
   stage.addEventListener('pointerup', endLook);
   stage.addEventListener('pointercancel', endLook);
-  window.addEventListener('mouseup', () => {
-    dragging = false; // releasing the drag preserves the pilot's head direction
-  });
   window.addEventListener('mousemove', (e) => {
-    if (!canLook()) return;
-    if (dragging) look.move(e.movementX, e.movementY);
+    if (!canLook() || document.pointerLockElement !== stage) return;
+    look.move(e.movementX, e.movementY);
   });
+  stage.addEventListener('wheel', (event) => {
+    if (touchMode || !canLook()) return;
+    event.preventDefault();
+    rig.adjustZoom(event.deltaY);
+  }, { passive: false });
   input.onRecenter = () => {
     tutorial.note('recenter');
     if (canLook()) look.recenter();
