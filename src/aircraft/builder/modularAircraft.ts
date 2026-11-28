@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export type Vec3Tuple = [number, number, number];
-export type AircraftPartShape = 'box' | 'cylinder' | 'hollowCylinder' | 'cone' | 'sphere' | 'torus' | 'polygon';
+export type AircraftPartShape = 'box' | 'roundedBox' | 'cylinder' | 'hollowCylinder' | 'cone' | 'sphere' | 'capsule' | 'torus' | 'polygon' | 'lathe' | 'mesh';
 export type AircraftAnimationChannel = 'pitch' | 'roll' | 'yaw' | 'gear' | 'flaps' | 'canopy';
 export type AircraftAnimationAxis = 'x' | 'y' | 'z';
 export interface AircraftComponentAnimation {
@@ -45,6 +45,12 @@ export interface AircraftVisualPart {
   tubularSegments?: number;
   vertices?: [number, number][];
   plane?: 'xy' | 'xz';
+  bevelSize?: number;
+  bevelThickness?: number;
+  bevelSegments?: number;
+  profile?: [number, number][];
+  meshVertices?: number[];
+  meshIndices?: number[];
 }
 export interface AircraftVisualConfig {
   version: 2;
@@ -88,7 +94,7 @@ export function validateAircraftVisualConfig(config: AircraftVisualConfig): void
       throw new Error(`組件「${component.name}」的動畫角度必須是有限數值`);
     }
   }
-  const shapes: readonly string[] = ['box', 'cylinder', 'hollowCylinder', 'cone', 'sphere', 'torus', 'polygon'];
+  const shapes: readonly string[] = ['box', 'roundedBox', 'cylinder', 'hollowCylinder', 'cone', 'sphere', 'capsule', 'torus', 'polygon', 'lathe', 'mesh'];
   for (const part of config.parts) {
     if (!part.id?.trim() || ids.has(part.id)) throw new Error(`細節 ID 無效或重複：${part.id}`);
     ids.add(part.id);
@@ -111,6 +117,10 @@ export function validateAircraftVisualConfig(config: AircraftVisualConfig): void
     if (part.plane !== undefined && part.plane !== 'xy' && part.plane !== 'xz') throw new Error(`細節「${part.id}」的擠出平面無效`);
     if (part.vertices !== undefined && (!Array.isArray(part.vertices) || part.vertices.length < 3 || !part.vertices.every((point) => Array.isArray(point) && point.length === 2 && point.every((value) => Number.isFinite(value))))) throw new Error(`細節「${part.id}」的頂點必須至少包含三組有限 [x, y] 座標`);
     if (part.shape === 'polygon' && (!part.vertices || part.vertices.length < 3)) throw new Error(`Polygon part「${part.id}」至少需要三個頂點`);
+    if (part.shape === 'lathe' && (!part.profile || part.profile.length < 2 || !part.profile.every(([r, y]) => Number.isFinite(r) && r >= 0 && Number.isFinite(y)))) throw new Error(`Lathe part「${part.id}」需要至少兩組 [半徑, Y] 截面點`);
+    if (part.shape === 'mesh' && (!part.meshVertices || part.meshVertices.length < 9 || part.meshVertices.length % 3 !== 0 || !part.meshVertices.every(Number.isFinite) || !part.meshIndices || part.meshIndices.length < 3 || part.meshIndices.length % 3 !== 0 || !part.meshIndices.every((index) => Number.isInteger(index) && index >= 0 && index < part.meshVertices!.length / 3))) throw new Error(`Mesh part「${part.id}」的頂點或索引資料無效`);
+    for (const key of ['bevelSize', 'bevelThickness'] as const) if (part[key] !== undefined && (!Number.isFinite(part[key]) || part[key]! < 0)) throw new Error(`細節「${part.id}」的 ${key} 不可為負數`);
+    if (part.bevelSegments !== undefined && (!Number.isInteger(part.bevelSegments) || part.bevelSegments < 1 || part.bevelSegments > 12)) throw new Error(`細節「${part.id}」的倒角分段數必須是 1 到 12`);
     if (part.shape === 'hollowCylinder' && part.innerRadius !== undefined && part.radius !== undefined && part.innerRadius >= part.radius) throw new Error(`空心圓筒「${part.id}」的內半徑必須小於外半徑`);
   }
 }
@@ -145,6 +155,16 @@ function createGeometry(part: AircraftVisualPart): THREE.BufferGeometry {
   switch (part.shape) {
     case 'box':
       return new THREE.BoxGeometry(part.width ?? 1, part.height ?? 1, part.depth ?? 1);
+    case 'roundedBox': {
+      const shape = new THREE.Shape();
+      const w = (part.width ?? 1) / 2, h = (part.height ?? 1) / 2;
+      const r = THREE.MathUtils.clamp(part.bevelSize ?? 0.08, 0.001, Math.min(w, h) * 0.95);
+      shape.moveTo(-w + r, -h); shape.lineTo(w - r, -h); shape.quadraticCurveTo(w, -h, w, -h + r);
+      shape.lineTo(w, h - r); shape.quadraticCurveTo(w, h, w - r, h); shape.lineTo(-w + r, h);
+      shape.quadraticCurveTo(-w, h, -w, h - r); shape.lineTo(-w, -h + r); shape.quadraticCurveTo(-w, -h, -w + r, -h);
+      const g = new THREE.ExtrudeGeometry(shape, { depth: part.depth ?? 1, bevelEnabled: true, bevelThickness: part.bevelThickness ?? r * 0.35, bevelSize: r * 0.35, bevelSegments: part.bevelSegments ?? 3, steps: 1, curveSegments: 4 });
+      g.translate(0, 0, -(part.depth ?? 1) / 2); g.computeVertexNormals(); return g;
+    }
     case 'cylinder':
       return new THREE.CylinderGeometry(part.radiusTop ?? part.radius ?? 0.3, part.radiusBottom ?? part.radius ?? 0.3, part.height ?? 1, part.radialSegments ?? 16);
     case 'hollowCylinder': {
@@ -168,6 +188,16 @@ function createGeometry(part: AircraftVisualPart): THREE.BufferGeometry {
       return new THREE.ConeGeometry(part.radius ?? 0.3, part.height ?? 1, part.radialSegments ?? 16);
     case 'sphere':
       return new THREE.SphereGeometry(part.radius ?? 0.5, part.radialSegments ?? 16, Math.max(8, Math.floor((part.radialSegments ?? 16) * 0.65)));
+    case 'capsule':
+      return new THREE.CapsuleGeometry(part.radius ?? 0.25, part.height ?? 1, Math.max(2, Math.floor((part.radialSegments ?? 16) / 2)), part.radialSegments ?? 16);
+    case 'lathe':
+      return new THREE.LatheGeometry((part.profile ?? [[0.25, -0.5], [0.4, 0], [0.2, 0.5]]).map(([r, y]) => new THREE.Vector2(r, y)), part.radialSegments ?? 24);
+    case 'mesh': {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(part.meshVertices ?? [], 3));
+      geometry.setIndex(part.meshIndices ?? []); geometry.computeVertexNormals(); geometry.computeBoundingSphere();
+      return geometry;
+    }
     case 'torus':
       return new THREE.TorusGeometry(part.radius ?? 0.5, part.tube ?? 0.05, 8, part.tubularSegments ?? 24);
     case 'polygon': {
@@ -178,7 +208,10 @@ function createGeometry(part: AircraftVisualPart): THREE.BufferGeometry {
       shape.closePath();
       const geometry = new THREE.ExtrudeGeometry(shape, {
         depth: part.depth ?? 0.12,
-        bevelEnabled: false,
+        bevelEnabled: (part.bevelSize ?? 0) > 0,
+        bevelThickness: part.bevelThickness ?? (part.bevelSize ?? 0) * 0.5,
+        bevelSize: part.bevelSize ?? 0,
+        bevelSegments: part.bevelSegments ?? 1,
         steps: 1,
         curveSegments: 1,
       });
