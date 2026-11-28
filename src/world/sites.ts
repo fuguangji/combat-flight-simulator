@@ -72,7 +72,7 @@ function chooseSites(): { runways: Runway[]; carriers: Carrier[] } {
     if (carriers.some(c=>distance(p,{x:c.cx,z:c.cz})<MIN_SITE_SPACING)) continue;
     const index=runways.length;
     runways.push({
-      id:`airfield-${index+1}`, name:['朝霧機場 ASAGIRI','雲嶺機場 UNREI','長風機場 CHOFU'][index],
+      id:index===0?'alpha':index===1?'bravo':`airfield-${index+1}`, name:['朝霧機場 ASAGIRI','雲嶺機場 UNREI','長風機場 CHOFU'][index],
       cx:Math.round(p.x/50)*50, cz:Math.round(p.z/50)*50,
       halfLen:RUNWAY_HALF_LEN, halfWid:RUNWAY_HALF_WID, faction:index===1?'hostile':'friendly',
     });
@@ -85,7 +85,7 @@ function chooseSites(): { runways: Runway[]; carriers: Carrier[] } {
     const index=carriers.length;
     const faction=index===1||index===3?'hostile':'friendly';
     carriers.push({
-      id:`carrier-${index+1}`, name:['海燕號 PETREL','玄鯨號 ORCA','蒼鷺號 HERON','夜潮號 NIGHTTIDE'][index],
+      id:index===0?'carrier':`carrier-${index+1}`, name:['海燕號 PETREL','玄鯨號 ORCA','蒼鷺號 HERON','夜潮號 NIGHTTIDE'][index],
       cx:Math.round(p.x/50)*50, cz:Math.round(p.z/50)*50,
       halfLen:CARRIER_HALF_LEN, halfWid:CARRIER_HALF_WID, deckY:24,
       islandX:50, islandZ:-58, islandHalf:8, islandH:48,
