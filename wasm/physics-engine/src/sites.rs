@@ -34,7 +34,7 @@ pub fn install(runways:&[f64], carriers:&[f64]) -> bool {
     if runways.len()%4!=0 || carriers.len()%9!=0 || runways.len()/4>16 || carriers.len()/9>16 { return false; }
     let rs:Vec<Runway>=runways.chunks_exact(4).map(|v|Runway{cx:v[0],cz:v[1],half_wid:v[2],half_len:v[3]}).collect();
     let cs:Vec<Carrier>=carriers.chunks_exact(9).map(|v|Carrier{cx:v[0],cz:v[1],half_len:v[2],half_wid:v[3],deck_y:v[4],island_x:v[5],island_z:v[6],island_half:v[7],island_h:v[8]}).collect();
-    if rs.iter().chain(core::iter::empty()).any(|r| !(r.cx.is_finite()&&r.cz.is_finite()&&r.half_wid>0.0&&r.half_len>0.0)) { return false; }
+    if rs.iter().any(|r| !(r.cx.is_finite()&&r.cz.is_finite()&&r.half_wid>0.0&&r.half_len>0.0)) { return false; }
     if cs.iter().any(|c| !(c.cx.is_finite()&&c.cz.is_finite()&&c.half_len>0.0&&c.half_wid>0.0&&c.deck_y>0.0)) { return false; }
     unsafe { RUNTIME_RUNWAYS=rs; RUNTIME_CARRIERS=cs; }
     true
