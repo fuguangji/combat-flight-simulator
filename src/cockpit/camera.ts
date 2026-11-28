@@ -91,12 +91,19 @@ export class CameraRig {
   private headY = 0;
   private stall = 0;
   private lastNow = Number.NaN;
+  /** User-controlled optical zoom; visual only, never changes simulation state. */
+  private zoom = 1;
+
+  adjustZoom(wheelDelta: number): void {
+    this.zoom = clamp(this.zoom * Math.exp(-wheelDelta * 0.0012), 0.62, 1.65);
+  }
 
   reset(): void {
     this.fov = Number.NaN;
     this.headY = 0;
     this.stall = 0;
     this.lastNow = Number.NaN;
+    this.zoom = 1;
     this.last = null;
   }
 
@@ -106,7 +113,7 @@ export class CameraRig {
     const t = nowMs / 1000;
 
     // --- Field of view widens with speed (100 m/s -> 350 m/s adds up to 9 %).
-    const fovTarget = def.fovY * (1 + 0.09 * smoothstep(100, 350, s.airspeed));
+    const fovTarget = def.fovY * (1 + 0.09 * smoothstep(100, 350, s.airspeed)) / this.zoom;
     this.fov = Number.isNaN(this.fov) ? fovTarget : this.fov + (fovTarget - this.fov) * damp(3, dt);
 
     // --- Head sag under G (body-frame Y). 1 g is neutral.
