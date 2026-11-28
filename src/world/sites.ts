@@ -20,7 +20,7 @@ export interface SiteMarker {
   faction: Faction; threat: SiteThreat; strikeCapable: boolean;
 }
 export const WORLD_SITE_SEED = 0x51a7c3;
-const RUNWAY_HALF_LEN = 950;
+const RUNWAY_HALF_LEN = 1200;
 const RUNWAY_HALF_WID = 34;
 const CARRIER_HALF_LEN = 190;
 const CARRIER_HALF_WID = 42;
@@ -42,7 +42,7 @@ const distance = (a: {x:number;z:number}, b: {x:number;z:number}): number => Mat
 function runwaySiteIsSuitable(x: number, z: number): boolean {
   let lo = Infinity, hi = -Infinity;
   // Sample the whole runway and apron corridor. A candidate must be dry and locally level.
-  for (let along = -900; along <= 900; along += 300) {
+  for (let along = -1200; along <= 1200; along += 300) {
     for (let across = -180; across <= 180; across += 90) {
       const t = sampleTerrain(x + across, z + along);
       if (t.biome === 'water' || t.height <= SEA_LEVEL + 28 || t.height > 650) return false;
