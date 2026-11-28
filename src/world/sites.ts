@@ -44,7 +44,7 @@ function runwaySiteIsSuitable(x: number, z: number): boolean {
   // Sample the whole runway and apron corridor. A candidate must be dry and locally level.
   for (let along = -900; along <= 900; along += 300) {
     for (let across = -180; across <= 180; across += 90) {
-      const t = sampleTerrain(x + across, z + along, WORLD_SITE_SEED);
+      const t = sampleTerrain(x + across, z + along);
       if (t.biome === 'water' || t.height <= SEA_LEVEL + 28 || t.height > 650) return false;
       lo = Math.min(lo, t.height); hi = Math.max(hi, t.height);
     }
@@ -54,7 +54,7 @@ function runwaySiteIsSuitable(x: number, z: number): boolean {
 function carrierSiteIsSuitable(x: number, z: number): boolean {
   for (let dx = -850; dx <= 850; dx += 425) {
     for (let dz = -1250; dz <= 1250; dz += 625) {
-      if (sampleTerrain(x + dx, z + dz, WORLD_SITE_SEED).biome !== 'water') return false;
+      if (sampleTerrain(x + dx, z + dz).biome !== 'water') return false;
     }
   }
   return true;
