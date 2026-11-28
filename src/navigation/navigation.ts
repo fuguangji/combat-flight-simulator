@@ -126,7 +126,7 @@ export class NavigationDisplay {
     const siteButton = this.root.querySelector<HTMLButtonElement>('#nav-site');
     if (siteButton) {
       const side = site.faction === 'friendly' ? '友軍' : '敵軍';
-      const threat = site.threat === 'elevated' ? ' · 高威脅' : '';
+      const threat = site.strikeCapable ? ' · 具打擊能力' : site.threat === 'elevated' ? ' · 高威脅' : '';
       siteButton.textContent = `${side} · ${site.name}${threat}`;
       siteButton.title = `${site.kind === 'carrier' ? '航艦' : '機場'} · ${side}${threat}`;
     }
