@@ -154,10 +154,10 @@ const renderModel = (): void => {
     });
     modelRoot.add(model);
     previewController = new AircraftModelController(model, config.components);
-    $('empty-hint').toggleAttribute('hidden', config.parts.length > 0);
+    
   } catch (error) {
     notify(error instanceof Error ? error.message : '模型建立失敗');
-    $('empty-hint').removeAttribute('hidden');
+    
   }
   setValue('model-name-input', config.name || 'Untitled Aircraft');
   setValue('model-key-input', config.aircraftKey ?? '');
