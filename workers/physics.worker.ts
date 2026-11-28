@@ -3,6 +3,7 @@
 import { MAX_STEPS_PER_TICK, MAX_TICK_SECONDS, PHYSICS_DT, WASM_API_VERSION } from '../src/core/config';
 import { FixedStepper } from '../src/core/fixedStep';
 import { buildTestScene } from '../src/rendering/scene';
+import { CARRIERS, RUNWAYS } from '../src/world/sites';
 import type { PhysicsInitialState, WorkerIn, WorkerOut } from '../src/physics/PhysicsClient';
 
 interface PhysicsExports {
@@ -20,6 +21,8 @@ interface PhysicsExports {
   sim_step(dt: number): void;
   sim_snapshot(): number;
   sim_snapshot_len(): number;
+  sim_sites_alloc(floats: number): number;
+  sim_sites_commit(runwayCount: number, carrierCount: number): number;
   sim_scene_alloc(floats: number): number;
   sim_scene_commit(count: number): number;
 }
@@ -39,6 +42,13 @@ const stepper = new FixedStepper(PHYSICS_DT, MAX_STEPS_PER_TICK, MAX_TICK_SECOND
  * visible building is solid. Must run before the first snapshot.
  */
 function uploadScene(exports: PhysicsExports): void {
+  const siteValues = [
+    ...RUNWAYS.flatMap((r) => [r.cx, r.cz, r.halfWid, r.halfLen]),
+    ...CARRIERS.flatMap((c) => [c.cx, c.cz, c.halfLen, c.halfWid, c.deckY, c.islandX, c.islandZ, c.islandHalf, c.islandH]),
+  ];
+  const sitePtr = exports.sim_sites_alloc(siteValues.length);
+  new Float64Array(exports.memory.buffer, sitePtr, siteValues.length).set(siteValues);
+  if (exports.sim_sites_commit(RUNWAYS.length, CARRIERS.length) !== 1) throw new Error('Physics engine rejected generated landing sites');
   const scene = buildTestScene();
   const floats = scene.collisionCount * 4; // render-only parts (the carrier) stay out of the box world
   const ptr = exports.sim_scene_alloc(floats);
