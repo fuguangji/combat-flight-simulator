@@ -79,8 +79,7 @@ export class CockpitMfd {
   private addScreen(name: string, texture: THREE.CanvasTexture, lateral: number): void {
     const housing = new THREE.Group();
     housing.name = name;
-    // The procedural cockpit already contains a physical display housing at
-    // x=-0.105, y=0.08, z=±0.39 relative to the instrument-panel body.
+    // Align with the existing cockpit-display-left/right components in aircraft body coordinates.
     housing.position.set(0.775, 0.56, lateral);
 
     const glass = new THREE.Mesh(
