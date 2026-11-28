@@ -124,7 +124,7 @@ export class CockpitSceneControls {
     const gapX = 0.025;
     const gapY = 0.025;
     const startX = -((cols * buttonW + (cols - 1) * gapX) / 2) + buttonW / 2;
-    const startY = 0.245;
+    const startY = -0.23;
 
     controls.forEach((control, index) => {
       const col = index % cols;
