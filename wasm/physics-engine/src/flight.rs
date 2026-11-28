@@ -429,15 +429,18 @@ impl Sim {
             let local = Vec3::new(pt[0], pt[1], pt[2]);
             let pa = a.position + a.orientation.rotate(local);
             let pb = b.position + b.orientation.rotate(local);
-            // Carrier: solid hull below the deck, flat deck on top, island beside it.
-            if sites::on_deck(pb.x, pb.z, 0.0) && pb.y <= sites::CARRIER_DECK_Y + r {
-                let top = sites::CARRIER_DECK_Y + r;
-                if pa.y > top {
-                    consider(((pa.y - top) / (pa.y - pb.y)).clamp(0.0, 1.0), TOUCH_DECK);
-                } else {
-                    consider(0.0, CRASH_BUILDING); // flew into the hull
+            // Every generated carrier shares the same deck/hull collision path.
+            if let Some(deck_y) = sites::deck_height(pb.x, pb.z, 0.0) {
+                let top = deck_y + r;
+                if pb.y <= top {
+                    if pa.y > top {
+                        consider(((pa.y - top) / (pa.y - pb.y)).clamp(0.0, 1.0), TOUCH_DECK);
+                    } else {
+                        consider(0.0, CRASH_BUILDING);
+                    }
                 }
-            } else if pb.y <= r {
+            }
+            if pb.y <= r && !sites::on_deck(pb.x, pb.z, 0.0) {
                 let t = if pa.y <= r { 0.0 } else { ((pa.y - r) / (pa.y - pb.y)).clamp(0.0, 1.0) };
                 let kind = if sites::on_runway(pb.x, pb.z, 0.0) { TOUCH_RUNWAY } else { CRASH_GROUND };
                 consider(t, kind);
