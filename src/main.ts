@@ -602,6 +602,7 @@ async function boot(): Promise<void> {
   let transitioning = false;
   const stats = { maxKt: 0, maxG: 0, minAlt: Infinity, preCrashKt: 0 };
   const autopilot = { enabled: false, targetAltitude: 3000, targetHeading: 0, throttle: 0.55, altitudeGain: 0.00018, pitchDamping: 0.62, rollGain: 0.9, headingGain: 0.22, yawDamping: 0.14 };
+  document.body.dataset.autopilot = 'false';
   window.addEventListener('cfs:autopilot-config', (event) => {
     const cfg = (event as CustomEvent<{ targetAltitude?: number; targetHeading?: number; throttle?: number; altitudeGain?: number; headingGain?: number }>).detail;
     if (Number.isFinite(cfg?.targetAltitude)) autopilot.targetAltitude = cfg.targetAltitude!;
