@@ -269,7 +269,7 @@ export class NavigationDisplay {
     // The map needs ~200 terrain samples: redraw at 10 Hz and only when the picture would change.
     const now = performance.now();
     const key = `${Math.round(s.x / 40)}|${Math.round(s.z / 40)}|${Math.round(s.heading * 40)}|${this.waypoint.x}|${this.waypoint.z}|${this.waypointName}|${this.approach?.site.id ?? ''}`;
-    if (document.body.dataset.showMap !== '0' && now - this.lastMapMs >= 100 && key !== this.lastMapKey) {
+    if (now - this.lastMapMs >= 100 && key !== this.lastMapKey) {
       this.lastMapMs = now;
       this.lastMapKey = key;
       this.drawMap(s.x,s.z,s.heading);
