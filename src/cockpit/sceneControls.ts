@@ -55,7 +55,13 @@ export class CockpitSceneControls {
       body:not(.touch)[data-mode="crashed"] #contact-status,
       body:not(.touch)[data-mode="crashed"] #landing-guidance-ui,
       body:not(.touch)[data-mode="crashed"] #panel-toggles,
-      body:not(.touch)[data-mode="crashed"] #cockpit-dashboard { display:none !important; }
+      body:not(.touch)[data-mode="crashed"] #cockpit-dashboard,
+      body:not(.touch)[data-mode="paused"] #cockpit-shell,
+      body:not(.touch)[data-mode="paused"] #navigation-display,
+      body:not(.touch)[data-mode="paused"] #contact-status,
+      body:not(.touch)[data-mode="paused"] #landing-guidance-ui,
+      body:not(.touch)[data-mode="paused"] #panel-toggles,
+      body:not(.touch)[data-mode="paused"] #cockpit-dashboard { display:none !important; }
       body[data-mode="flying"] #cockpit-shell .cockpit-switches button,
       body[data-mode="flying"] #cockpit-shell .cockpit-config summary,
       body[data-mode="flying"] #cockpit-dashboard button,
