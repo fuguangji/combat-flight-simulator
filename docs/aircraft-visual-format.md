@@ -129,6 +129,8 @@
 3. 選取所屬 Component，再新增 Box、Cylinder、Cone、Sphere、Torus 或 Polygon 等 Part。
 4. 以局部座標調整 Part 的位置、旋轉和尺寸；需要成組移動或動畫的零件應先建立 Component。
 5. 使用格線和座標軸檢查方向；拖曳模型從正面、側面、上方和內部檢查。
+5. 幾何可用圓角方體、膠囊體與旋轉曲面補足曲面細節；旋轉曲面的截面點按 `[半徑, Y]` 排列。
+6. 布林運算：先選取第一個物件，按聯集／差集／交集，再選取同一組件中的第二個物件。運算會以結果網格取代兩個來源物件，建議先複製備份。
 6. 建立座艙時可使用「建立座艙內飾」作為起點，再調整座椅、儀表、HUD、操縱桿、側台與座艙罩。
 7. 使用動畫測試台逐一檢查已綁定的動畫通道。
 8. 按「複製 JSON」，將匯出內容存為 `src/aircraft/visuals/<aircraft-key>.json`。
@@ -136,7 +138,12 @@
 
 ## 7. 可用幾何與材質欄位
 
-支援形狀：`box`、`cylinder`、`hollowCylinder`、`cone`、`sphere`、`torus`、`polygon`。
+支援形狀：`box`、`roundedBox`、`cylinder`、`hollowCylinder`、`cone`、`sphere`、`capsule`、`torus`、`polygon`、`lathe`、`mesh`。
+
+- `roundedBox`：圓角方體，使用 `bevelSize`、`bevelThickness`、`bevelSegments` 控制邊角。
+- `capsule`：膠囊體，使用 `radius`、`height`、`radialSegments`。
+- `lathe`：旋轉曲面，`profile` 是 `[半徑, Y]` 點列，可用於製作軸對稱外殼與接頭。
+- `mesh`：布林運算輸出的三角網格，使用 `meshVertices` 與 `meshIndices` 保存，匯出 JSON 後仍可載入。
 
 常用欄位：
 
