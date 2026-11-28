@@ -49,15 +49,18 @@ export function terrainNoise(x: number, z: number): number {
 /** Low-frequency height (broad hills, medium relief, ridge lines). */
 export function terrainBase(x: number, z: number): number {
   const r = 1 - Math.abs(terrainNoise(x * 0.00014, z * 0.00014) * 2 - 1);
-  return (
-    (terrainNoise(x * 0.000055, z * 0.000055) - 0.5) * 900 +
-    (terrainNoise(x * 0.00022, z * 0.00022) - 0.5) * 420 +
-    r * r * r * 420
-  );
+  const broad = (terrainNoise(x * 0.000055, z * 0.000055) - 0.5) * 900;
+  const medium = (terrainNoise(x * 0.00022, z * 0.00022) - 0.5) * 420;
+  const ridges = r * r * r * 420;
+  const valleys = Math.pow(Math.abs(terrainNoise(x * 0.000085 + 17.1, z * 0.000085 - 9.4) * 2 - 1), 5) * -115;
+  return broad + medium + ridges + valleys;
 }
 
 export function terrainFine(x: number, z: number): number {
-  return (terrainNoise(x * 0.0011, z * 0.0011) - 0.5) * 90;
+  const fine = (terrainNoise(x * 0.0011, z * 0.0011) - 0.5) * 90;
+  const detail = (terrainNoise(x * 0.0038 + 43.2, z * 0.0038 - 21.7) - 0.5) * 28;
+  const micro = (terrainNoise(x * 0.012 + 8.6, z * 0.012 + 61.4) - 0.5) * 8;
+  return fine + detail + micro;
 }
 
 export function terrainMoisture(x: number, z: number): number {
