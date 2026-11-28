@@ -34,6 +34,14 @@ function addFallbackAnimations(config: AircraftVisualConfig): AircraftVisualConf
 
 /** Every registered aircraft resolves to a validated editor V2 configuration. */
 export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | null {
+  const definition = aircraftRegistry.find(key);
+  if (definition?.visual) {
+    const config = normalizeAircraftVisualConfig(definition.visual);
+    if (config.aircraftKey && config.aircraftKey !== key) throw new Error(`模型識別鍵不符：資料屬於「${key}」，JSON 卻標示「${config.aircraftKey}」`);
+    config.aircraftKey = key;
+    config.name = config.name ?? definition.displayName;
+    return config;
+  }
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
   if (path) {
     const config = normalizeAircraftVisualConfig(visualModules[path] as AircraftVisualInput);
@@ -53,13 +61,17 @@ export function loadAircraftVisualConfig(key: string): AircraftVisualConfig | nu
 
 /** Shared model factory: hangar, encyclopedia and flight view use the same V2 parser. */
 export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadResult {
+  const definition = aircraftRegistry.find(key);
   const path = Object.keys(visualModules).find((candidate) => candidate.endsWith(`/${key}.json`));
-  const raw: AircraftVisualInput = path
+  const embedded = definition?.visual;
+  const raw: AircraftVisualInput = embedded ?? (path
     ? visualModules[path] as AircraftVisualInput
-    : createProceduralAircraftConfig(id);
-  const config = path
+    : createProceduralAircraftConfig(id));
+  const config = embedded
     ? normalizeAircraftVisualConfig(raw)
-    : loadAircraftVisualConfig(key) ?? addFallbackAnimations(normalizeAircraftVisualConfig(raw));
+    : path
+      ? normalizeAircraftVisualConfig(raw)
+      : loadAircraftVisualConfig(key) ?? addFallbackAnimations(normalizeAircraftVisualConfig(raw));
   config.name = config.name ?? `Aircraft-${id}`;
   config.aircraftKey = config.aircraftKey ?? key;
   if (config.aircraftKey !== key) {
@@ -71,5 +83,5 @@ export function loadAircraftVisual(key: string, id: number): AircraftVisualLoadR
   model.userData.visualSource = path ?? 'procedural-v2-generated';
   model.userData.visualSchemaVersion = config.version;
   model.userData.visualMigratedFromLegacy = raw.version === 1;
-  return { config, model, source: path ?? 'procedural-v2-generated', migratedFromLegacy: raw.version === 1 };
+  return { config, model, source: embedded ? 'embedded-aircraft-data' : path ?? 'procedural-v2-generated', migratedFromLegacy: raw.version === 1 };
 }
