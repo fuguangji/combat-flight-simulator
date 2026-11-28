@@ -479,7 +479,11 @@ async function boot(): Promise<void> {
   aircraftView.setVisible(false);
   let visualGear = 0;
   let visualCanopy = 0;
-  window.addEventListener('cfs:gear-toggle', () => { visualGear = visualGear < 0.5 ? 1 : 0; });
+  window.addEventListener('cfs:gear-toggle', () => {
+    visualGear = visualGear < 0.5 ? 1 : 0;
+    document.body.dataset.gearDown = String(visualGear > 0.5);
+    window.dispatchEvent(new CustomEvent('cfs:gear-state', { detail: { down: visualGear > 0.5 } }));
+  });
 
   // In-flight canopy opening is deliberately a hold-to-confirm action. This is a
   // simulator safety affordance; it does not expose a real-aircraft procedure.
