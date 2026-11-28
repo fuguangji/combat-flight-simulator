@@ -54,7 +54,8 @@ function runwaySiteIsSuitable(x: number, z: number): boolean {
 function carrierSiteIsSuitable(x: number, z: number): boolean {
   for (let dx = -850; dx <= 850; dx += 425) {
     for (let dz = -1250; dz <= 1250; dz += 625) {
-      if (sampleTerrain(x + dx, z + dz).biome !== 'water') return false;
+      const sample = sampleTerrain(x + dx, z + dz);
+      if (sample.biome !== 'water' || sample.height >= SEA_LEVEL) return false;
     }
   }
   return true;
