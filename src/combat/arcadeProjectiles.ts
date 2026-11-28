@@ -38,6 +38,7 @@ export class ArcadeProjectileSystem {
   private selectedTargetId: string | null = null;
   private focused = false;
   private landingSiteId: string | null = null;
+  private landingSiteIndex = 0;
   private initialized = false;
   private lastMode = '';
   private lastSimTime = 0;
@@ -86,7 +87,7 @@ export class ArcadeProjectileSystem {
       <div class="combat-head"><span>TRAINING RADAR</span><span id="radar-readout">20 KM</span></div>
       <canvas id="combat-radar" width="180" height="180" aria-label="訓練雷達"></canvas>
       <div class="combat-section"><small>CONTACTS / 接觸點</small><div class="contact-actions" id="contact-actions"></div></div>
-      <div class="combat-section"><small>LANDING BEACONS / 降落信標</small><div class="landing-beacon-actions" id="landing-beacon-actions"></div></div>
+      <div class="combat-section"><small>LANDING BEACONS / 降落信標</small><div class="landing-beacon-actions" id="landing-beacon-actions"><button type="button" data-landing-prev aria-label="上一個降落信標">上一則</button><span id="landing-beacon-current">選取設施</span><button type="button" data-landing-next aria-label="下一個降落信標">下一則</button></div></div>
       <div class="combat-focus"><span id="contact-name">等待雷達接觸</span><button type="button" id="focus-state" data-focus>鎖定</button></div>
       <div class="combat-hint" id="radar-hint">目標：選取並鎖定後發射；機場／航艦：點選信標開始進場導引。</div>
     `;
@@ -108,22 +109,14 @@ export class ArcadeProjectileSystem {
     this.status.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLButtonElement)) return;
-      if (target.dataset.landingId) {
-        this.selectLandingSite(target.dataset.landingId);
-        return;
-      }
+      if (target.hasAttribute('data-landing-prev')) { this.cycleLandingSite(-1); return; }
+      if (target.hasAttribute('data-landing-next')) { this.cycleLandingSite(1); return; }
+      if (target.dataset.landingId) { this.selectLandingSite(target.dataset.landingId); return; }
       if (target.dataset.contactId) this.selectContact(target.dataset.contactId);
       if (target.hasAttribute('data-focus')) this.toggleFocus();
     });
-    const landingActions = this.status.querySelector<HTMLElement>('#landing-beacon-actions');
-    landingActions?.replaceChildren(...SITE_MARKERS.map((site) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.landingId = site.id;
-      button.textContent = site.kind === 'carrier' ? 'PETREL 航艦' : site.id.toUpperCase();
-      button.title = `${site.name} · 點選以啟用降落導引`;
-      return button;
-    }));
+    this.landingSiteIndex = Math.max(0, SITE_MARKERS.findIndex((site) => site.id === this.landingSiteId));
+    this.renderLandingBeacon();
     window.addEventListener('cfs:flight-start', () => this.resetFlight());
     window.addEventListener('cfs:flight-snapshot', (event) => this.onSnapshot(event as FlightSnapshotEvent));
     window.addEventListener('cfs:landing-approach-state', (event) => {
@@ -326,10 +319,29 @@ export class ArcadeProjectileSystem {
     this.aiActive = false;
   }
 
+  private cycleLandingSite(direction: -1 | 1): void {
+    this.landingSiteIndex = (this.landingSiteIndex + direction + SITE_MARKERS.length) % SITE_MARKERS.length;
+    this.selectLandingSite(SITE_MARKERS[this.landingSiteIndex].id);
+  }
+
+  private renderLandingBeacon(): void {
+    const site = SITE_MARKERS[this.landingSiteIndex];
+    const current = this.status.querySelector<HTMLElement>('#landing-beacon-current');
+    if (!current || !site) return;
+    const distance = this.latestSnapshot
+      ? Math.hypot(site.x - this.latestSnapshot.position[0], site.z - this.latestSnapshot.position[2]) / 1000
+      : null;
+    current.textContent = `${site.name} · ${site.kind === 'carrier' ? '航艦' : '機場'} · ${distance === null ? '—' : distance.toFixed(1) + ' km'}`;
+    current.title = site.name;
+    current.dataset.active = String(site.id === this.landingSiteId && this.landingApproachActive);
+  }
+
   private selectLandingSite(id: string): void {
     const site = SITE_MARKERS.find((item) => item.id === id);
     if (!site) return;
     this.landingSiteId = site.id;
+    this.landingSiteIndex = SITE_MARKERS.findIndex((item) => item.id === id);
+    this.renderLandingBeacon();
     window.dispatchEvent(new CustomEvent('cfs:landing-site-select', { detail: { id: site.id } }));
     this.setMessage(`${site.name} · 降落導引啟用`, 1800);
     this.lastUiSignature = '';
@@ -539,10 +551,7 @@ export class ArcadeProjectileSystem {
         button.disabled = !item?.alive;
       });
     }
-    const landingActions = this.status.querySelector<HTMLElement>('#landing-beacon-actions');
-    landingActions?.querySelectorAll<HTMLButtonElement>('[data-landing-id]').forEach((button) => {
-      button.dataset.active = String(button.dataset.landingId === this.landingSiteId && this.landingApproachActive);
-    });
+    this.renderLandingBeacon();
     this.drawRadar();
   }
 
