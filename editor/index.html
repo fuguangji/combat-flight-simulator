@@ -26,13 +26,21 @@
         <div class="component-tools"><button id="add-component" class="primary wide">＋ 新增組件</button><button id="add-cockpit" class="wide">＋ 建立座艙內飾</button><div class="section-label">新增某部件細節</div></div>
         <div class="quick-tools">
           <button data-add-detail="box"><b>＋</b> 方塊</button>
+          <button data-add-detail="roundedBox"><b>＋</b> 圓角方體</button>
           <button data-add-detail="cylinder"><b>＋</b> 圓柱</button>
           <button data-add-detail="cone"><b>＋</b> 圓錐</button>
           <button data-add-detail="sphere"><b>＋</b> 球體</button>
+          <button data-add-detail="capsule"><b>＋</b> 膠囊體</button>
           <button data-add-detail="torus"><b>＋</b> 圓環</button>
           <button data-add-detail="polygon"><b>＋</b> 擠出輪廓</button>
           <button data-add-detail="hollowCylinder"><b>＋</b> 空心圓筒</button>
+          <button data-add-detail="lathe"><b>＋</b> 旋轉曲面</button>
           <button id="add-cannon" title="新增機炮組件"><b>＋</b> 機炮組件</button>
+        </div>
+        <div class="boolean-tools">
+          <span class="section-label">布林建模（先選第一個物件，再選第二個）</span>
+          <div class="boolean-actions"><button data-boolean="union">聯集</button><button data-boolean="subtract">差集</button><button data-boolean="intersect">交集</button><button id="boolean-cancel" class="subtle">取消</button></div>
+          <small id="boolean-status">選取同一組件中的兩個物件進行布林運算。</small>
         </div>
         <div class="tool-row">
           <button id="duplicate">複製零件</button>
@@ -106,7 +114,7 @@
         <form id="inspector" class="inspector" hidden>
           <label>零件名稱<input id="part-name" type="text" autocomplete="off" /></label>
           <label>零件 ID<input id="part-id" type="text" autocomplete="off" /></label>
-          <label>幾何類型<select id="part-shape"><option value="box">方塊</option><option value="cylinder">圓柱</option><option value="hollowCylinder">空心圓筒</option><option value="cone">圓錐</option><option value="sphere">球體</option><option value="torus">圓環</option><option value="polygon">擠出輪廓</option></select></label>
+          <label>幾何類型<select id="part-shape"><option value="box">方塊</option><option value="roundedBox">圓角方體</option><option value="cylinder">圓柱</option><option value="hollowCylinder">空心圓筒</option><option value="cone">圓錐</option><option value="sphere">球體</option><option value="capsule">膠囊體</option><option value="torus">圓環</option><option value="polygon">擠出輪廓</option><option value="lathe">旋轉曲面</option><option value="mesh">布林網格</option></select></label>
           
           <div class="section-label">位置與角度</div>
           <div class="field-grid">
@@ -118,8 +126,9 @@
           <div class="field-grid">
             <label>寬度<input id="dim-width" type="number" min="0.01" step="0.1" /></label><label>高度<input id="dim-height" type="number" min="0.01" step="0.1" /></label><label>深度<input id="dim-depth" type="number" min="0.01" step="0.1" /></label>
             <label>半徑<input id="dim-radius" type="number" min="0.01" step="0.05" /></label><label>內半徑<input id="dim-inner-radius" type="number" min="0.01" step="0.05" /></label><label>頂端半徑<input id="dim-radius-top" type="number" min="0" step="0.05" /></label><label>底端半徑<input id="dim-radius-bottom" type="number" min="0" step="0.05" /></label>
-            <label>圓環管徑<input id="dim-tube" type="number" min="0.01" step="0.01" /></label><label>分段數<input id="dim-segments" type="number" min="3" max="96" step="1" /></label>
+            <label>圓環管徑<input id="dim-tube" type="number" min="0.01" step="0.01" /></label><label>倒角尺寸<input id="dim-bevel" type="number" min="0" step="0.01" /></label><label>倒角厚度<input id="dim-bevel-thickness" type="number" min="0" step="0.01" /></label><label>倒角分段<input id="dim-bevel-segments" type="number" min="1" max="12" step="1" /></label><label>分段數<input id="dim-segments" type="number" min="3" max="96" step="1" /></label>
           </div>
+          <label class="polygon-field">旋轉曲面截面（JSON：[半徑, Y]）<textarea id="part-profile" rows="4" spellcheck="false"></textarea></label>
           <label class="polygon-field">頂點座標（JSON 二維陣列）<textarea id="part-vertices" rows="5" spellcheck="false"></textarea></label>
           <div class="section-label">外觀材質</div>
           <div class="field-grid material-grid">
