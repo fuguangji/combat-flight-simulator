@@ -66,6 +66,8 @@ export class CockpitSceneControls {
       body[data-mode="flying"] #contact-status button,
       body[data-mode="flying"] #navigation-display button,
       body[data-mode="flying"] #touch,
+      body[data-mode="flying"] #tutorial-next,
+      body[data-mode="crashed"] #tutorial-next,
       body[data-mode="crashed"] #cockpit-shell .cockpit-switches button,
       body[data-mode="crashed"] #cockpit-shell .cockpit-config summary,
       body[data-mode="crashed"] #cockpit-dashboard button,
@@ -111,6 +113,9 @@ export class CockpitSceneControls {
       { label: 'NEXT CONTACT', action: () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab' })) },
       { label: 'FOCUS', action: () => click('#contact-status [data-focus]') },
       { label: 'SETTINGS', action: () => click('#cockpit-shell .cockpit-config summary') },
+      { label: 'THROTTLE UP', action: () => {}, hold: { down: 'KeyW', up: 'KeyW' } },
+      { label: 'THROTTLE DOWN', action: () => {}, hold: { down: 'KeyS', up: 'KeyS' } },
+      { label: 'TUTORIAL NEXT', action: () => click('#tutorial-next') },
       { label: 'PITCH UP', action: () => {}, hold: { down: 'ArrowDown', up: 'ArrowDown' } },
       { label: 'PITCH DOWN', action: () => {}, hold: { down: 'ArrowUp', up: 'ArrowUp' } },
       { label: 'ROLL LEFT', action: () => {}, hold: { down: 'ArrowLeft', up: 'ArrowLeft' } },
@@ -119,11 +124,11 @@ export class CockpitSceneControls {
 
     const cols = 4;
     const buttonW = 0.385;
-    const buttonH = 0.105;
+    const buttonH = 0.085;
     const gapX = 0.025;
-    const gapY = 0.025;
+    const gapY = 0.018;
     const startX = -((cols * buttonW + (cols - 1) * gapX) / 2) + buttonW / 2;
-    const startY = 0.015;
+    const startY = 0.035;
 
     controls.forEach((control, index) => {
       const col = index % cols;
@@ -136,8 +141,8 @@ export class CockpitSceneControls {
           new THREE.MeshStandardMaterial({ color: 0x33443a, metalness: 0.75, roughness: 0.32 }),
           new THREE.MeshStandardMaterial({ color: 0x526b5a, metalness: 0.62, roughness: 0.3 }),
           new THREE.MeshStandardMaterial({ color: 0x17241d, metalness: 0.7, roughness: 0.4 }),
-          new THREE.MeshStandardMaterial({ color: 0x17241d, metalness: 0.7, roughness: 0.4 }),
           new THREE.MeshStandardMaterial({ map: face, color: 0xffffff, metalness: 0.15, roughness: 0.48 }),
+          new THREE.MeshStandardMaterial({ color: 0x17241d, metalness: 0.7, roughness: 0.4 }),
         ],
       );
       mesh.position.set(
