@@ -119,16 +119,8 @@ export class AircraftView {
 
   private attachMfd(): void {
     if (!this.model) return;
-    const components = new Map<string, THREE.Object3D>();
-    this.model.traverse((object) => {
-      const id = object.userData.componentId;
-      if (typeof id === 'string') components.set(id, object);
-    });
-    const preferred = ['instrument-panel', 'component-cockpit-panel-body', 'component-instrument-panel'];
-    const exact = preferred.map((id) => components.get(id)).find((item) => item !== undefined);
-    const fuzzy = [...components.entries()].find(([id]) => preferred.some((candidate) => id.toLowerCase().includes(candidate.toLowerCase())));
-    const anchor = exact ?? fuzzy?.[1] ?? components.get('cockpit-interior') ?? this.model;
-    anchor.add(this.mfd.group);
+    // MFD planes are positioned in the shared aircraft body frame over the existing display housings.
+    this.model.add(this.mfd.group);
     this.syncMfdVisibility();
     this.model.updateMatrixWorld(true);
   }
