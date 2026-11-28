@@ -75,6 +75,9 @@ export class CockpitSceneControls {
       body[data-mode="crashed"] #navigation-display button,
       body[data-mode="crashed"] #touch { display:none !important; }
       #cfs-3d-cockpit-controls { touch-action:none; }
+      body[data-mode="flying"] #cockpit-dashboard,
+      body[data-mode="flying"] #contact-status,
+      body[data-mode="flying"] #navigation-display { pointer-events:none !important; }
     `;
     document.head.append(style);
     this.resize();
