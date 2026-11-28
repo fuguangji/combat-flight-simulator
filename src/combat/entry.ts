@@ -2,7 +2,7 @@ import { ArcadeProjectileSystem } from './arcadeProjectiles';
 
 const style = document.createElement('style');
 style.textContent = `
-  #projectile-effects { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+  #projectile-effects { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
   #cockpit-dashboard { display:block;
     position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%);
     z-index: 8; width: min(430px, calc(100vw - 28px)); box-sizing: border-box; padding: 9px 12px;
