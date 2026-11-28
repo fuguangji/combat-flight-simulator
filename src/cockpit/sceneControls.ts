@@ -178,7 +178,8 @@ export class CockpitSceneControls {
         mesh.geometry.dispose();
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         materials.forEach((material) => {
-          if (material.map) material.map.dispose();
+          const standard = material as THREE.MeshStandardMaterial;
+          if (standard.map) standard.map.dispose();
           material.dispose();
         });
       });
