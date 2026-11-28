@@ -1,5 +1,5 @@
 import { SEA_LEVEL, sampleTerrain } from '../terrain/procedural';
-import { airportBuildings, carrierParts, inAirportZone } from '../world/sites';
+import { CARRIERS, airportBuildings, carrierParts, inAirportZone } from '../world/sites';
 
 /**
  * Phase-1 test scene: an instanced field of boxes ("towers" and "massifs") over a procedural
@@ -50,7 +50,7 @@ export function buildTestScene(towers = 5400, massifs = 600, halfExtent = 40_000
   const rnd = mulberry32(1337);
   const count = towers + massifs;
   const airport = airportBuildings();
-  const carrier = carrierParts();
+  const carrier = CARRIERS.flatMap((item) => carrierParts(item));
   const instances = new Float32Array((count + airport.length + carrier.length) * 4);
   for (let i = 0; i < count; i++) {
     const big = i >= towers;
