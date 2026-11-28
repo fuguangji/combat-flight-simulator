@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, ADDITION, SUBTRACTION, INTERSECTION } from 'three-bvh-csg';
 import viperSample from '../aircraft/visuals/viper-t21.json';
+import { aircraftRegistry, type AircraftJson } from '../aircraft/registry';
+import { createProceduralAircraftConfig } from '../aircraft/builder/modularAircraft';
+const aircraftDataModules = import.meta.glob('../aircraft/data/*.json', { eager: true, import: 'default' }) as Record<string, AircraftJson>;
+const aircraftDataByKey = new Map(Object.values(aircraftDataModules).map((aircraft) => [aircraft.key, aircraft]));
 import { AircraftModelController } from '../aircraft/builder/aircraftAnimation';
 import {
   createModularAircraft,
@@ -36,6 +40,7 @@ const defaultConfig = (): AircraftVisualConfig => ({
   parts: [],
 });
 let config: AircraftVisualConfig = defaultConfig();
+let activeAircraft: AircraftJson | null = null;
 let previewController: AircraftModelController | null = null;
 let selectedId: string | null = null;
 let selectedComponentId = 'aircraft-root';
@@ -116,7 +121,8 @@ const updateHistoryButtons = (): void => {
 };
 const persist = (): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    const storageKey = `${STORAGE_KEY}:${activeAircraft?.key ?? 'scratch'}`;
+    localStorage.setItem(storageKey, JSON.stringify(config));
     $('autosave-status').textContent = '已自動暫存於此瀏覽器';
   } catch {
     $('autosave-status').textContent = '本機儲存不可用；請記得匯出 JSON';
@@ -630,14 +636,65 @@ const loadConfig = (input: AircraftVisualInput, message: string): void => {
   notify(message);
 };
 
+
+
+const validateAircraftRecord = (aircraft: AircraftJson): AircraftJson => {
+  if (!Number.isInteger(aircraft.id) || !aircraft.key || !aircraft.physics || !aircraft.cockpit) throw new Error('完整機型 JSON 缺少 id、key、physics 或 cockpit');
+  const registered = aircraftRegistry.find(aircraft.key);
+  if (!registered || registered.id !== aircraft.id) throw new Error(`機型 ${aircraft.key} 不存在於目前遊戲註冊表；請勿以未知 key 覆蓋正式資料`);
+  return aircraft;
+};
+
+const makeAircraftVisual = (aircraft: AircraftJson): AircraftVisualConfig => {
+  const visual = aircraft.visual
+    ? normalizeAircraftVisualConfig(aircraft.visual)
+    : normalizeAircraftVisualConfig(createProceduralAircraftConfig(aircraft.id));
+  visual.aircraftKey = aircraft.key;
+  visual.name = aircraft.displayName;
+  return visual;
+};
+const loadAircraftRecord = (aircraft: AircraftJson, message = ''): void => {
+  const stored = localStorage.getItem(`${STORAGE_KEY}:${aircraft.key}`);
+  const next = stored
+    ? normalizeAircraftVisualConfig(JSON.parse(stored) as AircraftVisualInput)
+    : makeAircraftVisual(aircraft);
+  next.aircraftKey = aircraft.key;
+  next.name = next.name || aircraft.displayName;
+  activeAircraft = clone(aircraft);
+  loadConfig(next, message || `已載入 ${aircraft.displayName}；使用與遊戲相同的機型資料`);
+  setValue('model-name-input', next.name);
+  setValue('model-key-input', aircraft.key);
+};
+
+
+const aircraftSelect = $('aircraft-select') as HTMLSelectElement;
+const populateAircraftSelector = (selectedKey?: string): void => {
+  aircraftSelect.replaceChildren();
+  for (const aircraft of aircraftRegistry.list()) {
+    const option = document.createElement('option');
+    option.value = aircraft.key;
+    option.textContent = `${aircraft.key} — ${aircraft.displayName}`;
+    aircraftSelect.append(option);
+  }
+  if (selectedKey && aircraftDataByKey.has(selectedKey)) aircraftSelect.value = selectedKey;
+};
+$('load-aircraft').addEventListener('click', () => {
+  const aircraft = aircraftDataByKey.get(aircraftSelect.value);
+  if (!aircraft) { notify('找不到所選機型資料'); return; }
+  try { loadAircraftRecord(aircraft); } catch (error) { notify(error instanceof Error ? error.message : '機型載入失敗'); }
+});
+
 const jsonPanel = $('json-panel');
 const jsonText = $('json-text') as HTMLTextAreaElement;
 const openJsonPanel = (mode: 'import' | 'export'): void => {
   $('json-title').textContent = mode === 'import' ? '貼上模型 JSON' : '模型 JSON（可複製）';
   $('json-help').textContent = mode === 'import'
-    ? '將完整模型 JSON 貼在下方，再按「載入文字」。載入成功後會取代目前模型。'
-    : 'V2 JSON 可直接供遊戲載入。請將檔案存成 src/aircraft/visuals/<機型 Key>.json；機型 Key 必須與 aircraft/data 中的 key 相同。';
-  jsonText.value = mode === 'export' ? JSON.stringify(config, null, 2) : '';
+    ? '可貼上完整 src/aircraft/data/<key>.json（含 physics、cockpit、visual），也相容舊版純視覺 JSON。'
+    : activeAircraft
+      ? `完整機型資料：保留 ${activeAircraft.key} 的 physics、cockpit、specs，並將目前模型寫入 visual。請用此內容完整取代 src/aircraft/data/${activeAircraft.key}.json。`
+      : '目前沒有選取正式機型，僅匯出獨立視覺 JSON。';
+  const exportData = activeAircraft ? { ...activeAircraft, visual: { ...config, aircraftKey: activeAircraft.key } } : config;
+  jsonText.value = mode === 'export' ? JSON.stringify(exportData, null, 2) : '';
   ($('json-load') as HTMLButtonElement).hidden = mode !== 'import';
   ($('json-copy') as HTMLButtonElement).hidden = mode !== 'export';
   jsonPanel.hidden = false;
@@ -648,7 +705,22 @@ $('import').addEventListener('click', () => openJsonPanel('import'));
 $('json-close').addEventListener('click', () => { jsonPanel.hidden = true; });
 $('json-load').addEventListener('click', () => {
   try {
-    loadConfig(JSON.parse(jsonText.value) as AircraftVisualInput, '模型文字載入成功');
+    const parsed = JSON.parse(jsonText.value) as AircraftVisualInput | AircraftJson;
+    if ('physics' in parsed && parsed.physics && 'key' in parsed) {
+      const aircraft = parsed as AircraftJson;
+      const valid = validateAircraftRecord(aircraft);
+      activeAircraft = clone(valid);
+      const visual = valid.visual ? normalizeAircraftVisualConfig(valid.visual) : makeAircraftVisual(valid);
+      visual.aircraftKey = valid.key;
+      visual.name = visual.name || valid.displayName;
+      loadConfig(visual, `已匯入完整機型資料：${valid.key}`);
+      setValue('model-name-input', visual.name);
+      setValue('model-key-input', valid.key);
+      populateAircraftSelector(valid.key);
+    } else {
+      activeAircraft = null;
+      loadConfig(parsed as AircraftVisualInput, '舊版獨立視覺 JSON 載入成功');
+    }
     $('json-error').textContent = '';
     $('json-error').hidden = true;
     jsonPanel.hidden = true;
@@ -687,7 +759,7 @@ $('clear-model').addEventListener('click', () => {
   persist();
   selectPart(null);
 });
-$('load-viper').addEventListener('click', () => loadConfig(viperSample as AircraftVisualInput, '已載入 Viper T21 範例'));
+$('load-viper').addEventListener('click', () => { activeAircraft = null; loadConfig(viperSample as AircraftVisualInput, '已載入獨立 Viper T21 範例（非註冊機型資料）'); });
 $('undo').addEventListener('click', () => {
   if (historyIndex <= 0) return;
   historyIndex--;
@@ -859,11 +931,15 @@ const animate = (): void => {
 resize();
 animate();
 
+populateAircraftSelector(aircraftRegistry.default.key);
 try {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const initialAircraft = aircraftDataByKey.get(aircraftRegistry.default.key)!;
+  activeAircraft = clone(initialAircraft);
+  const stored = localStorage.getItem(`${STORAGE_KEY}:${initialAircraft.key}`);
   config = stored
     ? normalizeAircraftVisualConfig(JSON.parse(stored) as AircraftVisualInput)
-    : normalizeAircraftVisualConfig(viperSample as AircraftVisualInput);
+    : makeAircraftVisual(initialAircraft);
+  config.aircraftKey = initialAircraft.key;
 } catch (error) {
   config = clone(defaultConfig());
   notify(error instanceof Error ? `本機模型載入失敗：${error.message}` : '本機模型載入失敗');
